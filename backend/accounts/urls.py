@@ -5,6 +5,8 @@ from views.user_views import UserViewSet
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('users/', UserViewSet.as_view({'get': 'get_all_users', 'post': 'create_user'}), name='users_list'),
+    path('users/get/', UserViewSet.as_view({'get': 'get_user', 'post': 'get_user'}), name='get_user_alt'),
     path('users/create_user/', UserViewSet.as_view({'post': 'create_user'}), name='create_user'),
     path('users/get_user/', UserViewSet.as_view({'post': 'get_user'}), name='get_user'),
     path('users/update_user/', UserViewSet.as_view({'post': 'update_user'}), name='update_user'),
