@@ -139,18 +139,13 @@ class UserViewSet(viewsets.ViewSet):
     """
     사용자 정보 CRUD를 위한 API 뷰셋
     """
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     @action(detail=False, methods=['post'])
     def create_user(self, request):
         """
         새로운 사용자를 생성합니다.
-        관리자 권한이 필요합니다.
         """
-        # if not request.user.is_staff:
-        #     return Response({"error": "관리자 권한이 필요합니다."}, 
-        #                   status=status.HTTP_403_FORBIDDEN)
-        
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -161,7 +156,6 @@ class UserViewSet(viewsets.ViewSet):
     def get_user(self, request):
         """
         사용자 정보를 조회합니다.
-        본인 정보 또는 관리자는 모든 사용자 정보를 조회할 수 있습니다.
         """
         user_id = request.data.get('user_id')
         username = request.data.get('username')
@@ -179,11 +173,6 @@ class UserViewSet(viewsets.ViewSet):
             else:
                 user = User.objects.get(username=username)
             
-            # 권한 체크 - 본인 또는 관리자만 조회 가능
-            if request.user.id != user.id and not request.user.is_staff:
-                return Response({"error": "다른 사용자의 정보를 조회할 권한이 없습니다."}, 
-                              status=status.HTTP_403_FORBIDDEN)
-            
             serializer = UserSerializer(user)
             return Response(serializer.data)
         except User.DoesNotExist:
@@ -194,7 +183,6 @@ class UserViewSet(viewsets.ViewSet):
     def update_user(self, request):
         """
         사용자 정보를 업데이트합니다.
-        본인 정보 또는 관리자는 모든 사용자 정보를 업데이트할 수 있습니다.
         """
         user_id = request.data.get('user_id')
         if not user_id:
@@ -203,11 +191,6 @@ class UserViewSet(viewsets.ViewSet):
         
         try:
             user = User.objects.get(id=user_id)
-            
-            # 권한 체크 - 본인 또는 관리자만 수정 가능
-            if request.user.id != user.id and not request.user.is_staff:
-                return Response({"error": "다른 사용자의 정보를 수정할 권한이 없습니다."}, 
-                              status=status.HTTP_403_FORBIDDEN)
             
             serializer = UserSerializer(user, data=request.data, partial=True)
             if serializer.is_valid():
@@ -222,7 +205,6 @@ class UserViewSet(viewsets.ViewSet):
     def delete_user(self, request):
         """
         사용자를 삭제합니다. (비활성화)
-        관리자만 다른 사용자를 삭제할 수 있습니다.
         실제로 데이터베이스에서 삭제하지 않고 비활성화합니다.
         """
         user_id = request.data.get('user_id')
@@ -232,11 +214,6 @@ class UserViewSet(viewsets.ViewSet):
         
         try:
             user = User.objects.get(id=user_id)
-            
-            # 권한 체크 - 본인 또는 관리자만 삭제 가능
-            if request.user.id != user.id and not request.user.is_staff:
-                return Response({"error": "다른 사용자를 삭제할 권한이 없습니다."}, 
-                              status=status.HTTP_403_FORBIDDEN)
             
             # 실제 삭제 대신 비활성화
             user.is_active = False
@@ -251,12 +228,8 @@ class UserViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def get_all_users(self, request):
         """
-        모든 사용자 목록을 조회합니다. (관리자용)
+        모든 사용자 목록을 조회합니다.
         """
-        # if not request.user.is_staff:
-        #     return Response({"error": "관리자 권한이 필요합니다."}, 
-        #                   status=status.HTTP_403_FORBIDDEN)
-            
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
@@ -266,10 +239,6 @@ class UserViewSet(viewsets.ViewSet):
         """
         사용자 통계 정보를 조회합니다.
         """
-        if not request.user.is_staff:
-            return Response({"error": "관리자 권한이 필요합니다."}, 
-                          status=status.HTTP_403_FORBIDDEN)
-                          
         users = User.objects.annotate(
             tournaments_count=Count('tournament_registrations'),
             checked_in_count=Count('tournament_registrations', filter=Q(tournament_registrations__checked_in=True)),
