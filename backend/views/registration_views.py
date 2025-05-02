@@ -15,16 +15,12 @@ class TournamentRegistrationViewSet(viewsets.ModelViewSet):
     """
     queryset = TournamentRegistration.objects.all()
     serializer_class = TournamentRegistrationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return TournamentRegistration.objects.all().select_related(
-                'tournament', 'tournament__store', 'user'
-            )
-        return TournamentRegistration.objects.filter(
-            user=self.request.user
-        ).select_related('tournament', 'tournament__store')
+        return TournamentRegistration.objects.all().select_related(
+            'tournament', 'tournament__store', 'user'
+        )
     
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -44,12 +40,8 @@ class TournamentRegistrationViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def tournament_registrations(self, request):
         """
-        특정 토너먼트의 모든 등록 정보를 반환합니다. (관리자용)
+        특정 토너먼트의 모든 등록 정보를 반환합니다.
         """
-        if not request.user.is_staff:
-            return Response({"error": "관리자 권한이 필요합니다."}, 
-                          status=status.HTTP_403_FORBIDDEN)
-        
         serializer = TournamentIDSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -71,12 +63,8 @@ class TournamentRegistrationViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def search(self, request):
         """
-        특정 사용자의 특정 토너먼트 참가 정보를 검색합니다. (관리자용)
+        특정 사용자의 특정 토너먼트 참가 정보를 검색합니다.
         """
-        if not request.user.is_staff:
-            return Response({"error": "관리자 권한이 필요합니다."}, 
-                          status=status.HTTP_403_FORBIDDEN)
-        
         serializer = TournamentRegistrationSearchSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -114,11 +102,6 @@ class TournamentRegistrationViewSet(viewsets.ModelViewSet):
         
         try:
             registration = TournamentRegistration.objects.get(id=registration_id)
-            
-            # 본인의 등록 정보이거나 관리자만 수정 가능
-            if request.user != registration.user and not request.user.is_staff:
-                return Response({"error": "권한이 없습니다."}, 
-                              status=status.HTTP_403_FORBIDDEN)
             
             update_serializer = TournamentRegistrationSerializer(
                 registration, data=request.data, partial=True
