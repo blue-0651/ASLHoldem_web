@@ -4,10 +4,79 @@ from rest_framework.decorators import action
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from django.db.models import Q, Count, Max
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from tournaments.models import TournamentRegistration, Tournament
 
 User = get_user_model()
+
+# 매장 관리자용 토큰 시리얼라이저
+class StoreManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        
+        # 매장 관리자인지 확인 (is_store_owner 필드 사용)
+        if not user.is_store_owner:
+            raise serializers.ValidationError({
+                "detail": "매장 관리자 권한이 없습니다."
+            })
+        
+        # 토큰에 추가 정보 담기
+        token['user_type'] = 'store_manager'
+        token['username'] = user.username
+        token['email'] = user.email if user.email else ''
+        token['is_store_owner'] = user.is_store_owner
+        token['role'] = user.role
+        
+        return token
+
+# 일반 사용자용 토큰 시리얼라이저
+class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        
+        # 토큰에 추가 정보 담기
+        token['user_type'] = 'regular_user'
+        token['username'] = user.username
+        token['email'] = user.email if user.email else ''
+        
+        return token
+
+# 관리자용 토큰 시리얼라이저
+class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        
+        # 관리자 권한 확인
+        if not user.is_staff:
+            raise serializers.ValidationError({
+                "detail": "관리자 권한이 없습니다."
+            })
+        
+        # 토큰에 추가 정보 담기
+        token['user_type'] = 'admin'
+        token['username'] = user.username
+        token['email'] = user.email if user.email else ''
+        token['is_staff'] = user.is_staff
+        token['is_superuser'] = user.is_superuser
+        
+        return token
+
+# 매장 관리자용 토큰 뷰
+class StoreManagerTokenObtainPairView(TokenObtainPairView):
+    serializer_class = StoreManagerTokenObtainPairSerializer
+
+# 일반 사용자용 토큰 뷰
+class UserTokenObtainPairView(TokenObtainPairView):
+    serializer_class = UserTokenObtainPairSerializer
+
+# 관리자용 토큰 뷰
+class AdminTokenObtainPairView(TokenObtainPairView):
+    serializer_class = AdminTokenObtainPairSerializer
 
 class TournamentBasicSerializer(serializers.ModelSerializer):
     """

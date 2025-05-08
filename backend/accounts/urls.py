@@ -1,9 +1,14 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from views.user_views import UserViewSet
+from views.user_views import UserViewSet, StoreManagerTokenObtainPairView, UserTokenObtainPairView, AdminTokenObtainPairView
 
 urlpatterns = [
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # 기존 토큰 URL (현재는 매장관리자용으로 사용)
+    path('token/', StoreManagerTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # 일반 사용자 토큰 URL
+    path('token/user/', UserTokenObtainPairView.as_view(), name='token_obtain_pair_user'),
+    # 관리자 토큰 URL
+    path('token/admin/', AdminTokenObtainPairView.as_view(), name='token_obtain_pair_admin'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('users/', UserViewSet.as_view({'get': 'get_all_users', 'post': 'create_user'}), name='users_list'),
     path('users/get/', UserViewSet.as_view({'get': 'get_user', 'post': 'get_user'}), name='get_user_alt'),
@@ -14,5 +19,4 @@ urlpatterns = [
     path('users/get_all_users/', UserViewSet.as_view({'get': 'get_all_users'}), name='get_all_users'),
     path('users/get_user_stats/', UserViewSet.as_view({'get': 'get_user_stats'}), name='get_user_stats'),
     path('users/get_user_by_phone/', UserViewSet.as_view({'get': 'get_user_by_phone'}), name='get_user_by_phone'),
-    
 ] 
