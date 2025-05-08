@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Table, Spinner } from 'react-bootstrap';
+import { Card, Table, Spinner, Row, Col } from 'react-bootstrap';
 import PropTypes from 'prop-types';
 
 const StorePlayerMapping = ({ data }) => {
@@ -23,24 +23,30 @@ const StorePlayerMapping = ({ data }) => {
         {data.토너먼트명} 매장/선수 매핑 현황
       </Card.Header>
       <Card.Body>
-        <div className="d-flex justify-content-between mb-4">
-          <div className="text-center p-3 border rounded">
-            <h6>매장 좌석권 보유 현황</h6>
-            <h4>{data.매장별_현황?.length || 0}</h4>
-          </div>
-          <div className="text-center p-3 border rounded">
-            <h6>배포된 좌석권 수량</h6>
-            <h4>{data.배포된_좌석권_수량 || 0}</h4>
-          </div>
-          <div className="text-center p-3 border rounded">
-            <h6>총 좌석권 수량</h6>
-            <h4>{data.총_좌석권_수량 || 0}</h4>
-          </div>
-        </div>
+        <Row className="mb-4">
+          <Col lg={4} md={4} sm={4} xs={12} className="mb-3 mb-sm-0">
+            <div className="text-center p-3 border rounded h-100">
+              <h6>매장 좌석권 보유 현황</h6>
+              <h4>{data.매장별_현황?.length || 0}</h4>
+            </div>
+          </Col>
+          <Col lg={4} md={4} sm={4} xs={12} className="mb-3 mb-sm-0">
+            <div className="text-center p-3 border rounded h-100">
+              <h6>배포된 좌석권 수량</h6>
+              <h4>{data.배포된_좌석권_수량 || 0}</h4>
+            </div>
+          </Col>
+          <Col lg={4} md={4} sm={4} xs={12} className="mb-3 mb-sm-0">
+            <div className="text-center p-3 border rounded h-100">
+              <h6>총 좌석권 수량</h6>
+              <h4>{data.총_좌석권_수량 || 0}</h4>
+            </div>
+          </Col>
+        </Row>
 
         <h5 className="mb-3">선수별 좌석권 현황</h5>
         <div className="table-responsive">
-          <Table striped bordered hover>
+          <Table striped bordered hover responsive>
             <thead className="bg-light">
               <tr>
                 <th>선수명</th>

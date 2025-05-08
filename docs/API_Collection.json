@@ -7,6 +7,107 @@
   },
   "item": [
     {
+      "name": "인증",
+      "description": "인증 관련 API 엔드포인트",
+      "item": [
+        {
+          "name": "매장 관리자 로그인",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"store_manager\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/token/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "token",
+                ""
+              ]
+            },
+            "description": "매장 관리자 자격으로 로그인합니다.\n\n요청 본문:\n- username: 매장 관리자 사용자명\n- password: 비밀번호\n\n응답:\n- 200: 성공적으로 토큰을 발급\n  - access: 액세스 토큰\n  - refresh: 리프레시 토큰\n- 401: 로그인 실패 (잘못된 자격 증명)\n- 403: 매장 관리자 권한이 없음"
+          },
+          "response": []
+        },
+        {
+          "name": "일반 사용자 로그인",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"regular_user\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/token/user/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "token",
+                "user",
+                ""
+              ]
+            },
+            "description": "일반 사용자 자격으로 로그인합니다.\n\n요청 본문:\n- username: 일반 사용자 사용자명\n- password: 비밀번호\n\n응답:\n- 200: 성공적으로 토큰을 발급\n  - access: 액세스 토큰\n  - refresh: 리프레시 토큰\n- 401: 로그인 실패 (잘못된 자격 증명)"
+          },
+          "response": []
+        },
+        {
+          "name": "토큰 갱신",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"your_refresh_token_here\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/token/refresh/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "token",
+                "refresh",
+                ""
+              ]
+            },
+            "description": "리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다.\n\n요청 본문:\n- refresh: 리프레시 토큰\n\n응답:\n- 200: 성공적으로 새 토큰을 발급\n  - access: 새 액세스 토큰\n- 401: 갱신 실패 (유효하지 않은 리프레시 토큰)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "토너먼트",
       "description": "토너먼트 관련 API 엔드포인트",
       "item": [
