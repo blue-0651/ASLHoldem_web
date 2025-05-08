@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Form, Button, Alert, Row, Col } from 'react-bootstrap';
+import { Container, Form, Button, Alert, Row, Col, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { login, isAuthenticated } from '../utils/auth';
+import aslLogo from '../assets/asl_logo.png';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -23,8 +24,8 @@ const Login = () => {
     setError('');
 
     try {
-      // 로그인 시도
-      const { success, error: loginError } = await login(username, password);
+      // 관리자 로그인 시도
+      const { success, error: loginError } = await login(username, password, 'admin');
       
       if (success) {
         // 로그인 성공 시 대시보드로 이동
@@ -44,10 +45,10 @@ const Login = () => {
   return (
     <Container className="mt-5">
       <Row className="justify-content-center">
-        <Col md={6} className="text-center mb-4">
+        <Col lg={6} md={8} sm={10} xs={12} className="text-center mb-4">
           <div className="text-center mb-4">
             <img 
-              src="/images/asl_logo.png" 
+              src={aslLogo}
               alt="ASL 로고" 
               style={{
                 width: '120px',
@@ -59,44 +60,55 @@ const Login = () => {
               }} 
             />
           </div>
-          <h2 className="mt-3">ASL 홀덤 로그인</h2>
+          <h2 className="mt-3">ASL 홀덤 관리자 로그인</h2>
         </Col>
       </Row>
       
       <Row className="justify-content-center">
-        <Col md={6}>
-          {error && <Alert variant="danger">{error}</Alert>}
-          
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3" controlId="formUsername">
-              <Form.Label>사용자명</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="사용자명 입력"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </Form.Group>
+        <Col lg={6} md={8} sm={10} xs={12}>
+          <Card className="mb-4">
+            <Card.Body>
+              {error && <Alert variant="danger">{error}</Alert>}
+              
+              <Form onSubmit={handleSubmit}>
+                <Form.Group className="mb-3" controlId="formUsername">
+                  <Form.Label>관리자 ID</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="관리자 ID 입력"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                  />
+                </Form.Group>
 
-            <Form.Group className="mb-3" controlId="formPassword">
-              <Form.Label>비밀번호</Form.Label>
-              <Form.Control
-                type="password"
-                placeholder="비밀번호 입력"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </Form.Group>
+                <Form.Group className="mb-3" controlId="formPassword">
+                  <Form.Label>비밀번호</Form.Label>
+                  <Form.Control
+                    type="password"
+                    placeholder="비밀번호 입력"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </Form.Group>
 
-            <div className="d-grid gap-2">
-              <Button variant="primary" type="submit" disabled={isLoading}
-                      style={{ backgroundColor: '#b01836', borderColor: '#b01836' }}>
-                {isLoading ? '로그인 중...' : '로그인'}
-              </Button>
-            </div>
-          </Form>
+                <div className="d-grid gap-2">
+                  <Button 
+                    variant="primary" 
+                    type="submit" 
+                    disabled={isLoading}
+                    style={{ 
+                      backgroundColor: '#b01836', 
+                      borderColor: '#b01836' 
+                    }}
+                  >
+                    {isLoading ? '로그인 중...' : '관리자 로그인'}
+                  </Button>
+                </div>
+              </Form>
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
     </Container>

@@ -6,11 +6,23 @@ const REFRESH_TOKEN_KEY = 'asl_holdem_refresh_token';
 const USER_INFO_KEY = 'asl_holdem_user_info';
 
 // 로그인 함수
-export const login = async (username, password) => {
+export const login = async (username, password, userType = 'store') => {
   try {
-    const response = await axios.post('/api/v1/accounts/token/', {
+    // userType에 따라 다른 API 엔드포인트나 파라미터 사용 가능
+    let endpoint;
+    
+    if (userType === 'admin') {
+      endpoint = '/api/v1/accounts/token/admin/';
+    } else if (userType === 'store') {
+      endpoint = '/api/v1/accounts/token/';
+    } else {
+      endpoint = '/api/v1/accounts/token/user/';
+    }
+    
+    const response = await axios.post(endpoint, {
       username,
-      password
+      password,
+      user_type: userType // 백엔드에서 구분할 수 있도록 추가 파라미터
     });
 
     const { access, refresh } = response.data;
@@ -18,6 +30,7 @@ export const login = async (username, password) => {
     // 토큰을 로컬 스토리지에 저장
     localStorage.setItem(TOKEN_KEY, access);
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+    localStorage.setItem('user_type', userType); // 유저 타입도 저장
     
     // 사용자 정보 가져오기
     const userInfo = await getUserInfo(username);
@@ -41,6 +54,7 @@ export const logout = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_INFO_KEY);
+  localStorage.removeItem('user_type');
 };
 
 // 사용자 정보 가져오기
