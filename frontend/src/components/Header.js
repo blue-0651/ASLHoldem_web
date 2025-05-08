@@ -15,7 +15,7 @@ const Header = () => {
   return (
     <div className="admin-header">
       <Container>
-        <Row>
+        <Row className="align-items-center">
           <Col>
             <h1>ASL 홀덤 관리자</h1>
             <p className="mb-0">토너먼트 및 매장 관리 시스템</p>
@@ -26,11 +26,12 @@ const Header = () => {
                 <span className="me-3">
                   {currentUser.username} ({currentUser.is_staff ? '관리자' : '사용자'})
                 </span>
-                <Button variant="outline-light" size="sm" onClick={handleLogout}>
+                <Button variant="outline-light" size="sm" onClick={handleLogout} className="me-3">
                   로그아웃
                 </Button>
               </>
             )}
+          
           </Col>
         </Row>
       </Container>

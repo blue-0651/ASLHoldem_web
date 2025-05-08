@@ -37,8 +37,38 @@
   }
 }
 
+/* 관리자 헤더 스타일 */
+.admin-header {
+  background-color: #b01836;
+  color: white;
+  padding: 15px 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
 .admin-header h1, .admin-header h2 {
   margin-bottom: 0;
+}
+
+/* ASL 로고 스타일 */
+.asl-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: transparent;
+  border-radius: 4px;
+  transition: transform 0.3s ease;
+}
+
+.asl-logo:hover {
+  transform: scale(1.05);
+}
+
+/* 로고 반응형 스타일 */
+@media (max-width: 768px) {
+  .admin-header .asl-logo img {
+    width: 50px !important;
+    height: 50px !important;
+  }
 }
 
 .tournament-card {

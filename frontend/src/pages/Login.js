@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Form, Button, Alert } from 'react-bootstrap';
+import { Container, Form, Button, Alert, Row, Col } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { login, isAuthenticated } from '../utils/auth';
 
@@ -43,10 +43,28 @@ const Login = () => {
 
   return (
     <Container className="mt-5">
-      <div className="d-flex justify-content-center">
-        <div className="col-md-6">
-          <h2 className="text-center mb-4">ASL 홀덤 로그인</h2>
-          
+      <Row className="justify-content-center">
+        <Col md={6} className="text-center mb-4">
+          <div className="text-center mb-4">
+            <img 
+              src="/images/asl_logo.png" 
+              alt="ASL 로고" 
+              style={{
+                width: '120px',
+                height: '120px',
+                maxWidth: '100%',
+                objectFit: 'contain',
+                background: 'transparent',
+                borderRadius: '4px'
+              }} 
+            />
+          </div>
+          <h2 className="mt-3">ASL 홀덤 로그인</h2>
+        </Col>
+      </Row>
+      
+      <Row className="justify-content-center">
+        <Col md={6}>
           {error && <Alert variant="danger">{error}</Alert>}
           
           <Form onSubmit={handleSubmit}>
@@ -73,13 +91,14 @@ const Login = () => {
             </Form.Group>
 
             <div className="d-grid gap-2">
-              <Button variant="primary" type="submit" disabled={isLoading}>
+              <Button variant="primary" type="submit" disabled={isLoading}
+                      style={{ backgroundColor: '#b01836', borderColor: '#b01836' }}>
                 {isLoading ? '로그인 중...' : '로그인'}
               </Button>
             </div>
           </Form>
-        </div>
-      </div>
+        </Col>
+      </Row>
     </Container>
   );
 };

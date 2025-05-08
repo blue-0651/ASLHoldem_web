@@ -7,7 +7,13 @@ const Sidebar = () => {
   
   return (
     <div className="py-4 d-flex flex-column min-vh-100">
-      <h3 className="text-center mb-4">ASL 홀덤</h3>
+      <div className="text-center mb-4">
+        <img 
+          src="/images/asl_logo.png" 
+          alt="ASL 로고"
+          style={{ width: '70px', height: '70px', objectFit: 'contain', background: 'transparent', borderRadius: '4px' }}
+        />
+      </div>
       <Nav className="flex-column">
         <Nav.Link 
           as={Link} 
