@@ -1,14 +1,23 @@
 import axios from 'axios';
+import { getToken, refreshToken, logout } from './auth';
 
 // API 기본 설정 - content-type 기본값 제거
 const API = axios.create({
   baseURL: '/api/v1',
 });
 
-// 오류 인터셉터 추가
+// 요청 인터셉터 - 인증 토큰 추가
 API.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // 로그 출력
     console.log(`API 요청: ${config.method.toUpperCase()} ${config.url}`, config);
+    
+    // 토큰이 있으면 헤더에 추가
+    const token = getToken();
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     return config;
   },
   (error) => {
@@ -17,12 +26,46 @@ API.interceptors.request.use(
   }
 );
 
+// 응답 인터셉터 - 토큰 만료 시 갱신
 API.interceptors.response.use(
   (response) => {
     console.log(`API 응답: ${response.status}`, response.data);
     return response;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // 토큰 만료 오류(401) 및 재시도 안된 요청인 경우
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        // 토큰 갱신 시도
+        const { success, access } = await refreshToken();
+        
+        if (success && access) {
+          // 갱신된 토큰으로 헤더 업데이트
+          originalRequest.headers['Authorization'] = `Bearer ${access}`;
+          // 원래 요청 재시도
+          return API(originalRequest);
+        } else {
+          // 갱신 실패 시 로그아웃
+          logout();
+          // 로그인 페이지로 리다이렉트
+          window.location.href = '/login';
+          return Promise.reject(error);
+        }
+      } catch (refreshError) {
+        console.error('토큰 갱신 오류:', refreshError);
+        // 로그아웃 처리
+        logout();
+        // 로그인 페이지로 리다이렉트
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+    }
+    
+    // 기타 오류 처리
     if (error.response) {
       console.error(`API 응답 오류: ${error.response.status}`, error.response.data);
     } else if (error.request) {
@@ -30,6 +73,7 @@ API.interceptors.response.use(
     } else {
       console.error('API 오류:', error.message);
     }
+    
     return Promise.reject(error);
   }
 );
