@@ -4,10 +4,14 @@ from rest_framework.decorators import action
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from django.db.models import Q, Count, Max
+import logging
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from tournaments.models import TournamentRegistration, Tournament
+
+# API 로거 생성
+api_logger = logging.getLogger('api')
 
 User = get_user_model()
 
@@ -69,14 +73,74 @@ class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
 # 매장 관리자용 토큰 뷰
 class StoreManagerTokenObtainPairView(TokenObtainPairView):
     serializer_class = StoreManagerTokenObtainPairSerializer
+    
+    def post(self, request, *args, **kwargs):
+        # 요청 데이터 로깅 (비밀번호는 제외)
+        log_data = request.data.copy()
+        if 'password' in log_data:
+            log_data['password'] = '******'
+        api_logger.info(f"매장관리자 로그인 요청: {log_data}")
+        
+        # 원래 메서드 호출
+        response = super().post(request, *args, **kwargs)
+        
+        # 응답 로깅 (민감한 정보는 제외)
+        log_response = response.data.copy() if hasattr(response, 'data') else {}
+        if 'access' in log_response:
+            log_response['access'] = log_response['access'][:10] + '...'
+        if 'refresh' in log_response:
+            log_response['refresh'] = log_response['refresh'][:10] + '...'
+        api_logger.info(f"매장관리자 로그인 응답: {log_response}")
+        
+        return response
 
 # 일반 사용자용 토큰 뷰
 class UserTokenObtainPairView(TokenObtainPairView):
     serializer_class = UserTokenObtainPairSerializer
+    
+    def post(self, request, *args, **kwargs):
+        # 요청 데이터 로깅 (비밀번호는 제외)
+        log_data = request.data.copy()
+        if 'password' in log_data:
+            log_data['password'] = '******'
+        api_logger.info(f"일반 사용자 로그인 요청: {log_data}")
+        
+        # 원래 메서드 호출
+        response = super().post(request, *args, **kwargs)
+        
+        # 응답 로깅 (민감한 정보는 제외)
+        log_response = response.data.copy() if hasattr(response, 'data') else {}
+        if 'access' in log_response:
+            log_response['access'] = log_response['access'][:10] + '...'
+        if 'refresh' in log_response:
+            log_response['refresh'] = log_response['refresh'][:10] + '...'
+        api_logger.info(f"일반 사용자 로그인 응답: {log_response}")
+        
+        return response
 
 # 관리자용 토큰 뷰
 class AdminTokenObtainPairView(TokenObtainPairView):
     serializer_class = AdminTokenObtainPairSerializer
+    
+    def post(self, request, *args, **kwargs):
+        # 요청 데이터 로깅 (비밀번호는 제외)
+        log_data = request.data.copy()
+        if 'password' in log_data:
+            log_data['password'] = '******'
+        api_logger.info(f"관리자 로그인 요청: {log_data}")
+        
+        # 원래 메서드 호출
+        response = super().post(request, *args, **kwargs)
+        
+        # 응답 로깅 (민감한 정보는 제외)
+        log_response = response.data.copy() if hasattr(response, 'data') else {}
+        if 'access' in log_response:
+            log_response['access'] = log_response['access'][:10] + '...'
+        if 'refresh' in log_response:
+            log_response['refresh'] = log_response['refresh'][:10] + '...'
+        api_logger.info(f"관리자 로그인 응답: {log_response}")
+        
+        return response
 
 class TournamentBasicSerializer(serializers.ModelSerializer):
     """

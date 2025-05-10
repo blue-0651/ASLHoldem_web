@@ -7,6 +7,7 @@ from tournaments.models import Tournament, TournamentRegistration
 from stores.models import Store
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+import datetime
 
 User = get_user_model()
 
@@ -216,6 +217,98 @@ class StoreViewSet(viewsets.ViewSet):
         except Store.DoesNotExist:
             return Response({"error": "해당 매장을 찾을 수 없습니다."}, 
                           status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'])
+    def current_store(self, request):
+        """
+        현재 로그인한 매장 관리자의 매장 정보를 반환합니다.
+        """
+        try:
+            # 토큰에서 사용자 정보 확인
+            user = request.user
+            
+            # 매장 관리자 권한 확인
+            if not hasattr(user, 'is_store_owner') or not user.is_store_owner:
+                return Response({"error": "매장 관리자 권한이 없습니다."}, 
+                               status=status.HTTP_403_FORBIDDEN)
+            
+            # 매장 관리자와 연결된 매장 조회
+            store = Store.objects.filter(manager=user).first()
+            if not store:
+                return Response({"error": "연결된 매장 정보가 없습니다."}, 
+                               status=status.HTTP_404_NOT_FOUND)
+            
+            serializer = StoreSerializer(store)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['put'])
+    def update_current_store(self, request):
+        """
+        현재 로그인한 매장 관리자의 매장 정보를 업데이트합니다.
+        """
+        try:
+            # 토큰에서 사용자 정보 확인
+            user = request.user
+            
+            # 매장 관리자 권한 확인
+            if not hasattr(user, 'is_store_owner') or not user.is_store_owner:
+                return Response({"error": "매장 관리자 권한이 없습니다."}, 
+                               status=status.HTTP_403_FORBIDDEN)
+            
+            # 매장 관리자와 연결된 매장 조회
+            store = Store.objects.filter(manager=user).first()
+            if not store:
+                return Response({"error": "연결된 매장 정보가 없습니다."}, 
+                               status=status.HTTP_404_NOT_FOUND)
+            
+            # 매장 정보 업데이트
+            serializer = StoreSerializer(store, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'])
+    def generate_qr_code(self, request):
+        """
+        매장 QR 코드를 생성합니다.
+        """
+        try:
+            # 토큰에서 사용자 정보 확인
+            user = request.user
+            
+            # 매장 관리자 권한 확인
+            if not hasattr(user, 'is_store_owner') or not user.is_store_owner:
+                return Response({"error": "매장 관리자 권한이 없습니다."}, 
+                               status=status.HTTP_403_FORBIDDEN)
+            
+            # 매장 관리자와 연결된 매장 조회
+            store = Store.objects.filter(manager=user).first()
+            if not store:
+                return Response({"error": "연결된 매장 정보가 없습니다."}, 
+                               status=status.HTTP_404_NOT_FOUND)
+            
+            # QR 코드 생성 로직 (예: 매장 ID를, 이름, 주소 정보를 포함)
+            qr_data = {
+                "store_id": store.id,
+                "name": store.name,
+                "address": store.address,
+                "timestamp": datetime.datetime.now().isoformat()
+            }
+            
+            # 실제 QR 코드 이미지 생성 및 URL 반환 로직 구현 필요
+            # 임시로 JSON 반환
+            return Response({
+                "qr_data": qr_data,
+                "qr_url": f"/media/qr_codes/store_{store.id}.png"  # 실제 QR 코드 이미지 경로 구현 필요
+            })
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

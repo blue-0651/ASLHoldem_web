@@ -7,6 +7,8 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework.routers import DefaultRouter
 from views.registration_views import TournamentRegistrationViewSet
+from views.store_views import StoreViewSet
+from views.tournament_views import TournamentViewSet
 
 # 등록 API를 위한 별도 라우터 설정
 registrations_router = DefaultRouter()
@@ -31,6 +33,10 @@ urlpatterns = [
     path('api/v1/tournaments/', include('tournaments.urls')),
     path('api/v1/stores/', include('stores.urls')),
     path('api/v1/', include(registrations_router.urls)),  # 등록 API 경로 추가
+    path('api/v1/store/info/', StoreViewSet.as_view({'get': 'current_store', 'put': 'update_current_store'})),
+    path('api/v1/store/generate-qr/', StoreViewSet.as_view({'post': 'generate_qr_code'})),
+    path('api/v1/store/tournaments/', TournamentViewSet.as_view({'get': 'store_tournaments'})),
+    path('api/v1/store/tournaments/<int:pk>/cancel/', TournamentViewSet.as_view({'post': 'cancel_tournament'})),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) 
