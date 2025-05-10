@@ -1,4 +1,4 @@
-import axios from 'axios';
+import API from './api';
 
 // 토큰 관련 로컬 스토리지 키
 const TOKEN_KEY = 'asl_holdem_access_token';
@@ -8,6 +8,15 @@ const USER_INFO_KEY = 'asl_holdem_user_info';
 // 로그인 함수
 export const login = async (username, password, userType = 'store') => {
   try {
+    // 모바일 환경에서는 어드민 로그인을 시도하지 않도록 체크
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile && userType === 'admin') {
+      return {
+        success: false,
+        error: { detail: '모바일에서는 관리자 로그인이 불가능합니다.' }
+      };
+    }
+    
     // userType에 따라 다른 API 엔드포인트나 파라미터 사용 가능
     let endpoint;
     
@@ -19,7 +28,7 @@ export const login = async (username, password, userType = 'store') => {
       endpoint = '/api/v1/accounts/token/user/';
     }
     
-    const response = await axios.post(endpoint, {
+    const response = await API.post(endpoint, {
       username,
       password,
       user_type: userType // 백엔드에서 구분할 수 있도록 추가 파라미터
@@ -63,7 +72,7 @@ export const getUserInfo = async (username) => {
     const formData = new FormData();
     formData.append('username', username);
     
-    const response = await axios.post('/api/v1/accounts/users/get_user/', formData, {
+    const response = await API.post('/api/v1/accounts/users/get_user/', formData, {
       headers: { Authorization: `Bearer ${getToken()}` }
     });
     
@@ -92,7 +101,7 @@ export const refreshToken = async () => {
       throw new Error('리프레시 토큰이 없습니다.');
     }
     
-    const response = await axios.post('/api/v1/accounts/token/refresh/', {
+    const response = await API.post('/api/v1/accounts/token/refresh/', {
       refresh
     });
     
