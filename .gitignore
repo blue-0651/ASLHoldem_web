@@ -141,3 +141,6 @@ yarn-error.log*
 
 # ESLint 캐시
 .eslintcache
+
+# cursor rules
+*.mdc
