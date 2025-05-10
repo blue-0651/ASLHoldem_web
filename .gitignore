@@ -64,9 +64,7 @@ ENV/
 .env.development.local
 .env.test.local
 .env.production.local
-<<<<<<< HEAD
-frontend/.env
-frontend/.env.local
+
 
 # Misc
 .DS_Store
