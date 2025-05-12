@@ -19,7 +19,7 @@ env = environ.Env(
     DB_USER=(str, 'postgres'),
     DB_PASSWORD=(str, 'postgres'),
     DB_HOST=(str, 'localhost'),
-    DB_PORT=(str, '5432'),
+         DB_PORT=(str, '5432'),
 )
 
 # .env 파일이 있으면 읽기
