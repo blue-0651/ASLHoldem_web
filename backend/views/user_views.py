@@ -179,6 +179,7 @@ class UserSerializer(serializers.ModelSerializer):
     user_permissions_list = serializers.SerializerMethodField()
     groups_list = serializers.SerializerMethodField()
     phone = serializers.CharField(required=True)
+    is_store_owner = serializers.BooleanField(required=False, default=False)
     
     class Meta:
         model = User
@@ -187,7 +188,7 @@ class UserSerializer(serializers.ModelSerializer):
             'is_active', 'is_staff', 'is_superuser', 'date_joined', 'last_login',
             'tournament_registrations', 'total_registrations', 'total_checked_in',
             'last_activity', 'total_spent', 'groups', 'groups_list',
-            'user_permissions', 'user_permissions_list', 'phone'
+            'user_permissions', 'user_permissions_list', 'phone', 'is_store_owner'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login', 'tournament_registrations',
                            'total_registrations', 'total_checked_in', 'last_activity',
@@ -217,20 +218,17 @@ class UserSerializer(serializers.ModelSerializer):
         # many-to-many 필드 추출
         groups = validated_data.pop('groups', None)
         user_permissions = validated_data.pop('user_permissions', None)
-        
         password = validated_data.pop('password', None)
+        is_store_owner = validated_data.pop('is_store_owner', False)
         user = User.objects.create(**validated_data)
-        
+        user.is_store_owner = is_store_owner
         if password:
             user.set_password(password)
-        
         # many-to-many 필드 설정
         if groups is not None:
             user.groups.set(groups)
-        
         if user_permissions is not None:
             user.user_permissions.set(user_permissions)
-            
         user.save()
         return user
     
