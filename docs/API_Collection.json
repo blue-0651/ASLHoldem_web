@@ -117,13 +117,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/tournaments/",
+              "raw": "{{base_url}}/api/v1/store/tournaments/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "tournaments",
                 ""
               ]
@@ -138,13 +139,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/tournaments/?status=UPCOMING",
+              "raw": "{{base_url}}/api/v1/store/tournaments/?status=UPCOMING",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "tournaments",
                 ""
               ],
@@ -177,13 +179,14 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/tournaments/my/",
+              "raw": "{{base_url}}/api/v1/store/tournaments/my/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "tournaments",
                 "my",
                 ""
@@ -210,13 +213,14 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/tournaments/participants/count/",
+              "raw": "{{base_url}}/api/v1/store/tournaments/participants/count/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "tournaments",
                 "participants",
                 "count",
@@ -233,13 +237,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/tournaments/all_info/",
+              "raw": "{{base_url}}/api/v1/store/tournaments/all_info/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "tournaments",
                 "all_info",
                 ""
@@ -304,13 +309,14 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/registrations/my/",
+              "raw": "{{base_url}}/api/v1/store/registrations/my/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "registrations",
                 "my",
                 ""
@@ -349,13 +355,14 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/registrations/",
+              "raw": "{{base_url}}/api/v1/store/registrations/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "registrations",
                 ""
               ]
@@ -393,13 +400,14 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/registrations/update/",
+              "raw": "{{base_url}}/api/v1/store/registrations/update/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "registrations",
                 "update",
                 ""
@@ -432,13 +440,14 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/registrations/search/",
+              "raw": "{{base_url}}/api/v1/store/registrations/search/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "registrations",
                 "search",
                 ""
@@ -460,13 +469,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/seats/",
+              "raw": "{{base_url}}/api/v1/store/seats/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "seats",
                 ""
               ]
@@ -492,13 +502,14 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/seats/tournament/",
+              "raw": "{{base_url}}/api/v1/store/seats/tournament/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
+                "store",
                 "seats",
                 "tournament",
                 ""
@@ -531,15 +542,14 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/stores/1/users/",
+              "raw": "{{base_url}}/api/v1/store/users/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "stores",
-                "1",
+                "store",
                 "users",
                 ""
               ]
@@ -571,14 +581,14 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/stores/search/",
+              "raw": "{{base_url}}/api/v1/store/search/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "stores",
+                "store",
                 "search",
                 ""
               ]
@@ -874,12 +884,13 @@
               "description": "전화번호 (010-1234-5678 형식)"
             },
             "url": {
-              "raw": "{{base_url}}/api/accounts/users/get_user_by_phone/",
+              "raw": "{{base_url}}/api/v1/accounts/users/get_user_by_phone/",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
+                "v1",
                 "accounts",
                 "users",
                 "get_user_by_phone",
