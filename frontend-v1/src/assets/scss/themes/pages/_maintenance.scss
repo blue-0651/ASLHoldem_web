@@ -1,0 +1,26 @@
+/**  =====================
+      Maintenance css start
+==========================  **/
+
+$maintenance-body-bg: #b5002e; // change
+$maintenance-body-bg-start: #7a0e29;
+$maintenance-body-bg-end: #262626;
+$maintenance-text-color: #e4dfdf;
+
+.auth-wrapper {
+  &.maintenance {
+    background: radial-gradient(circle at center, $maintenance-body-bg-start, $maintenance-body-bg-end);
+  }
+}
+
+.maintenance-text {
+  color: $maintenance-text-color;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6); /* 검은색 그림자, 약한 흐림 효과 */
+}
+
+.maintenance-bg {
+  background: linear-gradient(to bottom, $maintenance-body-bg, $maintenance-body-bg-end);
+}
+
+
+/**====== Maintenance css end ======**/
