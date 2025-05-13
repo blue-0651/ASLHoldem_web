@@ -4,22 +4,28 @@ import FeatherIcon from 'feather-icons-react';
 import aslLogo from 'assets/images/asl-logo.png';
 import { NavLink, useNavigate } from 'react-router-dom';
 
-//import api from '../../../api/api';
+import axios from 'axios';
 
 const MobileSignUpPage = () => {
-  const navigate = useNavigate();
+  // API 상태 관리
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+    password: '',
     first_name: '',
     last_name: '',
     phone: '',
-    password: '',
-    password2: ''
+    is_staff: false,
+    is_superuser: false
   });
 
+  const [password2, setPassword2] = useState('');
+
+  // 로그인
+  const navigate = useNavigate();
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -48,7 +54,7 @@ const MobileSignUpPage = () => {
       newErrors.password = '비밀번호는 8자 이상이어야 합니다';
     }
 
-    if (formData.password !== formData.password2) {
+    if (formData.password !== password2) {
       newErrors.password2 = '비밀번호가 일치하지 않습니다';
     }
 
@@ -63,19 +69,25 @@ const MobileSignUpPage = () => {
 
     setLoading(true);
 
-    // try {
-    //   await api.post('/auth/register/', formData);
-    //   alert('회원가입이 성공적으로 완료되었습니다.');
-    //   navigate('/mobile/login');
-    // } catch (error) {
-    //   if (error.response && error.response.data) {
-    //     setErrors(error.response.data);
-    //   } else {
-    //     alert('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.');
-    //   }
-    // } finally {
-    //   setLoading(false);
-    // }
+    console.log('회원가입 데이터:', formData);
+
+    const api = axios.create({
+      baseURL: 'http://localhost:8000/api/v1'
+    });
+
+    try {
+      await api.post('/accounts/users/', formData);
+      alert('회원가입이 성공적으로 완료되었습니다.');
+      navigate('/mobile/login');
+    } catch (error) {
+      if (error.response && error.response.data) {
+        setErrors(error.response.data);
+      } else {
+        alert('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -159,8 +171,8 @@ const MobileSignUpPage = () => {
                       type="password"
                       placeholder="비밀번호 확인"
                       name="password2"
-                      value={formData.password2}
-                      onChange={handleChange}
+                      value={password2}
+                      onChange={(e) => setPassword2(e.target.value)}
                       isInvalid={!!errors.password2}
                     />
                     <Form.Control.Feedback type="invalid">{errors.password2}</Form.Control.Feedback>
