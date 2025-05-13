@@ -1,0 +1,353 @@
+/* ASL 홀덤 모바일 스타일 */
+
+/* 기본 스타일 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Noto Sans KR', sans-serif;
+  background-color: #f8f9fa;
+}
+
+.mobile-container {
+  max-width: 100%;
+  padding: 15px;
+  margin: 0 auto;
+}
+
+/* 로고 스타일 */
+.mobile-logo-container {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-top: 40px;
+}
+
+.mobile-logo {
+  width: 120px;
+  height: auto;
+}
+
+/* 로그인 페이지 스타일 */
+.mobile-login-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 15px;
+}
+
+.mobile-login-card {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.mobile-user-toggle {
+  display: flex;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+.mobile-user-toggle-btn {
+  flex: 1;
+  padding: 12px 10px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.mobile-user-toggle-btn.active {
+  background-color: #2c3e50;
+  color: white;
+}
+
+.mobile-form {
+  margin-top: 15px;
+}
+
+.mobile-form-control {
+  border-radius: 8px;
+  font-size: 16px;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+}
+
+.mobile-login-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  margin-top: 10px;
+  border: none;
+}
+
+.store-btn {
+  background-color: #2c3e50;
+  color: white;
+}
+
+.user-btn {
+  background-color: #3498db;
+  color: white;
+}
+
+.mobile-alert {
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+/* 대시보드 스타일 */
+.mobile-dashboard {
+  padding: 15px;
+}
+
+.mobile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.mobile-header-logo {
+  width: 80px;
+  height: auto;
+}
+
+.mobile-header-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.mobile-nav-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #333;
+  cursor: pointer;
+}
+
+.mobile-card {
+  background: white;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #2c3e50;
+}
+
+.mobile-btn-primary {
+  background-color: #2c3e50;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.mobile-btn-secondary {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* 반응형 조정 */
+@media (max-width: 480px) {
+  .mobile-login-card {
+    padding: 15px;
+  }
+  
+  .mobile-form-control {
+    font-size: 14px;
+  }
+  
+  .mobile-login-btn {
+    font-size: 14px;
+  }
+}
+
+/* 모바일 네비게이션 스타일 */
+.mobile-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 80%;
+  height: 100%;
+  background-color: white;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.mobile-nav.open {
+  transform: translateX(0);
+}
+
+.mobile-nav-header {
+  display: flex;
+  align-items: center;
+  padding: 20px 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.mobile-nav-user {
+  margin-left: 10px;
+}
+
+.mobile-nav-username {
+  font-weight: 600;
+  margin: 0;
+  font-size: 16px;
+}
+
+.mobile-nav-role {
+  margin: 0;
+  font-size: 12px;
+  color: #777;
+}
+
+.mobile-nav-item {
+  padding: 15px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-nav-item i {
+  margin-right: 10px;
+  width: 20px;
+  text-align: center;
+}
+
+.mobile-nav-link {
+  color: #333;
+  text-decoration: none;
+  font-size: 15px;
+  display: block;
+  width: 100%;
+}
+
+.mobile-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+}
+
+.mobile-nav-overlay.open {
+  display: block;
+}
+
+/* 모바일 컨텐츠 스타일 */
+.mobile-content {
+  padding: 10px 0;
+}
+
+.mobile-page-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #2c3e50;
+}
+
+.mobile-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.mobile-empty-icon {
+  font-size: 50px;
+  color: #ccc;
+  margin-bottom: 15px;
+}
+
+/* 모바일 네비게이션 드로어 스타일 */
+.mobile-drawer-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 5px 0;
+}
+
+.mobile-drawer-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.mobile-drawer-item i {
+  margin-right: 15px;
+  width: 20px;
+  color: #2c3e50;
+  text-align: center;
+}
+
+.mobile-drawer-item.active {
+  background-color: #f0f7ff;
+  border-left: 4px solid #3498db;
+}
+
+.mobile-drawer-item.active i,
+.mobile-drawer-item.active .mobile-drawer-text {
+  color: #3498db;
+}
+
+.mobile-drawer-text {
+  color: #333;
+  font-size: 15px;
+}
+
+.mobile-drawer-header {
+  padding: 20px 15px;
+  background-color: #2c3e50;
+  color: white;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-drawer-header img {
+  width: 40px;
+  height: 40px;
+  margin-right: 10px;
+}
+
+.mobile-drawer-header-text {
+  font-size: 18px;
+  font-weight: 600;
+} 
