@@ -29,7 +29,7 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='USER')
     
     # 사용자 전화번호 - 중복 방지를 위해 unique=True 설정
-    phone = models.CharField(validators=[phone_regex], max_length=13, unique=True, null=True, blank=True)
+    phone = models.CharField(validators=[phone_regex], max_length=13,  null=True, blank=True)
     
     # 사용자 포인트
     points = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -60,6 +60,17 @@ class User(AbstractUser):
     
     # 수정 시간
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # 생년월일
+    birth_date = models.DateField(null=True, blank=True)
+    
+    # 성별
+    GENDER_CHOICES = (
+        ('M', '남성'),
+        ('F', '여성'),
+        ('O', '기타'),
+    )
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, null=True, blank=True)
     
     class Meta:
         db_table = 'users'               # 데이터베이스 테이블 이름
