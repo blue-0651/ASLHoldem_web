@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db.models import Count, Sum
 import datetime
+from rest_framework.permissions import IsAdminUser
 
 from tournaments.models import Tournament, TournamentRegistration
 from stores.models import Store
@@ -405,5 +406,29 @@ class TournamentViewSet(viewsets.ModelViewSet):
             # 참가자들에게 토너먼트 취소 알림 로직 추가 가능
             
             return Response({"message": f"토너먼트 '{tournament.name}'이(가) 취소되었습니다."})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAdminUser], url_path='registrations')
+    def registrations(self, request):
+        """
+        모든 토너먼트 등록 정보를 관리자만 조회할 수 있습니다.
+        """
+        registrations = TournamentRegistration.objects.select_related('user', 'tournament', 'tournament__store').all()
+        serializer = TournamentRegistrationSerializer(registrations, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path='create')
+    def create_tournament(self, request):
+        """
+        토너먼트 생성 (POST /api/v1/tournaments/create)
+        """
+        try:
+            serializer = self.get_serializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
