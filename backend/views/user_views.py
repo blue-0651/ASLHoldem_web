@@ -180,6 +180,8 @@ class UserSerializer(serializers.ModelSerializer):
     groups_list = serializers.SerializerMethodField()
     phone = serializers.CharField(required=True)
     is_store_owner = serializers.BooleanField(required=False, default=False)
+    birth_date = serializers.DateField(required=False, allow_null=True)
+    gender = serializers.ChoiceField(choices=[('M', '남성'), ('F', '여성'), ('O', '기타')], required=False, allow_null=True)
     
     class Meta:
         model = User
@@ -188,7 +190,8 @@ class UserSerializer(serializers.ModelSerializer):
             'is_active', 'is_staff', 'is_superuser', 'date_joined', 'last_login',
             'tournament_registrations', 'total_registrations', 'total_checked_in',
             'last_activity', 'total_spent', 'groups', 'groups_list',
-            'user_permissions', 'user_permissions_list', 'phone', 'is_store_owner'
+            'user_permissions', 'user_permissions_list', 'phone', 'is_store_owner',
+            'birth_date', 'gender'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login', 'tournament_registrations',
                            'total_registrations', 'total_checked_in', 'last_activity',
