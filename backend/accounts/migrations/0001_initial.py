@@ -40,6 +40,8 @@ class Migration(migrations.Migration):
                 ('is_store_owner', models.BooleanField(default=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
+                ('birth_date', models.DateField(null=True, blank=True)),
+                ('gender', models.CharField(max_length=1, choices=[('M', '남성'), ('F', '여성'), ('O', '기타')], null=True, blank=True)),
                 ('groups', models.ManyToManyField(blank=True, help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.', related_name='user_set', related_query_name='user', to='auth.group', verbose_name='groups')),
                 ('user_permissions', models.ManyToManyField(blank=True, help_text='Specific permissions for this user.', related_name='user_set', related_query_name='user', to='auth.permission', verbose_name='user permissions')),
             ],
