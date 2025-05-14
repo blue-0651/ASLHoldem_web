@@ -411,4 +411,16 @@ class UserViewSet(viewsets.ViewSet):
             return Response(
                 {"error": "해당 전화번호로 등록된 사용자를 찾을 수 없습니다."},
                 status=status.HTTP_404_NOT_FOUND
-            ) 
+            )
+    
+    @action(detail=False, methods=['get'], url_path='check_username')
+    def check_username(self, request):
+        """
+        username 중복 여부를 확인하는 API
+        쿼리 파라미터로 username을 전달하면 사용 가능 여부를 반환
+        """
+        username = request.query_params.get('username')
+        if not username:
+            return Response({'error': 'username 파라미터가 필요합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        exists = User.objects.filter(username=username).exists()
+        return Response({'username': username, 'is_available': not exists}) 
