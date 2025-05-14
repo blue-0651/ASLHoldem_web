@@ -4,6 +4,7 @@ import axios from 'axios';
 const TOKEN_KEY = 'asl_holdem_access_token';
 const REFRESH_TOKEN_KEY = 'asl_holdem_refresh_token';
 const USER_INFO_KEY = 'asl_holdem_user_info';
+const USER_TYPE_KEY = 'user_type';
 const BASE_URL = 'http://localhost:8000';
 
 // API 엔드포인트
@@ -28,6 +29,14 @@ const getRefreshToken = () => {
   return localStorage.getItem(REFRESH_TOKEN_KEY);
 };
 
+export const reqGetLoginUserType = () => {
+  const userType = localStorage.getItem(USER_TYPE_KEY);
+  if (userType) {
+    return userType;
+  }
+  return ''; // 기본값
+}
+
 // 사용자 정보 가져오기
 export const reqIsAuthenticated = () => {
   return !!getToken();
@@ -43,13 +52,14 @@ export const reqLogout = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_INFO_KEY);
-  localStorage.removeItem('user_type');
+  localStorage.removeItem(USER_TYPE_KEY);
 };
 
 // 로그인 함수
 export const reqLogin = async (username, password, userType = 'user') => {
   try {
     if (isMobileDevice() && userType === 'admin') {
+      reqLogout();
       return {
         success: false,
         error: { detail: '모바일에서는 관리자 로그인이 불가능합니다.' }
@@ -83,7 +93,7 @@ export const reqLogin = async (username, password, userType = 'user') => {
 
     localStorage.setItem(TOKEN_KEY, access);
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-    localStorage.setItem('user_type', userType);
+    localStorage.setItem(USER_TYPE_KEY, userType);
 
     const userInfo = await reqGetUserInfo(username, getToken());
     localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
@@ -94,6 +104,10 @@ export const reqLogin = async (username, password, userType = 'user') => {
     };
   } catch (error) {
     console.log('로그인 실패:', error);
+
+    // 로그인 실패 시 로컬 스토리지에서 토큰 제거
+    reqLogout();
+
     return {
       success: false,
       error: error.response?.data || { detail: '로그인에 실패했습니다.' }

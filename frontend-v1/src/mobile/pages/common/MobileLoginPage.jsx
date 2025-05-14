@@ -44,7 +44,6 @@ const MobileLoginPage = () => {
     }
   };
 
-
   const links = {
     signup: { link: '/mobile/signup', text: '회원가입' },
     findId: { link: '/auth/signup-1', text: '아이디 찾기' },
@@ -62,9 +61,7 @@ const MobileLoginPage = () => {
       <Card className="borderless asl-admin-card-bg">
         <Card.Body>
           <img src={aslLogo} alt="ASL Logo" className="img-fluid mb-4 rounded" />
-          <h4 className="mb-3 f-w-400 asl-admin-text">
-            {isUser ? 'ASL 사용자 로그인' : '매장 관리자 로그인'}
-          </h4>
+          <h4 className="mb-3 f-w-400 asl-admin-text">{isUser ? 'ASL 사용자 로그인' : '매장 관리자 로그인'}</h4>
 
           {error && (
             <Alert variant="danger" onClose={() => setError('')} dismissible>
@@ -74,31 +71,19 @@ const MobileLoginPage = () => {
 
           <Form onSubmit={handleSubmit}>
             <InputGroup className="mb-3">
-              <InputGroup.Text><FeatherIcon icon="user" /></InputGroup.Text>
-              <Form.Control
-                type="text"
-                placeholder="사용자명 입력"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+              <InputGroup.Text>
+                <FeatherIcon icon="user" />
+              </InputGroup.Text>
+              <Form.Control type="text" placeholder="사용자명 입력" value={username} onChange={(e) => setUsername(e.target.value)} />
             </InputGroup>
             <InputGroup className="mb-4">
-              <InputGroup.Text><FeatherIcon icon="lock" /></InputGroup.Text>
-              <Form.Control
-                type="password"
-                placeholder="비밀번호 입력"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <InputGroup.Text>
+                <FeatherIcon icon="lock" />
+              </InputGroup.Text>
+              <Form.Control type="password" placeholder="비밀번호 입력" value={password} onChange={(e) => setPassword(e.target.value)} />
             </InputGroup>
 
-            <Button
-              variant={isUser ? 'primary' : 'secondary'}
-              size="lg"
-              className="w-100 mt-4 mb-4"
-              type="submit"
-              disabled={loading}
-            >
+            <Button variant={isUser ? 'primary' : 'secondary'} size="lg" className="w-100 mt-4 mb-4" type="submit" disabled={loading}>
               {loading ? '로딩중' : '로그인'}
             </Button>
           </Form>
