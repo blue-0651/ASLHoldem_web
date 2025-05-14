@@ -19,4 +19,5 @@ urlpatterns = [
     path('users/get_all_users/', UserViewSet.as_view({'get': 'get_all_users'}), name='get_all_users'),
     path('users/get_user_stats/', UserViewSet.as_view({'get': 'get_user_stats'}), name='get_user_stats'),
     path('users/get_user_by_phone/', UserViewSet.as_view({'get': 'get_user_by_phone'}), name='get_user_by_phone'),
+    path('users/check_username/', UserViewSet.as_view({'get': 'check_username'}), name='check_username'),
 ] 
