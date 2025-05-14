@@ -11,7 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class TournamentSerializer(serializers.ModelSerializer):
     store_name = serializers.CharField(source='store.name', read_only=True)
-    ticket_quantity = serializers.IntegerField(source='max_seats', read_only=False)
+    ticket_quantity = serializers.IntegerField(read_only=False)
     
     class Meta:
         model = Tournament
@@ -51,6 +51,6 @@ class TournamentParticipantsResponseSerializer(serializers.Serializer):
     tournament_name = serializers.CharField(read_only=True)
     start_time = serializers.DateTimeField(read_only=True)
     status = serializers.CharField(read_only=True)
-    ticket_quantity = serializers.IntegerField(source='max_seats', read_only=True)
+    ticket_quantity = serializers.IntegerField(read_only=True)
     participant_count = serializers.IntegerField(read_only=True)
     remaining_tickets = serializers.IntegerField(read_only=True) 

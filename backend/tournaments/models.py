@@ -28,8 +28,8 @@ class Tournament(models.Model):
     # 참가비 (바이인)
     buy_in = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='바이인')
     
-    # 최대 좌석 수
-    max_seats = models.IntegerField(verbose_name='좌석권 수량', default=100)
+    # 좌석권 수량
+    ticket_quantity = models.IntegerField(verbose_name='좌석권 수량', default=100)
     
     # 토너먼트 설명
     description = models.TextField(verbose_name='토너먼트 설명', null=True, blank=True)
