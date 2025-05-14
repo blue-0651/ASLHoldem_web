@@ -1,6 +1,7 @@
 // eslint-disable-next-line
 @import 'assets/scss/style.scss';
-@import 'assets/scss/settings/custom-variables';
+// 중복 삭제
+//@import 'assets/scss/settings/custom-variables';
 
 .pcoded-navbar {
   &.mob-open ~ .pcoded-header:before,

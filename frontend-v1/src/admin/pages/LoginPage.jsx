@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Button, InputGroup, Form, Alert } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+//import { useNavigate } from 'react-router-dom';
 
 import FeatherIcon from 'feather-icons-react';
-import { login, isAuthenticated } from '../../utils/auth';
 import aslLogo from 'assets/images/asl-logo-120.png';
+import { reqIsAuthenticated } from '../../utils/authService';
 
 // TODO(SJHAN): Login.js 과 동일한 동작을 하는 코드로 화면 스타일만 변경
 const LoginPage = () => {
@@ -12,18 +12,18 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
 
   // 이미 로그인되어 있으면 대시보드로 리다이렉트
   useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/dashboard');
+    if (reqIsAuthenticated()) {
+      console.log('[MgrLoginPage] User is already authenticated, redirecting to dashboard');
+      //navigate('/dashboard');
     }
-  }, [navigate]);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     console.log(`[MgrLoginPage] Login attempt for user: ${username}`);
 
     setIsLoading(true);
@@ -31,12 +31,12 @@ const LoginPage = () => {
 
     try {
       // 관리자 로그인 시도
-      const { success, error: loginError } = await login(username, password, 'admin');
+      const { success, error: loginError } = await apiService.login(username, password, 'admin');
 
       if (success) {
         // 로그인 성공 시 대시보드로 이동
         console.log(`[MgrLoginPage] Login successful for user: ${username}`);
-        navigate('/dashboard');
+        //navigate('/dashboard');
       } else {
         // 로그인 실패 시 오류 메시지 표시
         setError(loginError.detail || '로그인에 실패했습니다.');

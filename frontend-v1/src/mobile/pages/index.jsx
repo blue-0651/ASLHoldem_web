@@ -1,5 +1,5 @@
 // 공통 페이지
-export { default as MobileLogin } from './common/MobileLogin';
+export { default as MobileLoginPage } from './common/MobileLoginPage';
 export { default as TournamentsList } from './common/tournaments-list/TournamentsList';
 export { default as Reservations } from './common/reservations/Reservations';
 export { default as StoreSearchPage } from './common/store-search/StoreSearchPage';
