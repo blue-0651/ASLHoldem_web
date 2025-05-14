@@ -362,9 +362,19 @@ class UserViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def get_all_users(self, request):
         """
-        모든 사용자 목록을 조회합니다.
+        모든 사용자 목록을 조회합니다. role 파라미터(ADMIN, STORE_OWNER, USER)로 필터링 가능
+        ADMIN: is_superuser=True 또는 role='ADMIN'
+        STORE_OWNER: is_store_owner=True 또는 role='STORE_OWNER'
+        USER: is_superuser=False, is_store_owner=False, role='USER'
         """
+        role = request.query_params.get('role')
         users = User.objects.all()
+        if role == 'ADMIN':
+            users = users.filter(Q(is_superuser=True) | Q(role='ADMIN'))
+        elif role == 'STORE_OWNER':
+            users = users.filter(Q(is_store_owner=True) | Q(role='STORE_OWNER'))
+        elif role == 'USER':
+            users = users.filter(Q(is_superuser=False) & Q(is_store_owner=False) & Q(role='USER'))
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
     
