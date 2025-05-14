@@ -12,5 +12,6 @@ router.register(r'stores', StoreViewSet, basename='store')
 router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [
+    path('create/', TournamentViewSet.as_view({'post': 'create_tournament'}), name='tournament-create'),
     path('', include(router.urls)),
 ] 
