@@ -6,7 +6,7 @@ const REFRESH_TOKEN_KEY = 'asl_holdem_refresh_token';
 const USER_INFO_KEY = 'asl_holdem_user_info';
 
 // API 기본 URL 설정
-const baseURL = process.env.REACT_APP_API_URL || '/api/v1';
+const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // 로그인 함수
 export const login = async (username, password, userType = 'store') => {
@@ -24,7 +24,9 @@ export const login = async (username, password, userType = 'store') => {
     let endpoint;
 
     if (userType === 'admin') {
+     // endpoint = '/accounts/token/admin/';
       endpoint = '/accounts/token/admin/';
+
     } else if (userType === 'store') {
       endpoint = '/accounts/token/';
     } else {
