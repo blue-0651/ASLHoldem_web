@@ -1,14 +1,15 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { isAuthenticated } from '../../utils/auth';
+import { reqIsAuthenticated } from '../../utils/authService';
 
 /**
  * 인증이 필요한 라우트를 보호하는 컴포넌트
  * 인증되지 않은 사용자는 로그인 페이지로 리다이렉트
  */
 const ProtectedRoute = () => {
-  const auth = isAuthenticated();
-  
+  const auth = reqIsAuthenticated();
+  console.log('Authentication status:', auth);
+
   if (!auth) {
     // 로그인되지 않은 경우 로그인 페이지로 리다이렉트
     return <Navigate to="/login" replace />;
@@ -18,4 +19,4 @@ const ProtectedRoute = () => {
   return <Outlet />;
 };
 
-export default ProtectedRoute; 
+export default ProtectedRoute;

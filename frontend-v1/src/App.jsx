@@ -1,15 +1,18 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+
+
+// 어드민 관리자 화면
+import LoginPage from './admin/pages/LoginPage';
 import Dashboard from './admin/pages/Dashboard';
 import TournamentManagement from './admin/pages/TournamentManagement';
 import StoreManagement from './admin/pages/StoreManagement';
-import Login from './admin/pages/Login';
 import Layout from './admin/components/Layout';
 import ProtectedRoute from './admin/components/ProtectedRoute';
 
 // 모바일 페이지 컴포넌트
 import {
-  MobileLogin,
+  MobileLoginPage,
   UserDashboard,
   StoreDashboard,
   Tournament,
@@ -24,14 +27,12 @@ import {
 // 만든 샘플 페이지.
 import NotFound404 from './views/errors/NotFound404';
 import Maintenance from './views/maintenance/Maintenance';
-import SampleLogin from './views/sample/SampleLogin';
+import MobileSignUpPage from './mobile/pages/common/MobileSignUpPage';
+// import SampleLogin from './views/sample/SampleLogin';
 // import UserLoginPage from './views/sample/UserLoginPage';
 // import StoreLoginPage from './views/sample/StoreLoginPage';
 
-// 어드민 관리자 화면 스타일 적용
-import LoginPage from './admin/pages/LoginPage';
-import MobileLoginPage from './mobile/pages/common/MobileLoginPage';
-import MobileSignUpPage from './mobile/pages/common/MobileSignUpPage';
+
 
 
 function App() {
@@ -44,15 +45,24 @@ function App() {
         {/* 샘플 페이지: 테스트 용으로 만든 페이지 */}
         <Route path="/404" element={<NotFound404 />} />
         <Route path="/maintenance" element={<Maintenance />} />
-        <Route path="/sampleLogin" element={<SampleLogin />} />
 
         {/* 로그인 데모 페이지: 테스트 용으로 만든 페이지 */}
+        {/*<Route path="/demo/mobile/sampleLogin" element={<SampleLogin />} />*/}
         {/*<Route path="/demo/mobile/userlogin" element={<UserLoginPage />} />*/}
         {/*<Route path="/demo/mobile/storelogin" element={<StoreLoginPage />} />*/}
 
         {/* 로그인 실제 페이지: 바로가기로 만들어 놓은 실제는 라우터 삭제 필요 */}
         {/*<Route path="/demo/mobile/login" element={<MobileLoginPage />} />*/}
-        <Route path="/demo/mobile/signup" element={<MobileSignUpPage />} />
+        {/*<Route path="/demo/mobile/signup" element={<MobileSignUpPage />} />*/}
+
+        {/* 데모용 UI 소스 작업 */}
+        {/* <Route path="/demo/admin/" element={<ProtectedRoute />} >
+          <Route element={<Layout />}>
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="tournaments" element={<TournamentManagement />} />
+            <Route path="stores" element={<StoreManagement />} />
+          </Route>
+        </Route> */}
 
         {/* 모바일 디바이스에서 관리자 페이지로 접근 시도 시 모바일 페이지로 리다이렉트 */}
         {isMobile && (
@@ -66,6 +76,9 @@ function App() {
 
         {/* 모바일 라우트 */}
         <Route path="/mobile/login" element={<MobileLoginPage />} />
+
+        {/* 모바일 회원가입 */}
+        <Route path="/mobile/signup" element={<MobileSignUpPage />} />
 
         {/* 모바일 사용자 라우트 */}
         <Route path="/mobile/user/dashboard" element={<UserDashboard />} />
@@ -85,7 +98,7 @@ function App() {
         <Route path="/mobile/common/store-detail/:storeId" element={<StoreDetailPage />} />
 
         {/* 공개 라우트 - 모바일이 아닌 경우에만 적용 */}
-        {/* Login --> MgrLoginPage 변경 */}
+        {/* Login --> LoginPage 변경 */}
         {!isMobile && <Route path="/login" element={<LoginPage />} />}
 
         {/* 보호된 라우트 - 모바일이 아닌 경우에만 적용 */}

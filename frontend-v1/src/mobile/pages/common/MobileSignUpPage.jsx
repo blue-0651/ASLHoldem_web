@@ -19,13 +19,15 @@ const MobileSignUpPage = () => {
     is_superuser: false
   });
 
+  // 화면처리에 필요한 데이터
+  // email(메일), password(비번), passwordConfirm(비번확인), Gender(성별), [firstName(이름), lastName(성)], phone(전화번호), birthday(생년월일)
+
   const [password2, setPassword2] = useState('');
 
   // 로그인
   const navigate = useNavigate();
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
 
   const handleChange = (e) => {
     const { name, value } = e.target;

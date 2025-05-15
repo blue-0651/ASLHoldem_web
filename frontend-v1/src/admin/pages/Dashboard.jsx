@@ -18,36 +18,39 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        
+
         // 대시보드 통계 데이터 가져오기
         const statsResponse = await dashboardAPI.getStats();
         setStats(statsResponse.data);
-        
+
         try {
           // 매장/선수 매핑 데이터 가져오기 (실패해도 전체 대시보드가 중단되지 않도록 별도 try-catch로 처리)
           const mappingResponse = await dashboardAPI.getPlayerMapping();
           setMappingData(mappingResponse.data);
         } catch (mappingError) {
           console.error('매핑 데이터 로드 오류:', mappingError);
+
+          console.warn('매핑 데이터 로드 실패: API가 구현되지 않았습니다.');
+
           // 임시 매핑 데이터 생성 (API가 구현될 때까지 더미 데이터 사용)
           setMappingData({
-            토너먼트명: "임시 토너먼트",
+            토너먼트명: '임시 토너먼트',
             토너먼트_시작시간: new Date().toISOString(),
             총_좌석권_수량: 100,
             배포된_좌석권_수량: 75,
             매장별_현황: [
-              { 매장명: "A 매장", 좌석권_수량: 30 },
-              { 매장명: "B 매장", 좌석권_수량: 25 },
-              { 매장명: "C 매장", 좌석권_수량: 20 }
+              { 매장명: 'A 매장', 좌석권_수량: 30 },
+              { 매장명: 'B 매장', 좌석권_수량: 25 },
+              { 매장명: 'C 매장', 좌석권_수량: 20 }
             ],
             선수별_현황: [
-              { 선수명: "선수 1", 매장명: "A 매장", 좌석권_보유: "있음" },
-              { 선수명: "선수 2", 매장명: "B 매장", 좌석권_보유: "있음" },
-              { 선수명: "선수 3", 매장명: "C 매장", 좌석권_보유: "있음" }
+              { 선수명: '선수 1', 매장명: 'A 매장', 좌석권_보유: '있음' },
+              { 선수명: '선수 2', 매장명: 'B 매장', 좌석권_보유: '있음' },
+              { 선수명: '선수 3', 매장명: 'C 매장', 좌석권_보유: '있음' }
             ]
           });
         }
-        
+
         setLoading(false);
       } catch (err) {
         console.error('대시보드 데이터 로드 오류:', err);
@@ -55,8 +58,25 @@ const Dashboard = () => {
         setLoading(false);
       }
     };
-    
-    fetchDashboardData();
+
+    //fetchDashboardData();
+    // 임시 매핑 데이터 생성 (API가 구현될 때까지 더미 데이터 사용)
+    setMappingData({
+      토너먼트명: '임시 토너먼트',
+      토너먼트_시작시간: new Date().toISOString(),
+      총_좌석권_수량: 100,
+      배포된_좌석권_수량: 75,
+      매장별_현황: [
+        { 매장명: 'A 매장', 좌석권_수량: 30 },
+        { 매장명: 'B 매장', 좌석권_수량: 25 },
+        { 매장명: 'C 매장', 좌석권_수량: 20 }
+      ],
+      선수별_현황: [
+        { 선수명: '선수 1', 매장명: 'A 매장', 좌석권_보유: '있음' },
+        { 선수명: '선수 2', 매장명: 'B 매장', 좌석권_보유: '있음' },
+        { 선수명: '선수 3', 매장명: 'C 매장', 좌석권_보유: '있음' }
+      ]
+    });
   }, []);
 
   const dashboardStats = [
@@ -66,14 +86,14 @@ const Dashboard = () => {
     { title: '좌석권 보유 수', value: stats.ticket_count, color: 'red', icon: 'ticket' }
   ];
 
-  if (loading) {
-    return (
-      <div className="text-center p-5">
-        <Spinner animation="border" variant="primary" />
-        <p className="mt-3">데이터를 불러오는 중입니다...</p>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="text-center p-5">
+  //       <Spinner animation="border" variant="primary" />
+  //       <p className="mt-3">데이터를 불러오는 중입니다...</p>
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (
@@ -90,7 +110,7 @@ const Dashboard = () => {
   return (
     <div>
       <h2 className="mb-4">대시보드</h2>
-      
+
       {/* 통계 카드 */}
       <Row className="dashboard-stats mb-4">
         {dashboardStats.map((stat, index) => (
@@ -109,11 +129,11 @@ const Dashboard = () => {
           </Col>
         ))}
       </Row>
-      
+
       {/* 매장/선수 매핑 */}
       {mappingData && <StorePlayerMapping data={mappingData} />}
     </div>
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

@@ -18,6 +18,9 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: 'http://localhost:8000',
           changeOrigin: true,
+          secure: false
+          // 필요한 경우 경로 재작성
+          // rewrite: (path) => path.replace(/^\/api/, '')
         }
       }
     },
@@ -66,7 +69,7 @@ export default defineConfig(({ mode }) => {
         ]
       }
     },
-    base: '/',
+    base: API_URL,
     plugins: [react(), jsconfigPaths()]
   };
 });
