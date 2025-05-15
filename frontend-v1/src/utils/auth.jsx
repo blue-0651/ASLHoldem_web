@@ -1,9 +1,12 @@
-import API from './api';
+import axios from 'axios';
 
 // 토큰 관련 로컬 스토리지 키
 const TOKEN_KEY = 'asl_holdem_access_token';
 const REFRESH_TOKEN_KEY = 'asl_holdem_refresh_token';
 const USER_INFO_KEY = 'asl_holdem_user_info';
+
+// API 기본 URL 설정
+const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // 로그인 함수
 export const login = async (username, password, userType = 'store') => {
@@ -21,11 +24,13 @@ export const login = async (username, password, userType = 'store') => {
     let endpoint;
 
     if (userType === 'admin') {
-      endpoint = '/api/v1/accounts/token/admin/';
+     // endpoint = '/accounts/token/admin/';
+      endpoint = '/accounts/token/admin/';
+
     } else if (userType === 'store') {
-      endpoint = '/api/v1/accounts/token/';
+      endpoint = '/accounts/token/';
     } else {
-      endpoint = '/api/v1/accounts/token/user/';
+      endpoint = '/accounts/token/user/';
     }
 
     console.log('Login attempt:', {
@@ -36,7 +41,7 @@ export const login = async (username, password, userType = 'store') => {
     });
 
 
-    const response = await API.post(endpoint, {
+    const response = await axios.post(baseURL + endpoint, {
       username,
       password,
       user_type: userType // 백엔드에서 구분할 수 있도록 추가 파라미터
@@ -80,9 +85,7 @@ export const getUserInfo = async (username) => {
     const formData = new FormData();
     formData.append('username', username);
 
-    const response = await API.post('/api/v1/accounts/users/get_user/', formData, {
-      headers: { Authorization: `Bearer ${getToken()}` }
-    });
+    const response = await axios.post(baseURL + '/accounts/users/get_user/', formData);
 
     return response.data;
   } catch (error) {
@@ -109,7 +112,7 @@ export const refreshToken = async () => {
       throw new Error('리프레시 토큰이 없습니다.');
     }
 
-    const response = await API.post('/api/v1/accounts/token/refresh/', {
+    const response = await axios.post(baseURL + '/accounts/token/refresh/', {
       refresh
     });
 

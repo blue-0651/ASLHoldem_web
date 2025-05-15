@@ -8,6 +8,15 @@ log_with_prefix() {
   done
 }
 
+# 포트 8000이 사용중인지 확인하고 사용중이면 종료
+echo "포트 8000 사용 여부 확인 중..."
+PORT_PID=$(lsof -ti:8000)
+if [ ! -z "$PORT_PID" ]; then
+  echo "포트 8000이 이미 사용 중입니다. PID: $PORT_PID - 해당 프로세스를 종료합니다."
+  kill -9 $PORT_PID
+  sleep 2 # 프로세스가 완전히 종료될 때까지 잠시 대기
+fi
+
 # 백엔드 실행
 cd backend
 source .venv/bin/activate

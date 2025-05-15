@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0', // 또는 host: true
       proxy: {
         '/api': {
-          target: 'http://localhost:8000', // 백엔드 서버 주소
+          target: 'http://localhost:8000',
           changeOrigin: true,
           secure: false
           // 필요한 경우 경로 재작성

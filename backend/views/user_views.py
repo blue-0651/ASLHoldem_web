@@ -55,8 +55,8 @@ class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
         token = super().get_token(user)
         
-        # 관리자 권한 확인
-        if not user.is_staff:
+        # 관리자 권한 확인 (수정: is_staff 또는 is_superuser 둘 중 하나 이상이면 통과)
+        if not (user.is_staff or user.is_superuser):
             raise serializers.ValidationError({
                 "detail": "관리자 권한이 없습니다."
             })

@@ -1,13 +1,21 @@
-import API from './api';
+import apiModule from './api';
+import axios from 'axios';
 
 // 토큰 관련 로컬 스토리지 키
 const TOKEN_KEY = 'asl_holdem_access_token';
 const REFRESH_TOKEN_KEY = 'asl_holdem_refresh_token';
 const USER_INFO_KEY = 'asl_holdem_user_info';
 
+// API 요청을 위한 axios 인스턴스
+const axiosInstance = axios.create({
+  baseURL: '/api/v1',
+});
+
 // 로그인 함수
 export const login = async (username, password, userType = 'store') => {
   try {
+    console.log(`로그인 요청: 사용자=${username}, 유형=${userType}`);
+    
     // 모바일 환경에서는 어드민 로그인을 시도하지 않도록 체크
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile && userType === 'admin') {
@@ -21,18 +29,22 @@ export const login = async (username, password, userType = 'store') => {
     let endpoint;
     
     if (userType === 'admin') {
-      endpoint = '/api/v1/accounts/token/admin/';
+      endpoint = '/accounts/token/admin/';
     } else if (userType === 'store') {
-      endpoint = '/api/v1/accounts/token/';
+      endpoint = '/accounts/token/';
     } else {
-      endpoint = '/api/v1/accounts/token/user/';
+      endpoint = '/accounts/token/user/';
     }
     
-    const response = await API.post(endpoint, {
+    console.log(`API 엔드포인트: ${axiosInstance.defaults.baseURL}${endpoint}`);
+    
+    const response = await axiosInstance.post(endpoint, {
       username,
       password,
       user_type: userType // 백엔드에서 구분할 수 있도록 추가 파라미터
     });
+    
+    console.log('로그인 응답:', { status: response.status, hasToken: !!response.data.access });
 
     const { access, refresh } = response.data;
     
@@ -51,6 +63,12 @@ export const login = async (username, password, userType = 'store') => {
     };
   } catch (error) {
     console.error('로그인 실패:', error);
+    console.log('에러 상세정보:', { 
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    
     return {
       success: false,
       error: error.response?.data || { detail: '로그인에 실패했습니다.' }
@@ -72,7 +90,7 @@ export const getUserInfo = async (username) => {
     const formData = new FormData();
     formData.append('username', username);
     
-    const response = await API.post('/api/v1/accounts/users/get_user/', formData, {
+    const response = await axiosInstance.post('/accounts/users/get_user/', formData, {
       headers: { Authorization: `Bearer ${getToken()}` }
     });
     
@@ -101,7 +119,7 @@ export const refreshToken = async () => {
       throw new Error('리프레시 토큰이 없습니다.');
     }
     
-    const response = await API.post('/api/v1/accounts/token/refresh/', {
+    const response = await axiosInstance.post('/accounts/token/refresh/', {
       refresh
     });
     
