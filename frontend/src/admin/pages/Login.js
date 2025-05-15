@@ -22,9 +22,14 @@ const Login = () => {
     setIsLoading(true);
     setError('');
 
+    // 디버그 로그 추가
+    console.log('관리자 로그인 시도:', { username, password: '******' });
+
     try {
-      // 관리자 로그인 시도
+      // 관리자 로그인 시도 (admin 타입 유지)
       const { success, error: loginError } = await login(username, password, 'admin');
+      
+      console.log('로그인 결과:', { success, error: loginError });
       
       if (success) {
         // 로그인 성공 시 대시보드로 이동
