@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { Card, Row, Col, Button, InputGroup, Form, Spinner } from 'react-bootstrap';
 import FeatherIcon from 'feather-icons-react';
-import aslLogo from 'assets/images/asl-logo.png';
 import { NavLink, useNavigate } from 'react-router-dom';
-
-import axios from 'axios';
+import { reqSignUp } from '../../../utils/authService';
 
 const MobileSignUpPage = () => {
   // API 상태 관리
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
     password: '',
+    username: '',
+    phone: '',
     first_name: '',
     last_name: '',
-    phone: '',
+    birthday: '',
     is_staff: false,
     is_superuser: false
   });
@@ -22,7 +21,7 @@ const MobileSignUpPage = () => {
   // 화면처리에 필요한 데이터
   // email(메일), password(비번), passwordConfirm(비번확인), Gender(성별), [firstName(이름), lastName(성)], phone(전화번호), birthday(생년월일)
 
-  const [password2, setPassword2] = useState('');
+  const [checkPassword, setCheckPassword] = useState('');
 
   // 로그인
   const navigate = useNavigate();
@@ -56,8 +55,28 @@ const MobileSignUpPage = () => {
       newErrors.password = '비밀번호는 8자 이상이어야 합니다';
     }
 
-    if (formData.password !== password2) {
-      newErrors.password2 = '비밀번호가 일치하지 않습니다';
+    if (formData.password !== checkPassword) {
+      newErrors.checkPassword = '비밀번호가 일치하지 않습니다';
+    }
+
+    if (!formData.phone) {
+      newErrors.phone = '전화번호는 필수입니다';
+    } else if (!/^\d{3}-\d{4}-\d{4}$/.test(formData.phone)) {
+      newErrors.phone = '전화번호 형식이 올바르지 않습니다 (예: 010-1234-5678)';
+    }
+
+    if (!formData.first_name.trim()) {
+      newErrors.first_name = '이름은 필수입니다';
+    }
+
+    if (!formData.last_name.trim()) {
+      newErrors.last_name = '성은 필수입니다';
+    }
+
+    if (!formData.birthday) {
+      newErrors.birthday = '생년월일은 필수입니다';
+    } else if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(formData.birthday)) {
+      newErrors.birthday = '생년월일은 YYYY-MM-DD 형식이어야 합니다';
     }
 
     setErrors(newErrors);
@@ -73,22 +92,24 @@ const MobileSignUpPage = () => {
 
     console.log('회원가입 데이터:', formData);
 
-    const api = axios.create({
-      baseURL: '/api/v1'
-    });
+    //export const reqSignUp = async (username, email, password, first_name, last_name, is_staff, is_superuser)
+    const result = await reqSignUp(
+      formData.username,
+      formData.email,
+      formData.password,
+      formData.first_name,
+      formData.last_name,
+      formData.is_staff,
+      formData.is_superuser
+    );
 
-    try {
-      await api.post('/accounts/users/', formData);
+    setLoading(false);
+
+    if (result.success) {
       alert('회원가입이 성공적으로 완료되었습니다.');
       navigate('/mobile/login');
-    } catch (error) {
-      if (error.response && error.response.data) {
-        setErrors(error.response.data);
-      } else {
-        alert('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.');
-      }
-    } finally {
-      setLoading(false);
+    } else {
+      alert(result.error?.detail || '회원가입에 실패했습니다.');
     }
   };
 
@@ -99,32 +120,17 @@ const MobileSignUpPage = () => {
           <Row className="align-items-center text-center">
             <Col>
               <Card.Body className="card-body">
-                <img src={aslLogo} alt="" className="img-fluid mb-4 rounded" style={{ width: '50%' }} />
-                <h4 className="mb-3 f-w-400 asl-admin-text">ASL 회원가입</h4>
+                <h3 className="mb-5 f-w-400 asl-admin-text">ASL 회원가입</h3>
 
                 <Form onSubmit={handleSubmit}>
-                  <InputGroup className="mb-3">
-                    <InputGroup.Text>
-                      <FeatherIcon icon="user" />
-                    </InputGroup.Text>
-                    <Form.Control
-                      type="text"
-                      placeholder="사용자 이름"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleChange}
-                      isInvalid={!!errors.username}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.username}</Form.Control.Feedback>
-                  </InputGroup>
-
+                  {/*<h6 className="mb-2"> 이메일  </h6>*/}
                   <InputGroup className="mb-3">
                     <InputGroup.Text>
                       <FeatherIcon icon="mail" />
                     </InputGroup.Text>
                     <Form.Control
                       required
-                      placeholder="이메일"
+                      placeholder="(필수) 이메일 주소"
                       type="email"
                       id="email"
                       name="email"
@@ -137,11 +143,56 @@ const MobileSignUpPage = () => {
 
                   <InputGroup className="mb-3">
                     <InputGroup.Text>
+                      <FeatherIcon icon="lock" />
+                    </InputGroup.Text>
+                    <Form.Control
+                      type="password"
+                      placeholder="(필수) 비밀번호"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      isInvalid={!!errors.password}
+                    />
+                    <Form.Control.Feedback type="invalid">{errors.password}</Form.Control.Feedback>
+                  </InputGroup>
+
+                  <InputGroup className="mb-3">
+                    <InputGroup.Text>
+                      <FeatherIcon icon="check-circle" />
+                    </InputGroup.Text>
+                    <Form.Control
+                      type="password"
+                      placeholder="(필수) 비밀번호 확인"
+                      name="checkPassword"
+                      value={checkPassword}
+                      onChange={(e) => setCheckPassword(e.target.value)}
+                      isInvalid={!!errors.checkPassword}
+                    />
+                    <Form.Control.Feedback type="invalid">{errors.checkPassword}</Form.Control.Feedback>
+                  </InputGroup>
+
+                  <InputGroup className="mb-3">
+                    <InputGroup.Text>
+                      <FeatherIcon icon="users" />
+                    </InputGroup.Text>
+                    <Form.Control
+                      type="text"
+                      placeholder="(필수) 닉 네임"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                      isInvalid={!!errors.username}
+                    />
+                    <Form.Control.Feedback type="invalid">{errors.username}</Form.Control.Feedback>
+                  </InputGroup>
+
+                  <InputGroup className="mb-5">
+                    <InputGroup.Text>
                       <FeatherIcon icon="phone" />
                     </InputGroup.Text>
                     <Form.Control
                       type="tel"
-                      placeholder="전화번호"
+                      placeholder="(필수) 전화번호"
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
@@ -152,32 +203,41 @@ const MobileSignUpPage = () => {
 
                   <InputGroup className="mb-3">
                     <InputGroup.Text>
-                      <FeatherIcon icon="lock" />
+                      <FeatherIcon icon="user" />
                     </InputGroup.Text>
                     <Form.Control
-                      type="password"
-                      placeholder="비밀번호"
-                      name="password"
-                      value={formData.password}
+                      type="text"
+                      placeholder="성"
+                      name="last_name"
+                      value={formData.last_name}
                       onChange={handleChange}
-                      isInvalid={!!errors.password}
+                      isInvalid={!!errors.last_name}
+                      className="me-3"
                     />
-                    <Form.Control.Feedback type="invalid">{errors.password}</Form.Control.Feedback>
+                    <Form.Control
+                      type="text"
+                      placeholder="이름"
+                      name="first_name"
+                      value={formData.first_name}
+                      onChange={handleChange}
+                      isInvalid={!!errors.first_name}
+                    />
+                    <Form.Control.Feedback type="invalid">{errors.first_name || errors.last_name}</Form.Control.Feedback>
                   </InputGroup>
 
-                  <InputGroup className="mb-4">
+                  <InputGroup className="mb-3">
                     <InputGroup.Text>
-                      <FeatherIcon icon="check-circle" />
+                      <FeatherIcon icon="gift" />
                     </InputGroup.Text>
                     <Form.Control
-                      type="password"
-                      placeholder="비밀번호 확인"
-                      name="password2"
-                      value={password2}
-                      onChange={(e) => setPassword2(e.target.value)}
-                      isInvalid={!!errors.password2}
+                      type="text"
+                      placeholder="생년월일"
+                      name="birthday"
+                      value={formData.birthday}
+                      onChange={handleChange}
+                      isInvalid={!!errors.birthday}
                     />
-                    <Form.Control.Feedback type="invalid">{errors.password2}</Form.Control.Feedback>
+                    <Form.Control.Feedback type="invalid">{errors.birthday}</Form.Control.Feedback>
                   </InputGroup>
 
                   <Button type="submit" variant="primary" size="lg" className="btn-block mt-4 mb-4 w-100" disabled={loading}>

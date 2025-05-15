@@ -35,7 +35,7 @@ export const reqGetLoginUserType = () => {
     return userType;
   }
   return ''; // 기본값
-}
+};
 
 // 사용자 정보 가져오기
 export const reqIsAuthenticated = () => {
@@ -141,6 +141,47 @@ export const reqGetUserInfo = async (username, tokenValue) => {
     };
   } catch (error) {
     console.log('사용자 정보 가져오기 실패:', error);
+    return {
+      success: false,
+      error: error.response?.data || { detail: '사용자 정보를 가져오는 데 실패했습니다.' }
+    };
+  }
+};
+
+// 사용자 정보 생성 요청
+export const reqSignUp = async (username, email, password, first_name, last_name, is_staff, is_superuser) => {
+  try {
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('email', email);
+    formData.append('password', password);
+
+    formData.append('first_name', first_name);
+    formData.append('last_name', last_name);
+
+    formData.append('is_staff', is_staff);
+    formData.append('is_superuser', is_superuser);
+
+    const apiService = axios.create();
+    //apiService.defaults.baseURL = BASE_URL;
+
+    const response = await apiService.post(BASE_URL + '/api/v1/accounts/users/', formData);
+
+    //로그 출력
+    console.log('사용자 정보 가져오기:', {
+      username,
+      tokenValue,
+      response: response.data
+    });
+
+    return {
+      success: true,
+      data: response.data
+    };
+
+  } catch (error) {
+    console.log('사용자 회원가입 실패:', error);
+
     return {
       success: false,
       error: error.response?.data || { detail: '사용자 정보를 가져오는 데 실패했습니다.' }
