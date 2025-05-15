@@ -14,6 +14,12 @@ export default defineConfig(({ mode }) => {
       // this sets a default port to 3000
       port: PORT,
       host: '0.0.0.0', // 또는 host: true
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+        }
+      }
     },
     define: {
       global: 'window'
@@ -60,7 +66,7 @@ export default defineConfig(({ mode }) => {
         ]
       }
     },
-    base: API_URL,
+    base: '/',
     plugins: [react(), jsconfigPaths()]
   };
 });

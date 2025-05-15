@@ -285,6 +285,32 @@
             "description": "모든 토너먼트의 상세 정보를 조회합니다.\n\n파라미터:\n- status: 토너먼트 상태 (UPCOMING, ONGOING, COMPLETED, CANCELLED)\n- store_id: 매장 ID\n- start_date: 시작 날짜 (YYYY-MM-DD)\n- end_date: 종료 날짜 (YYYY-MM-DD)\n- sort: 정렬 기준 (start_time, -start_time, participant_count, -participant_count)\n\n응답 데이터:\n- id: 토너먼트 ID\n- store_name: 매장 이름\n- name: 토너먼트 이름\n- start_time: 시작 시간\n- buy_in: 바이인 금액\n- max_players: 최대 참가자 수\n- description: 토너먼트 설명\n- status: 토너먼트 상태\n- created_at: 생성 시간\n- updated_at: 수정 시간\n- participant_count: 현재 참가자 수\n- remaining_slots: 남은 좌석 수\n- seats: 좌석 정보 (좌석 번호, 상태, 사용자)\n- registrations: 등록 정보 (사용자, 좌석 번호, 지불 금액, 체크인 상태)\n\n응답:\n- 200: 성공적으로 토너먼트 정보를 반환\n- 500: 서버 내부 오류"
           },
           "response": []
+        },
+        {
+          "name": "토너먼트 생성",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "store", "value": "1", "type": "text", "description": "매장 ID" },
+                { "key": "name", "value": "ASL Poker Night", "type": "text", "description": "토너먼트명" },
+                { "key": "start_time", "value": "2024-06-01T18:00:00", "type": "text", "description": "시작 시간 (ISO 포맷)" },
+                { "key": "buy_in", "value": "50000", "type": "text", "description": "참가비(바이인)" },
+                { "key": "ticket_quantity", "value": "100", "type": "text", "description": "좌석권(티켓) 수량" },
+                { "key": "description", "value": "6월 첫째주 토너먼트", "type": "text", "description": "토너먼트 설명" },
+                { "key": "status", "value": "UPCOMING", "type": "text", "description": "상태(UPCOMING, ONGOING 등)" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tournaments/create/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "v1", "tournaments", "create", "" ]
+            },
+            "description": "새로운 토너먼트를 생성합니다.\n\n필수 파라미터:\n- store: 매장 ID\n- name: 토너먼트명\n- start_time: 시작 시간 (YYYY-MM-DDTHH:MM:SS)\n- buy_in: 참가비\n- ticket_quantity: 좌석권 수량\n\n선택 파라미터:\n- description: 토너먼트 설명\n- status: 상태(UPCOMING, ONGOING, COMPLETED, CANCELLED)\n"
+          },
+          "response": []
         }
       ]
     },
@@ -594,6 +620,33 @@
               ]
             },
             "description": "매장 이름과 사용자 이름으로 사용자를 검색합니다.\n\n응답:\n- 200: 성공적으로 사용자 정보를 반환\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청\n- 404: 사용자 또는 매장을 찾을 수 없음"
+          },
+          "response": []
+        },
+        {
+          "name": "매장 생성",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name", "value": "ASL Poker Store", "type": "text", "description": "매장명" },
+                { "key": "owner", "value": "1", "type": "text", "description": "매장 소유자(유저 ID)" },
+                { "key": "address", "value": "서울시 강남구 테헤란로 123", "type": "text", "description": "매장 주소" },
+                { "key": "description", "value": "프리미엄 홀덤 매장", "type": "text", "description": "매장 설명" },
+                { "key": "image", "type": "file", "description": "매장 이미지" },
+                { "key": "status", "value": "ACTIVE", "type": "text", "description": "상태(기본값 ACTIVE)" },
+                { "key": "latitude", "value": "37.123456", "type": "text", "description": "위도" },
+                { "key": "longitude", "value": "127.123456", "type": "text", "description": "경도" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/stores/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "api", "v1", "stores", "" ]
+            },
+            "description": "새로운 매장을 생성합니다.\n\n필수 파라미터:\n- name: 매장명\n- owner: 매장 소유자(유저 ID)\n- address: 매장 주소\n- description: 매장 설명\n- image: 매장 이미지(파일)\n\n선택 파라미터:\n- status: 상태(기본값 ACTIVE)\n- latitude: 위도\n- longitude: 경도\n"
           },
           "response": []
         }
