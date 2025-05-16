@@ -149,7 +149,7 @@ export const reqGetUserInfo = async (username, tokenValue) => {
 };
 
 // 사용자 정보 생성 요청
-export const reqSignUp = async (username, email, password, first_name, last_name, is_staff, is_superuser) => {
+export const reqSignUp = async (username, email, password, first_name, last_name, is_staff, is_superuser, is_active, phone, birthday, gender) => {
   try {
     const formData = new FormData();
     formData.append('username', username);
@@ -161,6 +161,38 @@ export const reqSignUp = async (username, email, password, first_name, last_name
 
     formData.append('is_staff', is_staff);
     formData.append('is_superuser', is_superuser);
+    formData.append('is_active', is_active);
+    
+    // 전화번호 추가
+    formData.append('phone', phone);
+    
+    // 생일 데이터 형식 변환 및 확인 - birth_date로 필드명 변경
+    try {
+      // YYYY-MM-DD 형식의 날짜 확인
+      const birthdayDate = new Date(birthday);
+      // 형식이 유효한지 확인
+      if (isNaN(birthdayDate)) {
+        console.error('잘못된 날짜 형식:', birthday);
+        formData.append('birth_date', birthday); // 원래 형식 그대로 전송
+      } else {
+        // ISO 형식으로 변환 (YYYY-MM-DD)
+        const formattedDate = birthdayDate.toISOString().split('T')[0];
+        console.log('변환된 생년월일:', formattedDate);
+        formData.append('birth_date', formattedDate);
+      }
+    } catch (dateError) {
+      console.error('날짜 변환 오류:', dateError);
+      formData.append('birth_date', birthday); // 오류 시 원래 형식 그대로 전송
+    }
+    
+    // 성별 데이터 추가
+    formData.append('gender', gender);
+
+    // 폼 데이터 확인용 로그
+    console.log('서버로 전송하는 데이터:');
+    for (let [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`);
+    }
 
     const apiService = axios.create();
     //apiService.defaults.baseURL = BASE_URL;
@@ -168,9 +200,11 @@ export const reqSignUp = async (username, email, password, first_name, last_name
     const response = await apiService.post(BASE_URL + '/api/v1/accounts/users/', formData);
 
     //로그 출력
-    console.log('사용자 정보 가져오기:', {
+    console.log('회원가입 결과:', {
       username,
-      tokenValue,
+      email,
+      gender,
+      birth_date: formData.get('birth_date'), // 실제 전송된 생년월일 값 확인
       response: response.data
     });
 
@@ -181,6 +215,12 @@ export const reqSignUp = async (username, email, password, first_name, last_name
 
   } catch (error) {
     console.log('사용자 회원가입 실패:', error);
+    
+    // 오류 세부 사항 출력
+    if (error.response) {
+      console.log('서버 응답 오류 데이터:', error.response.data);
+      console.log('서버 응답 상태:', error.response.status);
+    }
 
     return {
       success: false,

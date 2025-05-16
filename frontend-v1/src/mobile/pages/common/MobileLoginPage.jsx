@@ -74,7 +74,7 @@ const MobileLoginPage = () => {
               <InputGroup.Text>
                 <FeatherIcon icon="user" />
               </InputGroup.Text>
-              <Form.Control type="text" placeholder="사용자명 입력" value={username} onChange={(e) => setUsername(e.target.value)} />
+              <Form.Control type="text" placeholder="사용자(닉네임)명 입력" value={username} onChange={(e) => setUsername(e.target.value)} />
             </InputGroup>
             <InputGroup className="mb-4">
               <InputGroup.Text>

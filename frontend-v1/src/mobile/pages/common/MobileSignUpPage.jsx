@@ -14,8 +14,10 @@ const MobileSignUpPage = () => {
     first_name: '',
     last_name: '',
     birthday: '',
+    gender: '',
     is_staff: false,
-    is_superuser: false
+    is_superuser: false,
+    is_active: true
   });
 
   // 화면처리에 필요한 데이터
@@ -72,12 +74,15 @@ const MobileSignUpPage = () => {
     if (!formData.last_name.trim()) {
       newErrors.last_name = '성은 필수입니다';
     }
+    
+    if (!formData.gender) {
+      newErrors.gender = '성별을 선택해주세요';
+    }
 
     if (!formData.birthday) {
       newErrors.birthday = '생년월일은 필수입니다';
-    } else if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(formData.birthday)) {
-      newErrors.birthday = '생년월일은 YYYY-MM-DD 형식이어야 합니다';
     }
+    // date 타입은 자동으로 YYYY-MM-DD 형식을 보장하므로 추가 유효성 검사는 불필요
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -90,7 +95,20 @@ const MobileSignUpPage = () => {
 
     setLoading(true);
 
-    console.log('회원가입 데이터:', formData);
+    // 회원가입 데이터 디버깅
+    console.log('회원가입 요청 데이터:', {
+      username: formData.username,
+      email: formData.email,
+      password: formData.password.substring(0, 3) + '...', // 보안을 위해 일부만 표시
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      phone: formData.phone,
+      birthday: formData.birthday,
+      gender: formData.gender,
+      is_staff: formData.is_staff,
+      is_superuser: formData.is_superuser,
+      is_active: formData.is_active
+    });
 
     //export const reqSignUp = async (username, email, password, first_name, last_name, is_staff, is_superuser)
     const result = await reqSignUp(
@@ -100,7 +118,11 @@ const MobileSignUpPage = () => {
       formData.first_name,
       formData.last_name,
       formData.is_staff,
-      formData.is_superuser
+      formData.is_superuser,
+      formData.is_active,
+      formData.phone,
+      formData.birthday,
+      formData.gender
     );
 
     setLoading(false);
@@ -109,6 +131,7 @@ const MobileSignUpPage = () => {
       alert('회원가입이 성공적으로 완료되었습니다.');
       navigate('/mobile/login');
     } else {
+      console.error('회원가입 실패 응답:', result.error);
       alert(result.error?.detail || '회원가입에 실패했습니다.');
     }
   };
@@ -224,18 +247,57 @@ const MobileSignUpPage = () => {
                     />
                     <Form.Control.Feedback type="invalid">{errors.first_name || errors.last_name}</Form.Control.Feedback>
                   </InputGroup>
+                  
+                  {/* 성별 선택 버튼 추가 */}
+                  <div className="mb-3">
+                    <Form.Group>
+                      <InputGroup className="mb-2">
+                        <InputGroup.Text>
+                          <FeatherIcon icon="users" />
+                        </InputGroup.Text>
+                        <div className="form-control d-flex">
+                          <span className="me-3">성별:</span>
+                          <Form.Check
+                            inline
+                            label="남성"
+                            name="gender"
+                            type="radio"
+                            id="gender-male"
+                            value="M"
+                            checked={formData.gender === 'M'}
+                            onChange={handleChange}
+                            className="me-4"
+                          />
+                          <Form.Check
+                            inline
+                            label="여성"
+                            name="gender"
+                            type="radio"
+                            id="gender-female"
+                            value="F"
+                            checked={formData.gender === 'F'}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </InputGroup>
+                      {errors.gender && (
+                        <div className="text-danger small text-start ms-4">{errors.gender}</div>
+                      )}
+                    </Form.Group>
+                  </div>
 
                   <InputGroup className="mb-3">
                     <InputGroup.Text>
                       <FeatherIcon icon="gift" />
                     </InputGroup.Text>
                     <Form.Control
-                      type="text"
+                      type="date"
                       placeholder="생년월일"
                       name="birthday"
                       value={formData.birthday}
                       onChange={handleChange}
                       isInvalid={!!errors.birthday}
+                      max={new Date().toISOString().split('T')[0]} // 오늘 날짜 이후는 선택 불가능
                     />
                     <Form.Control.Feedback type="invalid">{errors.birthday}</Form.Control.Feedback>
                   </InputGroup>
