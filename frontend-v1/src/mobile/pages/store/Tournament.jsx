@@ -185,15 +185,15 @@ const Tournament = () => {
   };
 
   return (
-    <div className="mobile-container">
-      <div className="mobile-header">
+    <div className="asl-mobile-container">
+      <div className="asl-mobile-header">
         <button 
-          className="mobile-nav-button" 
+          className="asl-mobile-nav-button"
           onClick={() => navigate(-1)}
         >
           <i className="fas fa-arrow-left"></i>
         </button>
-        <h1 className="mobile-header-title">토너먼트 관리</h1>
+        <h1 className="asl-mobile-header-title">토너먼트 관리</h1>
         <div style={{ width: '24px' }}></div> {/* 균형을 위한 빈 공간 */}
       </div>
       

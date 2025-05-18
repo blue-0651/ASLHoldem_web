@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Form, Row, Col, Alert } from 'react-bootstrap';
 import API from '../../../utils/api';
-import '../../styles/MobileStyles.css';
+//import '../../styles/MobileStyles.css';
 
 const StoreInfo = () => {
   const [storeData, setStoreData] = useState(null);
@@ -124,19 +124,34 @@ const StoreInfo = () => {
     }
   };
 
+
+  const ErrorState = ({ error, onRetry }) => (
+    <div className="asl-mobile-empty-state">
+      <i className="fas fa-exclamation-triangle mobile-empty-icon"></i>
+      <p>{error}</p>
+      <Button
+        variant="outline-primary"
+        size="sm"
+        onClick={onRetry}
+      >
+        다시 시도
+      </Button>
+    </div>
+  );
+
+
   return (
-    <div className="mobile-container">
-      <div className="mobile-header">
+    <div className="asl-mobile-container">
+      <div className="asl-mobile-header">
         <button 
-          className="mobile-nav-button" 
+          className="asl-mobile-nav-button"
           onClick={() => navigate(-1)}
         >
           <i className="fas fa-arrow-left"></i>
         </button>
-        <h1 className="mobile-header-title">매장 정보</h1>
+        <h1 className="asl-mobile-header-title">매장 정보</h1>
         <div style={{ width: '24px' }}></div> {/* 균형을 위한 빈 공간 */}
       </div>
-      
       {/* 로딩 및 에러 처리 */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
@@ -146,17 +161,18 @@ const StoreInfo = () => {
           <p style={{ marginTop: '10px' }}>매장 정보를 불러오는 중입니다...</p>
         </div>
       ) : error ? (
-        <div className="mobile-empty-state">
-          <i className="fas fa-exclamation-triangle mobile-empty-icon"></i>
-          <p>{error}</p>
-          <Button 
-            variant="outline-primary" 
-            size="sm" 
-            onClick={fetchStoreInfo}
-          >
-            다시 시도
-          </Button>
-        </div>
+        <ErrorState  error={error} onRetry={fetchStoreInfo} />
+        // <div className="asl-mobile-empty-state">
+        //   <i className="fas fa-exclamation-triangle mobile-empty-icon"></i>
+        //   <p>{error}</p>
+        //   <Button
+        //     variant="outline-primary"
+        //     size="sm"
+        //     onClick={fetchStoreInfo}
+        //   >
+        //     다시 시도
+        //   </Button>
+        // </div>
       ) : (
         <div>
           {/* 성공 메시지 */}
@@ -167,7 +183,7 @@ const StoreInfo = () => {
           )}
           
           {/* 매장 정보 표시 또는 편집 */}
-          <Card className="mobile-card">
+          <Card className="asl-mobile-card">
             <Card.Body>
               {isEditing ? (
                 /* 편집 모드 */

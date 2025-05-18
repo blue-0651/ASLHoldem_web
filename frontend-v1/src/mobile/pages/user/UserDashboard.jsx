@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Button, Card } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated, logout } from '../../../utils/auth';
-import '../../styles/MobileStyles.css';
 
 const UserDashboard = () => {
   const [user, setUser] = useState(null);
@@ -17,7 +16,7 @@ const UserDashboard = () => {
       navigate('/mobile/login');
       return;
     }
-    
+
     // 사용자 정보 가져오기
     const currentUser = getCurrentUser();
     setUser(currentUser);
@@ -32,11 +31,11 @@ const UserDashboard = () => {
     };
 
     if (isNavOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isNavOpen]);
 
@@ -48,7 +47,7 @@ const UserDashboard = () => {
   const toggleNav = () => {
     setIsNavOpen(!isNavOpen);
   };
-  
+
   // 현재 페이지가 활성화된 메뉴인지 확인
   const isActive = (path) => {
     return location.pathname === path;
@@ -57,50 +56,41 @@ const UserDashboard = () => {
   // 메뉴 항목 정의
   const menuData = {
     main: {
-      title: "메인 메뉴",
-      items: [
-        { name: "홈", href: "/mobile/user/dashboard", icon: "fas fa-home" }
-      ]
+      title: '메인 메뉴',
+      items: [{ name: '홈', href: '/mobile/user/dashboard', icon: 'fas fa-home' }]
     },
     user: {
-      title: "사용자 메뉴",
+      title: '사용자 메뉴',
       items: [
-        { name: "토너먼트 일정", href: "/mobile/common/tournaments-list", icon: "fas fa-calendar-alt" },
-        { name: "내 예약", href: "/mobile/common/reservations", icon: "fas fa-ticket-alt" },
-        { name: "매장 찾기", href: "/mobile/common/store-search", icon: "fas fa-search-location" }
+        { name: '토너먼트 일정', href: '/mobile/common/tournaments-list', icon: 'fas fa-calendar-alt' },
+        { name: '내 예약', href: '/mobile/common/reservations', icon: 'fas fa-ticket-alt' },
+        { name: '매장 찾기', href: '/mobile/common/store-search', icon: 'fas fa-search-location' }
       ]
     },
     settings: {
-      title: "설정",
+      title: '설정',
       items: [
-        { name: "환경 설정", href: "/mobile/common/settings", icon: "fas fa-cog" },
-        { name: "공지사항", href: "/mobile/common/notices", icon: "fas fa-bullhorn" },
-        { name: "로그아웃", href: "#", icon: "fas fa-sign-out-alt", onClick: handleLogout }
+        { name: '환경 설정', href: '/mobile/common/settings', icon: 'fas fa-cog' },
+        { name: '공지사항', href: '/mobile/common/notices', icon: 'fas fa-bullhorn' },
+        { name: '로그아웃', href: '#', icon: 'fas fa-sign-out-alt', onClick: handleLogout }
       ]
     }
   };
 
   return (
-    <div className="mobile-container">
+    <div className="asl-mobile-container">
       {/* 헤더 */}
-      <div className="mobile-header">
-        <button 
-          className="mobile-nav-button" 
-          onClick={toggleNav}
-        >
+      <div className="asl-mobile-header">
+        <button className="asl-mobile-nav-button" onClick={toggleNav}>
           <i className="fas fa-bars"></i>
         </button>
-        <h1 className="mobile-header-title">ASL 홀덤</h1>
-        <img 
-          src="/images/asl_logo.png"
-          alt="ASL 로고" 
-          className="mobile-header-logo"
-        />
+        <h1 className="asl-mobile-header-title">ASL 홀덤</h1>
+        <img src="/images/asl_logo.png" alt="ASL 로고" className="asl-mobile-header-logo" />
       </div>
-      
+
       {/* 오버레이 */}
       {isNavOpen && (
-        <div 
+        <div
           style={{
             position: 'fixed',
             top: 0,
@@ -115,9 +105,9 @@ const UserDashboard = () => {
           onClick={toggleNav}
         ></div>
       )}
-      
+
       {/* 사이드바 */}
-      <div 
+      <div
         ref={sidebarRef}
         style={{
           position: 'fixed',
@@ -139,7 +129,7 @@ const UserDashboard = () => {
         }}
       >
         {/* 사이드바 헤더 */}
-        <div 
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -150,9 +140,9 @@ const UserDashboard = () => {
             color: 'white'
           }}
         >
-          <img 
-            src="/images/asl_logo.png" 
-            alt="ASL 로고" 
+          <img
+            src="/images/asl_logo.png"
+            alt="ASL 로고"
             style={{
               width: '40px',
               height: '40px',
@@ -160,14 +150,10 @@ const UserDashboard = () => {
             }}
           />
           <div>
-            <div style={{ fontSize: '18px', fontWeight: '700' }}>
-              ASL 홀덤
-            </div>
-            <div style={{ fontSize: '14px', opacity: 0.9 }}>
-              일반 사용자
-            </div>
+            <div style={{ fontSize: '18px', fontWeight: '700' }}>ASL 홀덤</div>
+            <div style={{ fontSize: '14px', opacity: 0.9 }}>일반 사용자</div>
           </div>
-          <button 
+          <button
             style={{
               position: 'absolute',
               right: '10px',
@@ -192,7 +178,7 @@ const UserDashboard = () => {
         </div>
 
         {/* 사용자 정보 */}
-        <div 
+        <div
           style={{
             padding: '15px',
             borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
@@ -200,7 +186,7 @@ const UserDashboard = () => {
             alignItems: 'center'
           }}
         >
-          <div 
+          <div
             style={{
               width: '40px',
               height: '40px',
@@ -216,18 +202,16 @@ const UserDashboard = () => {
           </div>
           <div>
             <div style={{ fontWeight: 'bold' }}>{user?.username || '사용자'}</div>
-            <div style={{ fontSize: '14px', color: '#777' }}>
-              {user?.email || '로그인 정보'}
-            </div>
+            <div style={{ fontSize: '14px', color: '#777' }}>{user?.email || '로그인 정보'}</div>
           </div>
         </div>
-        
+
         {/* 메뉴 항목 */}
         <div style={{ marginTop: '10px' }}>
           {Object.entries(menuData).map(([key, category]) => (
             <div key={key} style={{ marginBottom: '15px' }}>
               {/* 카테고리 제목 */}
-              <div 
+              <div
                 style={{
                   padding: '12px 15px',
                   fontSize: '16px',
@@ -238,11 +222,11 @@ const UserDashboard = () => {
               >
                 {category.title}
               </div>
-              
+
               {/* 메뉴 아이템 */}
               <div>
                 {category.items.map((item) => (
-                  <div 
+                  <div
                     key={item.href}
                     style={{
                       padding: '12px 15px',
@@ -261,7 +245,7 @@ const UserDashboard = () => {
                       setIsNavOpen(false);
                     }}
                   >
-                    <i 
+                    <i
                       className={item.icon}
                       style={{
                         width: '24px',
@@ -271,7 +255,7 @@ const UserDashboard = () => {
                         color: isActive(item.href) ? '#3498db' : item.href === '#' ? '#e74c3c' : '#555'
                       }}
                     ></i>
-                    <span 
+                    <span
                       style={{
                         color: isActive(item.href) ? '#3498db' : item.href === '#' ? '#e74c3c' : '#333',
                         fontWeight: isActive(item.href) ? '600' : '400',
@@ -288,7 +272,7 @@ const UserDashboard = () => {
         </div>
 
         {/* 버전 정보 */}
-        <div 
+        <div
           style={{
             padding: '15px',
             fontSize: '12px',
@@ -301,51 +285,38 @@ const UserDashboard = () => {
           ASL 홀덤 v1.0.0
         </div>
       </div>
-      
+
       {/* 메인 컨텐츠 */}
-      <div className="mobile-dashboard">
-        <h2 style={{ fontSize: '18px', marginBottom: '20px' }}>
-          사용자 메뉴
-        </h2>
-        
+      <div className="asl-mobile-dashboard">
+        {/*<h2 className="asl-mobile-text" style={{ fontSize: '18px', marginBottom: '20px' }}>사용자 메뉴</h2>*/}
+        <h5 className="asl-mobile-text mb-3">사용자 메뉴</h5>
+
         {/* 일반 사용자 컨텐츠 */}
-        <Card className="mobile-card">
+        <Card className="asl-mobile-card">
           <Card.Body>
-            <div className="mobile-card-title">토너먼트 일정</div>
+            <div className="asl-mobile-card-title">토너먼트 일정</div>
             <p>참여 가능한 토너먼트 일정을 확인합니다.</p>
-            <Button 
-              variant="primary" 
-              className="mobile-btn-secondary"
-              onClick={() => navigate('/mobile/common/tournaments-list')}
-            >
+            <Button variant="primary" className="asl-mobile-btn-secondary" onClick={() => navigate('/mobile/common/tournaments-list')}>
               토너먼트 보기
             </Button>
           </Card.Body>
         </Card>
 
-        <Card className="mobile-card">
+        <Card className="asl-mobile-card">
           <Card.Body>
-            <div className="mobile-card-title">내 예약</div>
+            <div className="asl-mobile-card-title">내 예약</div>
             <p>예약한 토너먼트를 확인합니다.</p>
-            <Button 
-              variant="primary" 
-              className="mobile-btn-secondary"
-              onClick={() => navigate('/mobile/common/reservations')}
-            >
+            <Button variant="primary" className="mobile-btn-secondary" onClick={() => navigate('/mobile/common/reservations')}>
               예약 확인
             </Button>
           </Card.Body>
         </Card>
 
-        <Card className="mobile-card">
+        <Card className="asl-mobile-card">
           <Card.Body>
             <div className="mobile-card-title">매장 찾기</div>
             <p>가까운 ASL 홀덤 매장을 찾습니다.</p>
-            <Button 
-              variant="primary" 
-              className="mobile-btn-secondary"
-              onClick={() => navigate('/mobile/common/store-search')}
-            >
+            <Button variant="primary" className="mobile-btn-secondary" onClick={() => navigate('/mobile/common/store-search')}>
               매장 찾기
             </Button>
           </Card.Body>
@@ -355,4 +326,4 @@ const UserDashboard = () => {
   );
 };
 
-export default UserDashboard; 
+export default UserDashboard;

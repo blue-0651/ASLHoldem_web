@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Form, Spinner, Alert, Table } from 'react-bootstrap';
 import axios from 'axios';
-import '../../styles/MobileStyles.css';
 
 /**
  * 로컬 axios 인스턴스 생성 및 인터셉터 설정
@@ -22,13 +21,13 @@ api.interceptors.request.use(
     // 토큰 가져오기 및 로깅
     const token = localStorage.getItem('asl_holdem_access_token');
     console.log('API 요청 시 사용되는 토큰:', token ? `${token.substring(0, 15)}...` : '없음');
-    
+
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     } else {
       console.warn('인증 토큰이 없습니다. 로그인이 필요할 수 있습니다.');
     }
-    
+
     console.log(`API 요청: ${config.method.toUpperCase()} ${config.url}`, config);
     return config;
   },
@@ -52,7 +51,7 @@ api.interceptors.response.use(
     if (error.response) {
       // 서버 응답이 있는 오류
       console.error(`API 응답 오류 (${error.response.status}):`, error.response.data);
-      
+
       // 401 오류 처리
       if (error.response.status === 401) {
         console.warn('인증 오류가 발생했습니다. 다시 로그인이 필요합니다.');
@@ -66,7 +65,7 @@ api.interceptors.response.use(
       // 요청 설정 중 발생한 오류
       console.error('API 요청 설정 오류:', error.message);
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -155,7 +154,7 @@ const PlayerRegistration = () => {
    */
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setPlayerData(prev => ({
+    setPlayerData((prev) => ({
       ...prev,
       [name]: value
     }));
@@ -186,7 +185,7 @@ const PlayerRegistration = () => {
         ...playerData,
         tournament_id: selectedTournament
       });
-      
+
       // 가상의 성공 응답
       setTimeout(() => {
         setSuccess(true);
@@ -208,174 +207,157 @@ const PlayerRegistration = () => {
   };
 
   return (
-    <div className="mobile-container">
+    <div className="asl-mobile-container">
       {/* 헤더 영역 */}
-      <div className="mobile-header">
-        <button 
-          className="mobile-nav-button" 
-          onClick={() => navigate(-1)}
-        >
+      <div className="asl-mobile-header">
+        <button className="asl-mobile-nav-button" onClick={() => navigate(-1)}>
           <i className="fas fa-arrow-left"></i>
         </button>
-        <h1 className="mobile-header-title">선수회원 등록</h1>
+        <h1 className="asl-mobile-header-title">선수회원 등록</h1>
         <div style={{ width: '24px' }}></div> {/* 균형을 위한 빈 공간 */}
       </div>
-      
-      {/* 선수 등록 폼 */}
-      <Card className="mobile-card">
-        <Card.Body>
-          {success && (
-            <Alert variant="success" className="mb-3">
-              선수회원이 성공적으로 등록되었습니다.
-            </Alert>
-          )}
-          
-          {error && (
-            <Alert variant="danger" className="mb-3">
-              {error}
-            </Alert>
-          )}
-          
-          <Form onSubmit={handleSubmit}>
-            {/* 토너먼트 선택 드롭다운 */}
-            <Form.Group className="mb-3">
-              <Form.Label>토너먼트 선택</Form.Label>
-              <Form.Select
-                name="tournament"
-                value={selectedTournament}
-                onChange={handleTournamentChange}
-                required
-              >
-                <option value="">토너먼트를 선택하세요</option>
-                {tournaments.map(tournament => (
-                  <option key={tournament.id} value={tournament.id}>
-                    {tournament.name} ({new Date(tournament.start_time).toLocaleString()})
-                  </option>
-                ))}
-              </Form.Select>
-            </Form.Group>
-            
-            {/* 선수 정보 입력 필드 */}
-            <Form.Group className="mb-3">
-              <Form.Label>이름</Form.Label>
-              <Form.Control
-                type="text"
-                name="username"
-                value={playerData.username}
-                onChange={handleChange}
-                placeholder="선수의 실명을 입력하세요"
-                required
-              />
-            </Form.Group>
-            
-            <Form.Group className="mb-3">
-              <Form.Label>이메일</Form.Label>
-              <Form.Control
-                type="email"
-                name="email"
-                value={playerData.email}
-                onChange={handleChange}
-                placeholder="이메일 주소를 입력하세요"
-                required
-              />
-            </Form.Group>
-            
-            <Form.Group className="mb-3">
-              <Form.Label>휴대폰 번호</Form.Label>
-              <Form.Control
-                type="tel"
-                name="phone"
-                value={playerData.phone}
-                onChange={handleChange}
-                placeholder="'-' 없이 입력하세요"
-                required
-              />
-            </Form.Group>
-            
-            <Form.Group className="mb-3">
-              <Form.Label>닉네임</Form.Label>
-              <Form.Control
-                type="text"
-                name="nickname"
-                value={playerData.nickname}
-                onChange={handleChange}
-                placeholder="선수 닉네임을 입력하세요"
-              />
-            </Form.Group>
-            
-            {/* 제출 버튼 */}
-            <div className="d-grid gap-2 mt-4">
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={loading}
-                className="mobile-btn-primary"
-              >
-                {loading ? (
-                  <>
-                    <Spinner
-                      as="span"
-                      animation="border"
-                      size="sm"
-                      role="status"
-                      aria-hidden="true"
-                      className="me-2"
-                    />
-                    처리 중...
-                  </>
-                ) : (
-                  "선수회원 등록하기"
-                )}
-              </Button>
-            </div>
-          </Form>
-        </Card.Body>
-      </Card>
 
-      {/* 선수 매핑 정보 표시 */}
-      {playerMappingData && (
-        <Card className="mobile-card mt-3">
+      {/* 선수 등록 폼 */}
+      <div className="asl-mobile-dashboard">
+        {/*<h2 className="asl-mobile-text" style={{ fontSize: '18px', marginBottom: '20px' }}>사용자 메뉴</h2>*/}
+        <h5 className="asl-mobile-text mb-3">선수회원 등록</h5>
+
+        <Card className="asl-mobile-card">
           <Card.Body>
-            {/* 토너먼트 정보 */}
-            <Card.Title>
-              토너먼트: {playerMappingData['토너먼트명']}
-            </Card.Title>
-            <Card.Subtitle className="mb-2 text-muted">
-              시작시간: {new Date(playerMappingData['토너먼트_시작시간']).toLocaleString()}
-            </Card.Subtitle>
-            <Card.Text>
-              좌석권: {playerMappingData['배포된_좌석권_수량']} / {playerMappingData['총_좌석권_수량']}
-            </Card.Text>
-            
-            {/* 선수별 현황 테이블 */}
-            <h5 className="mt-4">선수별 현황</h5>
-            {playerMappingData['선수별_현황'].length > 0 ? (
-              <Table striped bordered hover responsive size="sm">
-                <thead>
-                  <tr>
-                    <th>선수명</th>
-                    <th>매장명</th>
-                    <th>좌석권</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {playerMappingData['선수별_현황'].map((player, idx) => (
-                    <tr key={idx}>
-                      <td>{player['선수명']}</td>
-                      <td>{player['매장명']}</td>
-                      <td>{player['좌석권_보유']}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            ) : (
-              <p className="text-center text-muted">등록된 선수가 없습니다.</p>
+            {success && (
+              <Alert variant="success" className="mb-3">
+                선수회원이 성공적으로 등록되었습니다.
+              </Alert>
             )}
+
+            {error && (
+              <Alert variant="danger" className="mb-3">
+                {error}
+              </Alert>
+            )}
+
+            <Form onSubmit={handleSubmit}>
+              {/* 토너먼트 선택 드롭다운 */}
+              <Form.Group className="mb-3">
+                <Form.Label>토너먼트 선택</Form.Label>
+                <Form.Select name="tournament" value={selectedTournament} onChange={handleTournamentChange} required>
+                  <option value="">토너먼트를 선택하세요</option>
+                  {tournaments.map((tournament) => (
+                    <option key={tournament.id} value={tournament.id}>
+                      {tournament.name} ({new Date(tournament.start_time).toLocaleString()})
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+
+              {/* 선수 정보 입력 필드 */}
+              <Form.Group className="mb-3">
+                <Form.Label>이름</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="username"
+                  value={playerData.username}
+                  onChange={handleChange}
+                  placeholder="선수의 실명을 입력하세요"
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>이메일</Form.Label>
+                <Form.Control
+                  type="email"
+                  name="email"
+                  value={playerData.email}
+                  onChange={handleChange}
+                  placeholder="이메일 주소를 입력하세요"
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>휴대폰 번호</Form.Label>
+                <Form.Control
+                  type="tel"
+                  name="phone"
+                  value={playerData.phone}
+                  onChange={handleChange}
+                  placeholder="'-' 없이 입력하세요"
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>닉네임</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="nickname"
+                  value={playerData.nickname}
+                  onChange={handleChange}
+                  placeholder="선수 닉네임을 입력하세요"
+                />
+              </Form.Group>
+
+              {/* 제출 버튼 */}
+              <div className="d-grid gap-2 mt-4">
+                <Button variant="primary" type="submit" disabled={loading} className="mobile-btn-primary">
+                  {loading ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                      처리 중...
+                    </>
+                  ) : (
+                    '선수회원 등록하기'
+                  )}
+                </Button>
+              </div>
+            </Form>
           </Card.Body>
         </Card>
-      )}
+
+        {/* 선수 매핑 정보 표시 */}
+        {playerMappingData && (
+          <Card className="mobile-card mt-3">
+            <Card.Body>
+              {/* 토너먼트 정보 */}
+              <Card.Title>토너먼트: {playerMappingData['토너먼트명']}</Card.Title>
+              <Card.Subtitle className="mb-2 text-muted">
+                시작시간: {new Date(playerMappingData['토너먼트_시작시간']).toLocaleString()}
+              </Card.Subtitle>
+              <Card.Text>
+                좌석권: {playerMappingData['배포된_좌석권_수량']} / {playerMappingData['총_좌석권_수량']}
+              </Card.Text>
+
+              {/* 선수별 현황 테이블 */}
+              <h5 className="mt-4">선수별 현황</h5>
+              {playerMappingData['선수별_현황'].length > 0 ? (
+                <Table striped bordered hover responsive size="sm">
+                  <thead>
+                    <tr>
+                      <th>선수명</th>
+                      <th>매장명</th>
+                      <th>좌석권</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {playerMappingData['선수별_현황'].map((player, idx) => (
+                      <tr key={idx}>
+                        <td>{player['선수명']}</td>
+                        <td>{player['매장명']}</td>
+                        <td>{player['좌석권_보유']}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              ) : (
+                <p className="text-center text-muted">등록된 선수가 없습니다.</p>
+              )}
+            </Card.Body>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };
 
-export default PlayerRegistration; 
+export default PlayerRegistration;

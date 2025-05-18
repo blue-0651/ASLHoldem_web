@@ -114,7 +114,7 @@ const MobileHeader = ({ title, backButton, onBackClick }) => {
   return (
     <>
       {/* 헤더 */}
-      <div className="mobile-header">
+      <div className="asl-mobile-header">
         {backButton ? (
           <button
             className="mobile-nav-button"
@@ -131,7 +131,7 @@ const MobileHeader = ({ title, backButton, onBackClick }) => {
           </button>
         ) : (
           <button
-            className="mobile-nav-button"
+            className="asl-mobile-nav-button"
             onClick={toggleNav}
             style={{
               background: 'none',
@@ -144,11 +144,11 @@ const MobileHeader = ({ title, backButton, onBackClick }) => {
             <i className="fas fa-bars"></i>
           </button>
         )}
-        <h1 className="mobile-header-title">{title}</h1>
+        <h1 className="asl-mobile-header-title">{title}</h1>
         <img
           src="/images/asl_logo.png"
           alt="ASL 로고"
-          className="mobile-header-logo"
+          className="asl-mobile-header-logo"
         />
       </div>
 

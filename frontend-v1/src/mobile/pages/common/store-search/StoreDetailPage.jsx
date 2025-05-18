@@ -95,7 +95,7 @@ const StoreDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="mobile-container">
+      <div className="asl-mobile-container">
         <MobileHeader title="매장 정보" backButton />
         <div className="text-center py-5">
           <Spinner animation="border" variant="primary" />
@@ -107,7 +107,7 @@ const StoreDetailPage = () => {
 
   if (error) {
     return (
-      <div className="mobile-container">
+      <div className="asl-mobile-container">
         <MobileHeader title="매장 정보" backButton />
         <Alert variant="danger" className="m-3">
           {error}
@@ -123,9 +123,9 @@ const StoreDetailPage = () => {
 
   if (!store) {
     return (
-      <div className="mobile-container">
+      <div className="asl-mobile-container">
         <MobileHeader title="매장 정보" backButton />
-        <div className="mobile-empty-state">
+        <div className="asl-mobile-empty-state">
           <i className="fas fa-exclamation-circle mobile-empty-icon"></i>
           <h5>매장 정보를 찾을 수 없습니다</h5>
           <Button variant="primary" onClick={() => navigate(-1)} className="mt-3">
@@ -137,10 +137,10 @@ const StoreDetailPage = () => {
   }
 
   return (
-    <div className="mobile-container">
+    <div className="asl-mobile-container">
       <MobileHeader title={store.name} backButton />
       
-      <div className="mobile-content p-0">
+      <div className="asl-mobile-content p-0">
         {/* 매장 이미지 */}
         <div className="store-image-container position-relative">
           <img 

@@ -84,10 +84,10 @@ const StoreSearchPage = () => {
   };
 
   return (
-    <div className="mobile-container">
+    <div className="asl-mobile-container">
       <MobileHeader title="매장 찾기" />
       
-      <div className="mobile-content p-3">
+      <div className="asl-mobile-dashboard">
         {/* 검색 폼 */}
         <Form onSubmit={handleSearch} className="mb-4">
           <InputGroup>
@@ -96,14 +96,14 @@ const StoreSearchPage = () => {
               placeholder="매장 이름, 지역으로 검색"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="mobile-form-control"
+              className="asl-mobile-form-control"
             />
             <Button 
               variant="primary" 
               type="submit"
               className="d-flex align-items-center"
             >
-              <i className="fas fa-search me-1"></i> 검색
+              <i className="fas fa-search me-1"></i>검색
             </Button>
           </InputGroup>
         </Form>

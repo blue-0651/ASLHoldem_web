@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Button, Card } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated, logout } from '../../../utils/auth';
-import '../../styles/MobileStyles.css';
+//import '../../styles/MobileStyles.css';
 
 const StoreDashboard = () => {
   const [user, setUser] = useState(null);
@@ -82,20 +82,20 @@ const StoreDashboard = () => {
   };
 
   return (
-    <div className="mobile-container">
+    <div className="asl-mobile-container">
       {/* 헤더 */}
-      <div className="mobile-header">
+      <div className="asl-mobile-header">
         <button 
-          className="mobile-nav-button" 
+          className="asl-mobile-nav-button"
           onClick={toggleNav}
         >
           <i className="fas fa-bars"></i>
         </button>
-        <h1 className="mobile-header-title">ASL 홀덤</h1>
+        <h1 className="asl-mobile-header-title">ASL 홀덤</h1>
         <img 
           src="/images/asl_logo.png"
           alt="ASL 로고" 
-          className="mobile-header-logo"
+          className="asl-mobile-header-logo"
         />
       </div>
       
@@ -304,19 +304,17 @@ const StoreDashboard = () => {
       </div>
       
       {/* 메인 컨텐츠 */}
-      <div className="mobile-dashboard">
-        <h2 style={{ fontSize: '18px', marginBottom: '20px' }}>
-          매장 관리 메뉴
-        </h2>
-        
+      <div className="asl-mobile-dashboard">
+        <h5 className="asl-mobile-text mb-3">매장 관리 메뉴</h5>
+
         {/* 매장 관리자 컨텐츠 */}
-        <Card className="mobile-card">
+        <Card className="asl-mobile-card">
           <Card.Body>
-            <div className="mobile-card-title">토너먼트 관리</div>
+            <div className="asl-mobile-card-title">토너먼트 관리</div>
             <p>매장의 토너먼트를 등록하고 관리합니다.</p>
             <Button 
               variant="primary" 
-              className="mobile-btn-primary"
+              className="asl-mobile-btn-primary"
               onClick={() => navigate('/mobile/store/tournament')}
             >
               토너먼트 관리
@@ -324,13 +322,13 @@ const StoreDashboard = () => {
           </Card.Body>
         </Card>
 
-        <Card className="mobile-card">
+        <Card className="asl-mobile-card">
           <Card.Body>
-            <div className="mobile-card-title">매장 정보</div>
+            <div className="asl-mobile-card-title">매장 정보</div>
             <p>매장 정보를 확인하고 수정합니다.</p>
             <Button 
               variant="primary" 
-              className="mobile-btn-primary"
+              className="asl-mobile-btn-primary"
               onClick={() => navigate('/mobile/store/info')}
             >
               매장 정보 관리
@@ -338,13 +336,13 @@ const StoreDashboard = () => {
           </Card.Body>
         </Card>
 
-        <Card className="mobile-card">
+        <Card className="asl-mobile-card">
           <Card.Body>
-            <div className="mobile-card-title">선수 회원 등록</div>
+            <div className="asl-mobile-card-title">선수 회원 등록</div>
             <p>선수 및 회원을 등록하고 관리합니다.</p>
             <Button 
               variant="primary" 
-              className="mobile-btn-primary"
+              className="asl-mobile-btn-primary"
               onClick={() => navigate('/mobile/store/player-registration')}
             >
               선수 회원 등록
