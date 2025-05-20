@@ -1483,9 +1483,13 @@
  ==========================    Different Layout Styles Start     ====================
  ===================================================================================
  ====== [ light menu style start ] ======== */
+// sjhan
+$asl-mobile-body-bg-start: #7a0e29;
+$asl-mobile-body-bg-end: #5c071c;
 
 .pcoded-navbar.menu-light {
-  background-color: $menu-light-background;
+  background: linear-gradient(to bottom, #7a0e29, #5c071c); //$menu-light-background;
+
   color: $menu-light-text-color;
 
   .header-logo {

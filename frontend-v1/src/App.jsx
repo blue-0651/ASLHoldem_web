@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { Suspense, Fragment, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-
 
 // 어드민 관리자 화면
 import LoginPage from './admin/pages/LoginPage';
@@ -25,25 +24,33 @@ import {
 } from './mobile/pages';
 
 // 만든 샘플 페이지.
-import NotFound404 from './views/errors/NotFound404';
+//import NotFound404 from './views/errors/NotFound404';
 import Maintenance from './views/maintenance/Maintenance';
 import MobileSignUpPage from './mobile/pages/common/MobileSignUpPage';
 // import SampleLogin from './views/sample/SampleLogin';
 // import UserLoginPage from './views/sample/UserLoginPage';
 // import StoreLoginPage from './views/sample/StoreLoginPage';
 
-
-
+import { BrowserRouter } from 'react-router-dom';
+import AdminLayout from './layouts/AdminLayout';
+import SamplePage from './views/extra/SamplePage';
 
 function App() {
   // 모바일 디바이스 체크
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   return (
-    <div className="App">
+    <BrowserRouter>
       <Routes>
         {/* 샘플 페이지: 테스트 용으로 만든 페이지 */}
-        <Route path="/404" element={<NotFound404 />} />
+
+        {/* 지연 로딩 화면 테스트*/}
+        <Route
+          path="/404"
+          element={
+            <Suspense fallback={<div>Loading...</div>}>{React.createElement(lazy(() => import('./views/errors/NotFound404')))}</Suspense>
+          }
+        />
         <Route path="/maintenance" element={<Maintenance />} />
 
         {/* 로그인 데모 페이지: 테스트 용으로 만든 페이지 */}
@@ -104,10 +111,11 @@ function App() {
         {/* 보호된 라우트 - 모바일이 아닌 경우에만 적용 */}
         {!isMobile && (
           <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
+            <Route element={<AdminLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/tournaments" element={<TournamentManagement />} />
               <Route path="/stores" element={<StoreManagement />} />
+              <Route path="/sample-page" element={<SamplePage />} />
             </Route>
           </Route>
         )}
@@ -116,7 +124,7 @@ function App() {
         <Route path="/" element={isMobile ? <Navigate to="/mobile/user/dashboard" replace /> : <Navigate to="/dashboard" replace />} />
         <Route path="*" element={isMobile ? <Navigate to="/mobile/user/dashboard" replace /> : <Navigate to="/dashboard" replace />} />
       </Routes>
-    </div>
+    </BrowserRouter>
   );
 }
 

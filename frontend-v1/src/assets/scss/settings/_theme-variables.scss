@@ -31,14 +31,32 @@ $header-light-text-color: #3b4650;
 $menu-dark-background: #3b4650;
 $menu-dark-text-color: #b9c7d4;
 
-$menu-light-background: #fff;
-$menu-light-text-color: #666;
+//$menu-light-background: #fff;
+//$menu-light-text-color: #666;
+//$menu-active-color: $primary-color;
+
+$menu-light-background: #b5002e;
+$menu-light-text-color: #e4dfdf;
 $menu-active-color: $primary-color;
 
+
+$asl-mobile-body-bg: #b5002e; // change
+$asl-mobile-body-bg-start: #7a0e29;
+$asl-mobile-body-bg-end: #5c071c;
+$asl-mobile-text-color: #e4dfdf;
+$asl-mobile-header-bg: #fef8ed; // change
+$asl-mobile-card-bg: bisque; // change
+
+
 // Header background
+//$color-header-name: 'blue';
+//$color-header-color: #4099ff;
+//$color-header-color2: #73b4ff;
 $color-header-name: 'blue';
-$color-header-color: #4099ff;
-$color-header-color2: #73b4ff;
+$color-header-color: #fef8ed;
+$color-header-color2: #fef8ed;
+
+
 
 // Menu background
 $color-menu-name: 'blue';
