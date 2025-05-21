@@ -1613,11 +1613,11 @@ $asl-mobile-body-bg-end: #5c071c;
 
       &:hover {
         span {
-          background-color: #fff;
+          background-color: black;
 
           &:after,
           &:before {
-            background-color: #fff;
+            background-color: black;
           }
         }
       }

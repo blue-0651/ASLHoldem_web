@@ -22,8 +22,6 @@ const AdminLayout = () => {
   const { collapseMenu, layout } = configContext.state;
   const { dispatch } = configContext;
 
-
-
   useOutsideClick(ref, () => {
     if (collapseMenu) {
       dispatch({ type: actionType.COLLAPSE_MENU });
