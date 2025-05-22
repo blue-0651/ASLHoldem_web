@@ -3,6 +3,12 @@ import { Card, Row, Col, Button, InputGroup, Form, Spinner } from 'react-bootstr
 import FeatherIcon from 'feather-icons-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { reqSignUp } from '../../../utils/authService';
+import axios from 'axios';
+
+// API 인스턴스 생성
+const API = axios.create({
+  baseURL: '/api/v1'
+});
 
 const MobileSignUpPage = () => {
   // API 상태 관리
@@ -24,6 +30,11 @@ const MobileSignUpPage = () => {
   // email(메일), password(비번), passwordConfirm(비번확인), Gender(성별), [firstName(이름), lastName(성)], phone(전화번호), birthday(생년월일)
 
   const [checkPassword, setCheckPassword] = useState('');
+  // 사용자명 중복 체크를 위한 상태 관리
+  const [usernameChecked, setUsernameChecked] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState(false);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameMessage, setUsernameMessage] = useState('');
 
   // 로그인
   const navigate = useNavigate();
@@ -36,6 +47,46 @@ const MobileSignUpPage = () => {
       ...formData,
       [name]: value
     });
+
+    // username이 변경되면 중복 체크 상태 초기화
+    if (name === 'username') {
+      setUsernameChecked(false);
+      setUsernameAvailable(false);
+      setUsernameMessage('');
+    }
+  };
+
+  // username 중복 확인 함수
+  const checkUsername = async () => {
+    if (!formData.username.trim()) {
+      setErrors({...errors, username: '사용자 이름을 입력해주세요'});
+      return;
+    }
+
+    setCheckingUsername(true);
+    setUsernameMessage('');
+
+    try {
+      const response = await API.get(`/accounts/users/check_username/`, {
+        params: { username: formData.username }
+      });
+
+      setUsernameChecked(true);
+      setUsernameAvailable(response.data.is_available);
+
+      if (response.data.is_available) {
+        setUsernameMessage('사용할 수 있는 사용자 이름입니다.');
+      } else {
+        setUsernameMessage('이미 사용 중인 사용자 이름입니다.');
+      }
+    } catch (err) {
+      console.error('사용자 이름 확인 오류:', err);
+      setUsernameMessage('사용자 이름 확인 중 오류가 발생했습니다.');
+      setUsernameChecked(false);
+      setUsernameAvailable(false);
+    } finally {
+      setCheckingUsername(false);
+    }
   };
 
   const validate = () => {
@@ -43,6 +94,13 @@ const MobileSignUpPage = () => {
 
     if (!formData.username.trim()) {
       newErrors.username = '사용자 이름은 필수입니다';
+    }
+
+    // 사용자 이름 중복 확인이 필요한 경우
+    if (!usernameChecked) {
+      newErrors.username = '사용자 이름 중복 확인이 필요합니다';
+    } else if (!usernameAvailable) {
+      newErrors.username = '이미 사용 중인 사용자 이름입니다';
     }
 
     if (!formData.email.trim()) {
@@ -205,9 +263,27 @@ const MobileSignUpPage = () => {
                       value={formData.username}
                       onChange={handleChange}
                       isInvalid={!!errors.username}
+                      style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
                     />
+                    <Button 
+                      variant="outline-secondary" 
+                      onClick={checkUsername} 
+                      disabled={checkingUsername || !formData.username.trim()}
+                      style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                    >
+                      {checkingUsername ? 
+                        <Spinner animation="border" size="sm" /> : 
+                        '중복확인'}
+                    </Button>
                     <Form.Control.Feedback type="invalid">{errors.username}</Form.Control.Feedback>
                   </InputGroup>
+                  
+                  {/* 사용자명 중복 체크 결과 메시지 */}
+                  {usernameMessage && (
+                    <div className={`text-${usernameAvailable ? 'success' : 'danger'} small text-start mb-3`}>
+                      {usernameMessage}
+                    </div>
+                  )}
 
                   <InputGroup className="mb-5">
                     <InputGroup.Text>
@@ -302,7 +378,13 @@ const MobileSignUpPage = () => {
                     <Form.Control.Feedback type="invalid">{errors.birthday}</Form.Control.Feedback>
                   </InputGroup>
 
-                  <Button type="submit" variant="primary" size="lg" className="btn-block mt-4 mb-4 w-100" disabled={loading}>
+                  <Button 
+                    type="submit" 
+                    variant="primary" 
+                    size="lg" 
+                    className="btn-block mt-4 mb-4 w-100" 
+                    disabled={loading || !usernameChecked || !usernameAvailable}
+                  >
                     {loading ? <Spinner animation="border" size="sm" /> : '회원가입'}
                   </Button>
                 </Form>
