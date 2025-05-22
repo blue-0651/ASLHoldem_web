@@ -24,13 +24,23 @@ const MobileLoginPage = () => {
       const userType = isUser ? 'user' : 'store';
       const result = await reqLogin(username, password, userType);
 
-      // 로그인 성공 시 홈 페이지로 이동
+      // 로그인 성공 시 적절한 대시보드로 이동
       if (result.success) {
-        // 사용자 유형에 따라 다른 대시보드로 리디렉션
-        if (userType === 'user') {
-          navigate('/mobile/user/dashboard');
-        } else {
+        console.log('로그인 성공:', result);
+        
+        // 매장관리자 여부와 로그인 유형 모두 확인
+        // 1. 사용자가 실제 매장관리자(is_store_owner=true)이면 항상 매장 관리자 대시보드로 이동
+        // 2. 또는 사용자가 매장관리자 유형(userType='store')으로 로그인했으면 매장 관리자 대시보드로 이동
+        if (result.is_store_owner || userType === 'store') {
+          console.log('매장 관리자 대시보드로 이동:', { 
+            is_store_owner: result.is_store_owner, 
+            userType: userType 
+          });
           navigate('/mobile/store/dashboard');
+        } else {
+          // 그 외 일반 사용자 대시보드로 이동
+          console.log('일반 사용자 대시보드로 이동');
+          navigate('/mobile/user/dashboard');
         }
       } else {
         // 로그인 실패 시 에러 메시지 표시
