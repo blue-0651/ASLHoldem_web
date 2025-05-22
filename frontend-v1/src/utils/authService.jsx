@@ -5,6 +5,7 @@ const TOKEN_KEY = 'asl_holdem_access_token';
 const REFRESH_TOKEN_KEY = 'asl_holdem_refresh_token';
 const USER_INFO_KEY = 'asl_holdem_user_info';
 const USER_TYPE_KEY = 'user_type';
+const IS_STORE_OWNER_KEY = 'is_store_owner';
 const BASE_URL = 'http://localhost:8000';
 
 // API 엔드포인트
@@ -53,6 +54,7 @@ export const reqLogout = () => {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_INFO_KEY);
   localStorage.removeItem(USER_TYPE_KEY);
+  localStorage.removeItem(IS_STORE_OWNER_KEY);
 };
 
 // 로그인 함수
@@ -96,11 +98,24 @@ export const reqLogin = async (username, password, userType = 'user') => {
     localStorage.setItem(USER_TYPE_KEY, userType);
 
     const userInfo = await reqGetUserInfo(username, getToken());
-    localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+    
+    if (userInfo.success && userInfo.data) {
+      // is_store_owner 값을 로컬 스토리지에 저장
+      const isStoreOwner = userInfo.data.is_store_owner === true;
+      localStorage.setItem(IS_STORE_OWNER_KEY, isStoreOwner.toString());
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo.data));
+      
+      console.log('사용자 정보 저장 완료:', {
+        username,
+        is_store_owner: isStoreOwner,
+        user_type: userType
+      });
+    }
 
     return {
       success: true,
-      user: userInfo
+      user: userInfo.data,
+      is_store_owner: userInfo.data?.is_store_owner === true
     };
   } catch (error) {
     console.log('로그인 실패:', error);
