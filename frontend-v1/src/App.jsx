@@ -28,6 +28,8 @@ import TournamentsList from './mobile/pages/common/tournaments-list/TournamentsL
 import Reservations from './mobile/pages/common/reservations/Reservations';
 import StoreSearchPage from './mobile/pages/common/store-search/StoreSearchPage';
 import StoreDetailPage from './mobile/pages/common/store-search/StoreDetailPage';
+import Settings from './mobile/pages/common/Settings';
+import UnderConstruction from './mobile/pages/common/UnderConstruction';
 
 // 만든 샘플 페이지.
 //import NotFound404 from './views/errors/NotFound404';
@@ -100,7 +102,7 @@ function App() {
             <Route path="reservations" element={<Reservations />} />
             <Route path="store-search" element={<StoreSearchPage />} />
             <Route path="store/:id" element={<StoreDetailPage />} />
-            <Route path="settings" element={<div>환경설정 페이지</div>} />
+            <Route path="settings" element={<Settings />} />
           </Route>
           <Route index element={<Navigate to="/mobile/login" replace />} />
           <Route path="*" element={<Navigate to="/mobile/login" replace />} />
@@ -112,10 +114,17 @@ function App() {
         {/* 일반 사용자 라우트 */}
         <Route path="/mobile/common/tournaments-list" element={<TournamentsList />} />
         <Route path="/mobile/common/reservations" element={<Reservations />} />
+        <Route path="/mobile/common/settings" element={<Settings />} />
 
         {/* 매장 검색 관련 라우트 */}
         <Route path="/mobile/common/store-search" element={<StoreSearchPage />} />
         <Route path="/mobile/common/store-detail/:storeId" element={<StoreDetailPage />} />
+
+        {/* 공사중 페이지 - 개발되지 않은 기능들 */}
+        <Route path="/mobile/common/under-construction" element={<UnderConstruction />} />
+        <Route path="/mobile/common/notices" element={<UnderConstruction title="공지사항" message="공지사항 페이지는 현재 개발 중입니다." />} />
+        <Route path="/mobile/common/profile" element={<UnderConstruction title="프로필" message="프로필 페이지는 현재 개발 중입니다." />} />
+        <Route path="/mobile/common/help" element={<UnderConstruction title="도움말" message="도움말 페이지는 현재 개발 중입니다." />} />
 
         {/* 공개 라우트 - 모바일이 아닌 경우에만 적용 */}
         {/* Login --> LoginPage 변경 */}

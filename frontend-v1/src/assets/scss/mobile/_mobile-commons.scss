@@ -415,6 +415,222 @@ $asl-mobile-card-bg: #fff; // change for better readability
   font-weight: 600;
 }
 
+/* 모바일 메뉴 드로워 스타일 */
+.asl-mobile-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 80%;
+  max-width: 320px;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 101;
+  overflow-y: auto;
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.15);
+  transform: translateX(-100%);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  -webkit-overflow-scrolling: touch;
+  
+  &.open {
+    transform: translateX(0);
+  }
+}
+
+.asl-mobile-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  
+  &.open {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.asl-mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  padding: 20px 15px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  position: relative;
+  color: white;
+  
+  &.store {
+    background: #2c3e50;
+  }
+  
+  &.user {
+    background: $asl-mobile-body-bg;
+  }
+  
+  .drawer-icon {
+    width: 40px;
+    margin-right: 12px;
+    text-align: center;
+    font-size: 20px;
+  }
+  
+  .drawer-title {
+    flex: 1;
+    
+    .main-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0;
+    }
+    
+    .sub-title {
+      font-size: 14px;
+      opacity: 0.9;
+      margin: 0;
+    }
+  }
+  
+  .close-button {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+    
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+}
+
+.asl-mobile-drawer-user-info {
+  padding: 15px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  
+  .user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: #777;
+    font-size: 16px;
+  }
+  
+  .user-details {
+    .username {
+      font-weight: 600;
+      font-size: 15px;
+      margin: 0;
+      color: #333;
+    }
+    
+    .email {
+      font-size: 13px;
+      color: #777;
+      margin: 0;
+    }
+  }
+}
+
+.asl-mobile-drawer-menu {
+  padding: 10px 0;
+  
+  .menu-item {
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    background-color: transparent;
+    transition: background-color 0.2s ease;
+    
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    &.active {
+      background-color: #f0f0f0;
+      border-left: 4px solid $asl-mobile-body-bg;
+    }
+    
+    .menu-icon {
+      width: 24px;
+      font-size: 18px;
+      text-align: center;
+      margin-right: 15px;
+      
+      &.store {
+        color: #2c3e50;
+      }
+      
+      &.user {
+        color: $asl-mobile-body-bg;
+      }
+      
+      &.logout {
+        color: #e74c3c;
+      }
+    }
+    
+    .menu-text {
+      font-size: 16px;
+      color: #333;
+      
+      &.logout {
+        color: #e74c3c;
+      }
+    }
+  }
+}
+
+.asl-mobile-nav-toggle {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #333;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  &:active {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
 /* 기존 mobile- 접두사 클래스들도 지원 (하위 호환성) */
 /* 기본 스타일 */
 body {
