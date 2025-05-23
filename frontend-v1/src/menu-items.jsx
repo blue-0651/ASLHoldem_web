@@ -75,16 +75,6 @@ const menuItems = {
           url: '/sample-page',
           classes: 'nav-item',
           icon: 'feather icon-sidebar'
-        },
-        {
-          id: 'documentation',
-          title: 'Documentation',
-          type: 'item',
-          icon: 'feather icon-help-circle',
-          classes: 'nav-item',
-          url: 'https://www.examples.com/',
-          target: true,
-          external: true
         }
       ]
     }
