@@ -26,7 +26,7 @@ BACKEND_PID=$!
 echo "백엔드가 PID $BACKEND_PID로 실행되었습니다."
 
 # 프론트엔드 실행
-cd ../frontend
+cd ../frontend-v1
 # 프론트엔드 실행 및 로그에 [FRONTEND] 접두사 추가
 npm start 2>&1 | log_with_prefix "FRONTEND" &
 FRONTEND_PID=$!
