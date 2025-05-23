@@ -3,40 +3,15 @@ import { Container, Row, Col, Card, Button, Form, Modal } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated } from '../../../utils/auth';
 import MobileHeader from '../../components/MobileHeader';
+import API from '../../../utils/api';
 
 const Tournament = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
-  const [tournaments, setTournaments] = useState([
-    {
-      id: 1,
-      name: '주간 홀덤 토너먼트',
-      date: '2023-05-15',
-      time: '19:00',
-      buyIn: '30,000원',
-      players: 24,
-      status: 'upcoming'
-    },
-    {
-      id: 2,
-      name: '주말 스페셜 토너먼트',
-      date: '2023-05-20',
-      time: '14:00',
-      buyIn: '50,000원',
-      players: 32,
-      status: 'upcoming'
-    },
-    {
-      id: 3,
-      name: 'VIP 멤버십 토너먼트',
-      date: '2023-05-21',
-      time: '16:00',
-      buyIn: '100,000원',
-      players: 16,
-      status: 'upcoming'
-    }
-  ]);
+  const [tournaments, setTournaments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   const [newTournament, setNewTournament] = useState({
     name: '',
@@ -56,7 +31,93 @@ const Tournament = () => {
     // 사용자 정보 가져오기
     const currentUser = getCurrentUser();
     setUser(currentUser);
+    
+    // 매장 토너먼트 목록 가져오기
+    fetchTournaments();
   }, [navigate]);
+  
+  const fetchTournaments = async () => {
+    try {
+      setLoading(true);
+      console.log('토너먼트 목록 가져오기 시작');
+      
+      const response = await API.get('/store/tournaments/');
+      console.log('토너먼트 목록 응답:', response.data);
+      
+      if (response.data && Array.isArray(response.data)) {
+        setTournaments(response.data);
+      } else {
+        // 서버 응답이 배열이 아닌 경우 기본 데이터 사용
+        setTournaments([
+          {
+            id: 1,
+            name: '주간 홀덤 토너먼트',
+            date: '2023-05-15',
+            time: '19:00',
+            buyIn: '30,000원',
+            players: 24,
+            status: 'upcoming'
+          },
+          {
+            id: 2,
+            name: '주말 스페셜 토너먼트',
+            date: '2023-05-20',
+            time: '14:00',
+            buyIn: '50,000원',
+            players: 32,
+            status: 'upcoming'
+          },
+          {
+            id: 3,
+            name: 'VIP 멤버십 토너먼트',
+            date: '2023-05-21',
+            time: '16:00',
+            buyIn: '100,000원',
+            players: 16,
+            status: 'upcoming'
+          }
+        ]);
+      }
+      
+      setError(null);
+    } catch (err) {
+      console.error('토너먼트 목록 가져오기 오류:', err);
+      setError('토너먼트 목록을 불러오는 중 오류가 발생했습니다.');
+      
+      // 오류 발생 시 기본 데이터 사용
+      setTournaments([
+        {
+          id: 1,
+          name: '주간 홀덤 토너먼트',
+          date: '2023-05-15',
+          time: '19:00',
+          buyIn: '30,000원',
+          players: 24,
+          status: 'upcoming'
+        },
+        {
+          id: 2,
+          name: '주말 스페셜 토너먼트',
+          date: '2023-05-20',
+          time: '14:00',
+          buyIn: '50,000원',
+          players: 32,
+          status: 'upcoming'
+        },
+        {
+          id: 3,
+          name: 'VIP 멤버십 토너먼트',
+          date: '2023-05-21',
+          time: '16:00',
+          buyIn: '100,000원',
+          players: 16,
+          status: 'upcoming'
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNewTournamentChange = (e) => {
     const { name, value } = e.target;
@@ -66,34 +127,61 @@ const Tournament = () => {
     }));
   };
 
-  const handleCreateTournament = () => {
-    // 새 토너먼트 추가 로직 (여기서는 예시로 간단하게 처리)
-    const newId = tournaments.length + 1;
-    const createdTournament = {
-      id: newId,
-      name: newTournament.name,
-      date: newTournament.date,
-      time: newTournament.time,
-      buyIn: newTournament.buyIn,
-      players: 0,
-      status: 'upcoming'
-    };
-    
-    setTournaments([...tournaments, createdTournament]);
-    setNewTournament({
-      name: '',
-      date: '',
-      time: '',
-      buyIn: '',
-      maxPlayers: ''
-    });
-    setShowModal(false);
+  const handleCreateTournament = async () => {
+    try {
+      console.log('토너먼트 생성 시작', newTournament);
+      
+      // API 요청 데이터 구성
+      const tournamentData = {
+        name: newTournament.name,
+        start_date: newTournament.date,
+        start_time: newTournament.time,
+        buy_in: newTournament.buyIn,
+        max_seats: newTournament.maxPlayers
+      };
+      
+      const response = await API.post('/store/tournaments/', tournamentData);
+      console.log('토너먼트 생성 응답:', response.data);
+      
+      // 성공 시 목록에 추가
+      fetchTournaments();
+      
+      // 입력 필드 초기화
+      setNewTournament({
+        name: '',
+        date: '',
+        time: '',
+        buyIn: '',
+        maxPlayers: ''
+      });
+      
+      // 모달 닫기
+      setShowModal(false);
+    } catch (err) {
+      console.error('토너먼트 생성 오류:', err);
+      alert('토너먼트 생성 중 오류가 발생했습니다.');
+    }
+  };
+  
+  const handleCancelTournament = async (tournamentId) => {
+    try {
+      console.log('토너먼트 취소 시작', tournamentId);
+      
+      const response = await API.post(`/store/tournaments/${tournamentId}/cancel/`);
+      console.log('토너먼트 취소 응답:', response.data);
+      
+      // 취소 후 목록 다시 불러오기
+      fetchTournaments();
+    } catch (err) {
+      console.error('토너먼트 취소 오류:', err);
+      alert('토너먼트 취소 중 오류가 발생했습니다.');
+    }
   };
 
   return (
     <div className="asl-mobile-container">
       {/* MobileHeader 컴포넌트 사용 */}
-      <MobileHeader title="토너먼트 관리" backButton={true} />
+      <MobileHeader title="토너먼트 관리" />
       
       {/* 컨텐츠 영역 */}
       <Container className="asl-mobile-content">
@@ -142,7 +230,7 @@ const Tournament = () => {
                       <Button 
                         variant="outline-danger" 
                         size="sm"
-                        onClick={() => console.log('토너먼트 취소:', tournament.id)}
+                        onClick={() => handleCancelTournament(tournament.id)}
                       >
                         취소
                       </Button>

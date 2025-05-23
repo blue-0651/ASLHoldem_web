@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Form, Spinner, Alert, Table } from 'react-bootstrap';
+import { Card, Button, Form, Spinner, Alert, Table, Container, Row, Col } from 'react-bootstrap';
 import axios from 'axios';
+import MobileHeader from '../../components/MobileHeader';
 
 /**
  * 로컬 axios 인스턴스 생성 및 인터셉터 설정
@@ -88,6 +89,8 @@ const PlayerRegistration = () => {
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState('');
   const [playerMappingData, setPlayerMappingData] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
   const navigate = useNavigate();
 
   /**
@@ -169,6 +172,43 @@ const PlayerRegistration = () => {
   };
 
   /**
+   * QR 스캔 시작 핸들러
+   * QR 스캔 버튼을 눌렀을 때 호출됩니다.
+   */
+  const handleStartScan = () => {
+    setIsScanning(true);
+    setScanResult(null);
+    setError(null);
+    
+    // 실제로는 카메라를 활성화하고 QR 코드를 스캔하는 로직이 들어가야 합니다.
+    // 여기서는 시뮬레이션을 위해 3초 후에 스캔 결과를 받았다고 가정합니다.
+    setTimeout(() => {
+      const mockScanResult = {
+        userId: '12345',
+        username: '홍길동',
+        email: 'user@example.com',
+        phone: '010-1234-5678'
+      };
+      
+      setScanResult(mockScanResult);
+      setPlayerData({
+        username: mockScanResult.username,
+        email: mockScanResult.email,
+        phone: mockScanResult.phone,
+        nickname: ''
+      });
+      setIsScanning(false);
+    }, 3000);
+  };
+
+  /**
+   * QR 스캔 취소 핸들러
+   */
+  const handleCancelScan = () => {
+    setIsScanning(false);
+  };
+
+  /**
    * 폼 제출 핸들러
    * 선수 등록 폼을 제출할 때 호출됩니다.
    * 현재는 백엔드 API가 완전히 구현되지 않아 가상의 성공 응답을 시뮬레이션합니다.
@@ -183,7 +223,8 @@ const PlayerRegistration = () => {
       // 백엔드 API 연동 코드는 나중에 구현
       console.log('선수 등록 데이터:', {
         ...playerData,
-        tournament_id: selectedTournament
+        tournament_id: selectedTournament,
+        scanned_user_id: scanResult?.userId
       });
 
       // 가상의 성공 응답
@@ -195,6 +236,7 @@ const PlayerRegistration = () => {
           phone: '',
           nickname: ''
         });
+        setScanResult(null);
         // 성공 후 다시 선수 매핑 정보 로드
         fetchPlayerMapping(selectedTournament);
         setLoading(false);
@@ -208,22 +250,77 @@ const PlayerRegistration = () => {
 
   return (
     <div className="asl-mobile-container">
-      {/* 헤더 영역 */}
-      <div className="asl-mobile-header">
-        <button className="asl-mobile-nav-button" onClick={() => navigate(-1)}>
-          <i className="fas fa-arrow-left"></i>
-        </button>
-        <h1 className="asl-mobile-header-title">선수회원 등록</h1>
-        <div style={{ width: '24px' }}></div> {/* 균형을 위한 빈 공간 */}
-      </div>
-
-      {/* 선수 등록 폼 */}
-      <div className="asl-mobile-dashboard">
-        {/*<h2 className="asl-mobile-text" style={{ fontSize: '18px', marginBottom: '20px' }}>사용자 메뉴</h2>*/}
-        <h5 className="asl-mobile-text mb-3">선수회원 등록</h5>
-
-        <Card className="asl-mobile-card">
+      {/* MobileHeader 컴포넌트 사용 */}
+      <MobileHeader title="선수회원 등록" backButton={true} />
+      
+      <Container className="asl-mobile-content">
+        {/* QR 스캔 영역 */}
+        <Card className="mb-4">
           <Card.Body>
+            <Card.Title>QR 코드 스캔</Card.Title>
+            <Card.Text>
+              사용자의 QR 코드를 스캔하여 토너먼트에 등록하세요.
+            </Card.Text>
+            
+            {isScanning ? (
+              <div>
+                <div style={{
+                  width: '100%', 
+                  height: '250px', 
+                  background: '#000',
+                  position: 'relative',
+                  marginBottom: '15px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    width: '200px',
+                    height: '200px',
+                    border: '2px solid #fff',
+                    borderRadius: '10px'
+                  }}></div>
+                  <Spinner animation="border" variant="light" />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '10px',
+                    color: 'white',
+                    fontSize: '14px'
+                  }}>QR 코드 스캔 중...</div>
+                </div>
+                <Button 
+                  variant="secondary" 
+                  onClick={handleCancelScan} 
+                  className="w-100">
+                  스캔 취소
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                variant="primary" 
+                onClick={handleStartScan} 
+                className="w-100"
+                disabled={loading}>
+                <i className="fas fa-qrcode me-2"></i>
+                QR 코드 스캔 시작
+              </Button>
+            )}
+            
+            {scanResult && (
+              <Alert variant="success" className="mt-3 mb-0">
+                <strong>스캔 완료!</strong> 사용자 정보가 자동으로 입력되었습니다.
+              </Alert>
+            )}
+          </Card.Body>
+        </Card>
+
+        {/* 선수 등록 폼 */}
+        <Card className="mb-4">
+          <Card.Body>
+            <Card.Title>선수회원 등록</Card.Title>
+            
             {success && (
               <Alert variant="success" className="mb-3">
                 선수회원이 성공적으로 등록되었습니다.
@@ -299,63 +396,60 @@ const PlayerRegistration = () => {
               </Form.Group>
 
               {/* 제출 버튼 */}
-              <div className="d-grid gap-2 mt-4">
-                <Button variant="primary" type="submit" disabled={loading} className="mobile-btn-primary">
-                  {loading ? (
-                    <>
-                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
-                      처리 중...
-                    </>
-                  ) : (
-                    '선수회원 등록하기'
-                  )}
+              <div className="d-grid gap-2">
+                <Button variant="primary" type="submit" disabled={loading}>
+                  {loading ? <Spinner animation="border" size="sm" /> : "선수회원 등록"}
                 </Button>
               </div>
             </Form>
           </Card.Body>
         </Card>
 
-        {/* 선수 매핑 정보 표시 */}
-        {playerMappingData && (
-          <Card className="mobile-card mt-3">
-            <Card.Body>
-              {/* 토너먼트 정보 */}
-              <Card.Title>토너먼트: {playerMappingData['토너먼트명']}</Card.Title>
-              <Card.Subtitle className="mb-2 text-muted">
-                시작시간: {new Date(playerMappingData['토너먼트_시작시간']).toLocaleString()}
-              </Card.Subtitle>
-              <Card.Text>
-                좌석권: {playerMappingData['배포된_좌석권_수량']} / {playerMappingData['총_좌석권_수량']}
-              </Card.Text>
-
-              {/* 선수별 현황 테이블 */}
-              <h5 className="mt-4">선수별 현황</h5>
-              {playerMappingData['선수별_현황'].length > 0 ? (
-                <Table striped bordered hover responsive size="sm">
+        {/* 이미 등록된 선수 목록 섹션 */}
+        <Card>
+          <Card.Body>
+            <Card.Title>등록된 선수 목록</Card.Title>
+            {playerMappingData ? (
+              <div className="table-responsive">
+                <Table striped hover size="sm">
                   <thead>
                     <tr>
-                      <th>선수명</th>
-                      <th>매장명</th>
-                      <th>좌석권</th>
+                      <th>이름</th>
+                      <th>등록일시</th>
+                      <th>상태</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {playerMappingData['선수별_현황'].map((player, idx) => (
-                      <tr key={idx}>
-                        <td>{player['선수명']}</td>
-                        <td>{player['매장명']}</td>
-                        <td>{player['좌석권_보유']}</td>
+                    {playerMappingData.players && playerMappingData.players.length > 0 ? (
+                      playerMappingData.players.map((player, idx) => (
+                        <tr key={idx}>
+                          <td>{player.name}</td>
+                          <td>{new Date(player.registered_at).toLocaleString()}</td>
+                          <td>
+                            <span className={`badge ${player.status === 'active' ? 'bg-success' : 'bg-secondary'}`}>
+                              {player.status === 'active' ? '활성' : '비활성'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="3" className="text-center">등록된 선수가 없습니다.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </Table>
-              ) : (
-                <p className="text-center text-muted">등록된 선수가 없습니다.</p>
-              )}
-            </Card.Body>
-          </Card>
-        )}
-      </div>
+              </div>
+            ) : loading ? (
+              <div className="text-center p-3">
+                <Spinner animation="border" />
+              </div>
+            ) : (
+              <p className="text-center mb-0 text-muted">데이터를 불러올 수 없습니다.</p>
+            )}
+          </Card.Body>
+        </Card>
+      </Container>
     </div>
   );
 };
