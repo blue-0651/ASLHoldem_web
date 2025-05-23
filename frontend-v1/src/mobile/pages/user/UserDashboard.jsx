@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, isAuthenticated } from '../../../utils/auth';
+import { getCurrentUser, isAuthenticated, logout } from '../../../utils/auth';
 import MobileHeader from '../../components/MobileHeader';
-//import '../../styles/MobileStyles.css';
+// MobileStyles.css는 _mobile-commons.scss로 통합됨
 
 const UserDashboard = () => {
   const [user, setUser] = useState(null);

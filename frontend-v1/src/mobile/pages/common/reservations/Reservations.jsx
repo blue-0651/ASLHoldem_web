@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Spinner, Badge, Tab, Tabs } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Spinner, Badge, Tab, Tabs } from 'react-bootstrap';
 import axios from 'axios';
-import '../../../styles/MobileStyles.css';
+import MobileHeader from '../../../components/MobileHeader';
 
 // 간소화된 API 인스턴스 생성
 const API = axios.create({

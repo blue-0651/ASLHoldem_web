@@ -1,10 +1,10 @@
 //매장관리자 대시보드
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Button, Card } from 'react-bootstrap';
+import { Container, Row, Col, Button, Card, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated, logout } from '../../../utils/auth';
 import MobileHeader from '../../components/MobileHeader';
-//import '../../styles/MobileStyles.css';
+// MobileStyles.css는 _mobile-commons.scss로 통합됨
 
 const StoreDashboard = () => {
   const [user, setUser] = useState(null);

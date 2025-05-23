@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated, logout } from '../../utils/auth';
-import '../styles/MobileStyles.css';
+import { Navbar, Container } from 'react-bootstrap';
 
 /**
  * 모바일 화면의 헤더 컴포넌트
@@ -63,48 +63,30 @@ const MobileHeader = ({ title, backButton, onBackClick }) => {
   };
 
   // 메뉴 항목 정의
-  const getMenuData = () => {
-    const menuItems = {
-      main: {
-        title: "메인 메뉴",
-        items: [
-          { name: "홈", href: userType === 'store' ? "/mobile/store/dashboard" : "/mobile/user/dashboard", icon: "fas fa-home" }
-        ]
-      },
-      settings: {
-        title: "설정",
-        items: [
-          { name: "환경 설정", href: "/mobile/common/settings", icon: "fas fa-cog" },
-          { name: "공지사항", href: "/mobile/common/notices", icon: "fas fa-bullhorn" },
-          { name: "로그아웃", href: "#", icon: "fas fa-sign-out-alt", onClick: handleLogout }
-        ]
-      }
-    };
-
-    // 사용자 타입에 따라 메뉴 다르게 표시
+  const getMenuItems = () => {
+    // 매장관리자 메뉴 (요청한 4가지 항목)
     if (userType === 'store') {
-      menuItems.store = {
-        title: "매장 관리",
-        items: [
-          { name: "토너먼트 관리", href: "/mobile/store/tournament", icon: "fas fa-trophy" },
-          { name: "매장 정보", href: "/mobile/store/info", icon: "fas fa-store" }
-        ]
-      };
-    } else {
-      menuItems.user = {
-        title: "사용자 메뉴",
-        items: [
-          { name: "토너먼트 일정", href: "/mobile/common/tournaments-list", icon: "fas fa-calendar-alt" },
-          { name: "내 예약", href: "/mobile/common/reservations", icon: "fas fa-ticket-alt" },
-          { name: "매장 찾기", href: "/mobile/common/store-search", icon: "fas fa-search-location" }
-        ]
-      };
+      return [
+        { name: "매장정보", href: "/mobile/store/info", icon: "fas fa-store" },
+        { name: "토너먼트 관리", href: "/mobile/store/tournament", icon: "fas fa-trophy" },
+        { name: "선수회원 등록", href: "/mobile/store/player-registration", icon: "fas fa-qrcode" },
+        { name: "환경설정", href: "/mobile/common/settings", icon: "fas fa-cog" },
+        { name: "로그아웃", href: "#", icon: "fas fa-sign-out-alt", onClick: handleLogout }
+      ];
+    } 
+    // 일반 사용자 메뉴
+    else {
+      return [
+        { name: "토너먼트 일정", href: "/mobile/common/tournaments-list", icon: "fas fa-calendar-alt" },
+        { name: "내 예약", href: "/mobile/common/reservations", icon: "fas fa-ticket-alt" },
+        { name: "매장 찾기", href: "/mobile/common/store-search", icon: "fas fa-search-location" },
+        { name: "환경 설정", href: "/mobile/common/settings", icon: "fas fa-cog" },
+        { name: "로그아웃", href: "#", icon: "fas fa-sign-out-alt", onClick: handleLogout }
+      ];
     }
-
-    return menuItems;
   };
 
-  const menuData = getMenuData();
+  const menuItems = getMenuItems();
 
   // 현재 페이지가 활성화된 메뉴인지 확인
   const isActive = (path) => {
@@ -145,11 +127,7 @@ const MobileHeader = ({ title, backButton, onBackClick }) => {
           </button>
         )}
         <h1 className="asl-mobile-header-title">{title}</h1>
-        <img
-          src="/images/asl_logo.png"
-          alt="ASL 로고"
-          className="asl-mobile-header-logo"
-        />
+        <div style={{ width: '24px' }}></div> {/* 균형을 위한 빈 공간 */}
       </div>
 
       {/* 오버레이 */}
@@ -204,15 +182,9 @@ const MobileHeader = ({ title, backButton, onBackClick }) => {
             color: 'white'
           }}
         >
-          <img
-            src="/images/asl_logo.png"
-            alt="ASL 로고"
-            style={{
-              width: '40px',
-              height: '40px',
-              marginRight: '12px'
-            }}
-          />
+          <div style={{ width: '40px', marginRight: '12px', textAlign: 'center' }}>
+            <i className={userType === 'store' ? "fas fa-store fa-lg" : "fas fa-user fa-lg"}></i>
+          </div>
           <div>
             <div style={{ fontSize: '18px', fontWeight: '700' }}>
               ASL 홀덤
@@ -275,44 +247,40 @@ const MobileHeader = ({ title, backButton, onBackClick }) => {
           </div>
         )}
 
-        {/* 메뉴 항목 렌더링 */}
-        {Object.keys(menuData).map((sectionKey) => {
-          const section = menuData[sectionKey];
-          return (
-            <div key={sectionKey}>
-              <div
-                style={{
-                  padding: '10px 15px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#777',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  backgroundColor: '#f5f5f5'
+        {/* 메뉴 항목 */}
+        <div style={{ padding: '10px 0' }}>
+          {menuItems.map((item, index) => (
+            <div
+              key={index}
+              style={{
+                padding: '15px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+                backgroundColor: isActive(item.href) ? '#f0f0f0' : 'transparent',
+              }}
+              onClick={() => {
+                if (item.onClick) {
+                  item.onClick();
+                } else {
+                  navigate(item.href);
+                }
+                setIsNavOpen(false);
+              }}
+            >
+              <i 
+                className={item.icon} 
+                style={{ 
+                  width: '24px', 
+                  color: userType === 'store' ? '#2c3e50' : '#3498db',
+                  fontSize: '18px'
                 }}
-              >
-                {section.title}
-              </div>
-              {section.items.map((item, index) => (
-                <div
-                  key={index}
-                  className={`mobile-drawer-item ${isActive(item.href) ? 'active' : ''}`}
-                  onClick={() => {
-                    if (item.onClick) {
-                      item.onClick();
-                    } else {
-                      navigate(item.href);
-                    }
-                    setIsNavOpen(false);
-                  }}
-                >
-                  <i className={item.icon}></i>
-                  <span className="mobile-drawer-text">{item.name}</span>
-                </div>
-              ))}
+              ></i>
+              <span style={{ marginLeft: '15px', fontSize: '16px' }}>{item.name}</span>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
     </>
   );
