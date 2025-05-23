@@ -39,12 +39,11 @@ const NavBar = () => {
     moreClass = [...moreClass, 'on'];
     collapseClass = [...collapseClass, 'd-block'];
   }
-
   let navBar = (
     <React.Fragment>
       <div className="m-header">
         <Link to="#" className={toggleClass.join(' ')} id="mobile-collapse" onClick={navToggleHandler}>
-          <span />
+          <i className="feather icon-menu" style={{ fontSize: '24px', color: 'black' }} />
         </Link>
         <Link to="#" className="b-brand">
           <img id="main-logo" src={logo} alt="" className="logo" />
