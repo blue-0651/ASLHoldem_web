@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 
 import FeatherIcon from 'feather-icons-react';
 import aslLogo from 'assets/images/asl-logo-120.png';
-import { reqGetLoginUserType, reqIsAuthenticated, reqLogin } from '../../utils/authService';
+import { reqGetLoginUserType, reqIsAuthenticated, reqLoginWithPhone } from '../../utils/authService';
 
 // TODO(SJHAN): Login.js 과 동일한 동작을 하는 코드로 화면 스타일만 변경
 const LoginPage = () => {
-  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,18 +27,18 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(`[MgrLoginPage] Login attempt for user: ${username}`);
+    console.log(`[MgrLoginPage] Login attempt for user: ${phone}`);
 
     setIsLoading(true);
     setError('');
 
     try {
       const userType = 'admin';
-      const result = await reqLogin(username, password, userType);
+      const result = await reqLoginWithPhone(phone, password, userType);
 
       if (result.success) {
         // 로그인 성공 시 대시보드로 이동
-        console.log(`[MgrLoginPage] Login successful for user: ${username}`);
+        console.log(`[MgrLoginPage] Login successful for user: ${phone}`);
         navigate('/dashboard');
       } else if (result.error) {
         // 로그인 실패 시 에러 메시지 표시
@@ -74,9 +74,9 @@ const LoginPage = () => {
                         </InputGroup.Text>
                         <Form.Control
                           type="text"
-                          placeholder="관리자 ID 입력"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
+                          placeholder="PHONE"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
                         />
                       </InputGroup>
                     </div>

@@ -57,6 +57,66 @@ export const reqLogout = () => {
   localStorage.removeItem(IS_STORE_OWNER_KEY);
 };
 
+
+export const reqLoginWithPhone = async (phone, password, userType = 'user') => {
+  try {
+    if (isMobileDevice() && userType === 'admin') {
+      reqLogout();
+      return {
+        success: false,
+        error: { detail: '모바일에서는 관리자 로그인이 불가능합니다.' }
+      };
+    }
+
+    const apiService = axios.create();
+
+    if (reqIsAuthenticated()) {
+      reqLogout();
+    }
+
+    const response = await apiService.post(getLoginEndpoint(userType), {
+      phone,
+      password
+    });
+
+    // 로그 출력
+    console.log('Login attempt:', {
+      phone,
+      passwordLength: password.length,
+      userType,
+      endpoint: getLoginEndpoint(userType)
+    });
+
+    const { access, refresh } = response.data || {};
+    if (!access || !refresh) {
+      return {
+        success: false,
+        error: '토큰 정보가 응답에 포함되어 있지 않습니다.'
+      };
+    }
+
+    localStorage.setItem(TOKEN_KEY, access);
+    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+    localStorage.setItem(USER_TYPE_KEY, userType);
+
+    return {
+      success: true,
+      response: response.data
+    };
+  } catch (error) {
+    console.log('로그인 실패:', error);
+
+    // 로그인 실패 시 로컬 스토리지에서 토큰 제거
+    reqLogout();
+
+    return {
+      success: false,
+      error: error.response?.data || { detail: '로그인에 실패했습니다.' }
+    };
+  }
+};
+
+
 // 로그인 함수
 export const reqLogin = async (phone, password, userType = 'user') => {
   try {
