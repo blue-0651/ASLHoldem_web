@@ -1,13 +1,13 @@
 const menuItems = {
   items: [
     {
-      id: 'navigation',
+      id: 'navigation-admin',
       title: 'ASL ADMIN 메뉴',
       type: 'group',
       icon: 'icon-navigation',
       children: [
         {
-          id: 'dashboard',
+          id: 'dashboard-admin',
           title: '대시보드',
           type: 'item',
           icon: 'feather icon-home',
@@ -16,13 +16,13 @@ const menuItems = {
       ]
     },
     {
-      id: 'navigation',
+      id: 'navigation-tournament',
       title: '토너먼트',
       type: 'group',
       icon: 'icon-navigation',
       children: [
         {
-          id: 'dashboard',
+          id: 'dashboard-tournament',
           title: '토너먼트 관리',
           type: 'item',
           icon: 'feather icon-home',
@@ -31,13 +31,13 @@ const menuItems = {
       ]
     },
     {
-      id: 'navigation',
+      id: 'navigation-store',
       title: '매장',
       type: 'group',
       icon: 'icon-navigation',
       children: [
         {
-          id: 'dashboard',
+          id: 'dashboard-store',
           title: '매장관리',
           type: 'item',
           icon: 'feather icon-box',
@@ -47,13 +47,13 @@ const menuItems = {
     },
 
     {
-      id: 'navigation',
+      id: 'navigation-user',
       title: '사용자',
       type: 'group',
       icon: 'icon-navigation',
       children: [
         {
-          id: 'dashboard',
+          id: 'dashboard-user',
           title: '사용자 관리',
           type: 'item',
           icon: 'feather icon-help-circle',
