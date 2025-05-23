@@ -87,4 +87,4 @@ class TournamentRegistration(models.Model):
         
     def __str__(self):
         """토너먼트 등록 객체를 문자열로 표현할 때 사용자명과 토너먼트명 반환"""
-        return f"{self.user.username} - {self.tournament.name}" 
+        return f"{self.user.phone} - {self.tournament.name}" 

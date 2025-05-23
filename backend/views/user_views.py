@@ -17,57 +17,129 @@ User = get_user_model()
 
 # 매장 관리자용 토큰 시리얼라이저
 class StoreManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = 'phone'
+    
+    def validate(self, attrs):
+        phone = attrs.get('phone')
+        password = attrs.get('password')
+        
+        if not phone or not password:
+            raise serializers.ValidationError("전화번호와 비밀번호가 필요합니다.")
+        
+        try:
+            user = User.objects.get(phone=phone)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
+        
+        if not user.check_password(password):
+            raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
+        
+        if not user.is_active:
+            raise serializers.ValidationError("비활성화된 계정입니다.")
+        
+        if not user.is_store_owner:
+            raise serializers.ValidationError("매장 관리자 권한이 없습니다.")
+        
+        # 직접 토큰 생성 (super().validate() 호출 제거)
+        refresh = self.get_token(user)
+        
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+    
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        
-        # 매장 관리자인지 확인 (is_store_owner 필드 사용)
-        if not user.is_store_owner:
-            raise serializers.ValidationError({
-                "detail": "매장 관리자 권한이 없습니다."
-            })
-        
-        # 토큰에 추가 정보 담기
         token['user_type'] = 'store_manager'
-        token['username'] = user.username
+        token['phone'] = user.phone
+        token['nickname'] = user.nickname
         token['email'] = user.email if user.email else ''
         token['is_store_owner'] = user.is_store_owner
         token['role'] = user.role
-        
         return token
 
 # 일반 사용자용 토큰 시리얼라이저
 class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = 'phone'
+    
+    def validate(self, attrs):
+        phone = attrs.get('phone')
+        password = attrs.get('password')
+        
+        if not phone or not password:
+            raise serializers.ValidationError("전화번호와 비밀번호가 필요합니다.")
+        
+        try:
+            user = User.objects.get(phone=phone)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
+        
+        if not user.check_password(password):
+            raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
+        
+        if not user.is_active:
+            raise serializers.ValidationError("비활성화된 계정입니다.")
+        
+        # 직접 토큰 생성
+        refresh = self.get_token(user)
+        
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+    
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        
-        # 토큰에 추가 정보 담기
         token['user_type'] = 'regular_user'
-        token['username'] = user.username
+        token['phone'] = user.phone
+        token['nickname'] = user.nickname
         token['email'] = user.email if user.email else ''
-        
         return token
 
 # 관리자용 토큰 시리얼라이저
 class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = 'phone'
+    
+    def validate(self, attrs):
+        phone = attrs.get('phone')
+        password = attrs.get('password')
+        
+        if not phone or not password:
+            raise serializers.ValidationError("전화번호와 비밀번호가 필요합니다.")
+        
+        try:
+            user = User.objects.get(phone=phone)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
+        
+        if not user.check_password(password):
+            raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
+        
+        if not user.is_active:
+            raise serializers.ValidationError("비활성화된 계정입니다.")
+        
+        if not (user.is_staff or user.is_superuser):
+            raise serializers.ValidationError("관리자 권한이 없습니다.")
+        
+        # 직접 토큰 생성
+        refresh = self.get_token(user)
+        
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+    
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        
-        # 관리자 권한 확인 (수정: is_staff 또는 is_superuser 둘 중 하나 이상이면 통과)
-        if not (user.is_staff or user.is_superuser):
-            raise serializers.ValidationError({
-                "detail": "관리자 권한이 없습니다."
-            })
-        
-        # 토큰에 추가 정보 담기
         token['user_type'] = 'admin'
-        token['username'] = user.username
+        token['phone'] = user.phone
+        token['nickname'] = user.nickname
         token['email'] = user.email if user.email else ''
         token['is_staff'] = user.is_staff
         token['is_superuser'] = user.is_superuser
-        
         return token
 
 # 매장 관리자용 토큰 뷰
@@ -170,6 +242,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
     사용자 정보를 위한 시리얼라이저 - 모든 필드 포함
     """
+    nickname = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     password = serializers.CharField(write_only=True, required=False)
     tournament_registrations = UserRegistrationSerializer(source='tournament_registrations.all', many=True, read_only=True)
     total_registrations = serializers.SerializerMethodField()
@@ -186,11 +259,11 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name', 'password', 
+            'id', 'phone', 'nickname', 'email', 'first_name', 'last_name', 'password', 
             'is_active', 'is_staff', 'is_superuser', 'date_joined', 'last_login',
             'tournament_registrations', 'total_registrations', 'total_checked_in',
             'last_activity', 'total_spent', 'groups', 'groups_list',
-            'user_permissions', 'user_permissions_list', 'phone', 'is_store_owner',
+            'user_permissions', 'user_permissions_list', 'is_store_owner',
             'birth_date', 'gender'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login', 'tournament_registrations',
@@ -261,7 +334,7 @@ class UserStatsSerializer(serializers.Serializer):
     """
     사용자 통계 정보 시리얼라이저
     """
-    username = serializers.CharField()
+    phone = serializers.CharField()
     email = serializers.EmailField()
     tournaments_count = serializers.IntegerField()
     checked_in_count = serializers.IntegerField()
@@ -292,20 +365,16 @@ class UserViewSet(viewsets.ViewSet):
         사용자 정보를 조회합니다.
         """
         user_id = request.data.get('user_id')
-        username = request.data.get('username')
-        
-        # 사용자 ID나 사용자명 중 하나는 필요
-        if not user_id and not username:
-            return Response({"error": "사용자 ID 또는 사용자명이 필요합니다."}, 
+        phone = request.data.get('phone')
+        if not user_id and not phone:
+            return Response({"error": "사용자 ID 또는 전화번호가 필요합니다."}, 
                            status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # ID로 조회
             if user_id:
                 user = User.objects.get(id=user_id)
-            # 사용자명으로 조회
             else:
-                user = User.objects.get(username=username)
+                user = User.objects.get(phone=phone)
             
             serializer = UserSerializer(user)
             return Response(serializer.data)
@@ -353,7 +422,7 @@ class UserViewSet(viewsets.ViewSet):
             user.is_active = False
             user.save()
             
-            return Response({"message": f"사용자 {user.username}가 비활성화되었습니다."}, 
+            return Response({"message": f"사용자 {user.phone}가 비활성화되었습니다."}, 
                           status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({"error": "해당 사용자를 찾을 수 없습니다."}, 
@@ -393,7 +462,7 @@ class UserViewSet(viewsets.ViewSet):
         for user in users:
             total_spent = sum(reg.paid_amount for reg in user.tournament_registrations.all() if reg.paid_amount)
             stats.append({
-                'username': user.username,
+                'phone': user.phone,
                 'email': user.email,
                 'tournaments_count': user.tournaments_count,
                 'checked_in_count': user.checked_in_count,
@@ -426,14 +495,14 @@ class UserViewSet(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
     
-    @action(detail=False, methods=['get'], url_path='check_username')
-    def check_username(self, request):
+    @action(detail=False, methods=['get'], url_path='check_phone')
+    def check_phone(self, request):
         """
-        username 중복 여부를 확인하는 API
-        쿼리 파라미터로 username을 전달하면 사용 가능 여부를 반환
+        phone 중복 여부를 확인하는 API
+        쿼리 파라미터로 phone을 전달하면 사용 가능 여부를 반환
         """
-        username = request.query_params.get('username')
-        if not username:
-            return Response({'error': 'username 파라미터가 필요합니다.'}, status=status.HTTP_400_BAD_REQUEST)
-        exists = User.objects.filter(username=username).exists()
-        return Response({'username': username, 'is_available': not exists}) 
+        phone = request.query_params.get('phone')
+        if not phone:
+            return Response({'error': 'phone 파라미터가 필요합니다.'}, status=status.HTTP_400_BAD_REQUEST)
+        exists = User.objects.filter(phone=phone).exists()
+        return Response({'phone': phone, 'is_available': not exists}) 

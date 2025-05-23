@@ -5,9 +5,10 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    nickname = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     class Meta:
         model = User
-        fields = ['id', 'username', 'email']
+        fields = ['id', 'phone', 'nickname', 'email']
 
 class TournamentSerializer(serializers.ModelSerializer):
     store_name = serializers.CharField(source='store.name', read_only=True)
@@ -24,12 +25,13 @@ class TournamentRegistrationSerializer(serializers.ModelSerializer):
     tournament_start_time = serializers.DateTimeField(source='tournament.start_time', read_only=True)
     tournament_status = serializers.CharField(source='tournament.status', read_only=True)
     store_name = serializers.CharField(source='tournament.store.name', read_only=True)
-    username = serializers.CharField(source='user.username', read_only=True)
+    nickname = serializers.CharField(source='user.nickname', read_only=True, required=False, allow_null=True, allow_blank=True)
+    phone = serializers.CharField(source='user.phone', read_only=True)
     
     class Meta:
         model = TournamentRegistration
         fields = ['id', 'tournament', 'tournament_name', 'tournament_start_time', 
-                  'tournament_status', 'user', 'username', 'store_name',
+                  'tournament_status', 'user', 'nickname', 'phone', 'store_name',
                   'paid_amount', 'registered_at', 'checked_in', 'checked_in_at', 'has_ticket']
         read_only_fields = ['id', 'registered_at', 'checked_in_at']
 
@@ -37,7 +39,7 @@ class TournamentParticipantsCountSerializer(serializers.Serializer):
     tournament_name = serializers.CharField(required=True, help_text="조회할 토너먼트 이름")
 
 class TournamentRegistrationSearchSerializer(serializers.Serializer):
-    username = serializers.CharField(required=False, help_text="검색할 사용자 이름")
+    phone = serializers.CharField(required=False, help_text="검색할 사용자 전화번호")
     tournament_name = serializers.CharField(required=False, help_text="검색할 토너먼트 이름")
 
 class TournamentRegistrationIDSerializer(serializers.Serializer):

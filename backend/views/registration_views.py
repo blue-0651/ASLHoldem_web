@@ -69,19 +69,19 @@ class TournamentRegistrationViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        username = serializer.validated_data.get('username')
+        nickname = serializer.validated_data.get('nickname')
         tournament_name = serializer.validated_data.get('tournament_name')
         
-        if not username and not tournament_name:
-            return Response({"error": "사용자 이름 또는 토너먼트 이름이 필요합니다."}, 
+        if not nickname and not tournament_name:
+            return Response({"error": "사용자 닉네임 또는 토너먼트 이름이 필요합니다."}, 
                            status=status.HTTP_400_BAD_REQUEST)
         
         query = TournamentRegistration.objects.all().select_related(
             'tournament', 'tournament__store', 'user'
         )
         
-        if username:
-            query = query.filter(user__username=username)
+        if nickname:
+            query = query.filter(user__nickname=nickname)
         
         if tournament_name:
             query = query.filter(tournament__name=tournament_name)

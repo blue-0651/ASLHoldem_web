@@ -72,14 +72,17 @@ class User(AbstractUser):
     )
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, null=True, blank=True)
     
+    # 닉네임(중복 가능, 선택 입력)
+    nickname = models.CharField(max_length=150, unique=False, null=True, blank=True, help_text='닉네임(중복 가능, 선택 입력)')
+    
     class Meta:
         db_table = 'users'               # 데이터베이스 테이블 이름
         verbose_name = '사용자'           # 관리자 페이지에서 표시될 단수 이름
         verbose_name_plural = '사용자들'   # 관리자 페이지에서 표시될 복수 이름
 
     def __str__(self):
-        """사용자 객체를 문자열로 표현할 때 사용자명 반환"""
-        return self.username
+        """사용자 객체를 문자열로 표현할 때 닉네임 또는 전화번호 반환"""
+        return self.nickname or self.phone
         
     def generate_qr_code(self):
         """

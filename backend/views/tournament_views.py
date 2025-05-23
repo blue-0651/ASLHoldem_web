@@ -186,8 +186,9 @@ class TournamentViewSet(viewsets.ModelViewSet):
                 # 등록 정보 조회
                 registrations = TournamentRegistration.objects.filter(tournament=tournament).select_related('user')
                 registration_info = [{
-                    'user': reg.user.username,
-                    'has_ticket': True,  # 모든 등록은 티켓을 가지고 있다고 가정
+                    'user': reg.user.phone,
+                    'nickname': reg.user.nickname,
+                    'has_ticket': True,
                     'paid_amount': reg.paid_amount,
                     'checked_in': reg.checked_in,
                     'checked_in_at': reg.checked_in_at
@@ -301,9 +302,10 @@ class TournamentViewSet(viewsets.ModelViewSet):
             
             for reg in registrations:
                 player_ticket_status.append({
-                    '선수명': reg.user.username,
-                    '매장명': "미지정",  # 연결 필드가 없으므로 기본값 사용
-                    '좌석권_보유': "있음",  # has_ticket 대신 모든 등록은 좌석권이 있다고 가정
+                    'user': reg.user.phone,
+                    'nickname': reg.user.nickname,
+                    '매장명': "미지정",
+                    '좌석권_보유': "있음",
                 })
             
             # 배포된 좌석권 수량 계산 - has_ticket 필드 사용 제거

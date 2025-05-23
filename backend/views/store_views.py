@@ -33,7 +33,7 @@ class StoreUserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'tournament_count', 'last_visit']
+        fields = ['id', 'phone', 'nickname', 'email', 'tournament_count', 'last_visit']
 
 class StoreViewSet(viewsets.ViewSet):
     """
@@ -121,11 +121,10 @@ class StoreViewSet(viewsets.ViewSet):
         매장 이름과 사용자 이름으로 검색합니다.
         """
         store_name = request.data.get('store_name')
-        username = request.data.get('username')
+        phone = request.data.get('phone')
         
-        if not store_name and not username:
-            return Response({"error": "매장 이름 또는 사용자 이름이 필요합니다."}, 
-                           status=status.HTTP_400_BAD_REQUEST)
+        if not store_name and not phone:
+            return Response({'error': '매장명 또는 사용자 전화번호가 필요합니다.'}, status=status.HTTP_400_BAD_REQUEST)
         
         # 매장을 검색합니다
         store_query = Q()
@@ -142,8 +141,8 @@ class StoreViewSet(viewsets.ViewSet):
         
         # 사용자 검색 조건을 추가합니다
         user_query = Q(tournament_id__in=tournament_ids)
-        if username:
-            users = User.objects.filter(username__icontains=username).values_list('id', flat=True)
+        if phone:
+            users = User.objects.filter(phone__icontains=phone).values_list('id', flat=True)
             user_query &= Q(user_id__in=users)
         
         # 해당 매장의 토너먼트에 참가한 사용자들을 가져옵니다
@@ -194,7 +193,7 @@ class StoreViewSet(viewsets.ViewSet):
                 player_tickets = []
                 for reg in registrations:
                     player_tickets.append({
-                        '선수명': reg.user.username,
+                        '선수명': reg.user.phone,
                         '배포_일시': reg.registered_at.strftime('%Y-%m-%d %H:%M'),
                         '좌석권_상태': '사용 완료' if reg.checked_in else '사용 가능'
                     })
