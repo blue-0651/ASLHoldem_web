@@ -140,13 +140,7 @@ const Reservations = () => {
 
   return (
     <div className="asl-mobile-container">
-      <div className="asl-mobile-header">
-        <button className="asl-mobile-nav-button" onClick={() => navigate(-1)}>
-          <i className="fas fa-arrow-left"></i>
-        </button>
-        <h1 className="asl-mobile-header-title">내 예약</h1>
-        <div style={{ width: '24px' }}></div> {/* 균형을 위한 빈 공간 */}
-      </div>
+      <MobileHeader title="내 예약" backButton />
 
       {/* 메인 컨텐츠 */}
       <div className="asl-mobile-dashboard">

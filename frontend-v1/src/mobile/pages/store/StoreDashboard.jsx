@@ -108,7 +108,18 @@ const StoreDashboard = () => {
                       <h5>주간 홀덤 토너먼트</h5>
                       <div className="text-muted">오늘 19:00</div>
                     </div>
-                    <Button variant="outline-primary" size="sm">상세 보기</Button>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm"
+                      onClick={() => navigate('/mobile/common/under-construction', { 
+                        state: { 
+                          title: '토너먼트 상세', 
+                          message: '토너먼트 상세 보기 기능은 현재 개발 중입니다.' 
+                        } 
+                      })}
+                    >
+                      상세 보기
+                    </Button>
                   </div>
                 </div>
                 <div className="asl-tournament-item">
@@ -117,7 +128,18 @@ const StoreDashboard = () => {
                       <h5>주말 스페셜 토너먼트</h5>
                       <div className="text-muted">토요일 14:00</div>
                     </div>
-                    <Button variant="outline-primary" size="sm">상세 보기</Button>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm"
+                      onClick={() => navigate('/mobile/common/under-construction', { 
+                        state: { 
+                          title: '토너먼트 상세', 
+                          message: '토너먼트 상세 보기 기능은 현재 개발 중입니다.' 
+                        } 
+                      })}
+                    >
+                      상세 보기
+                    </Button>
                   </div>
                 </div>
                 <div className="asl-tournament-item">
@@ -126,7 +148,18 @@ const StoreDashboard = () => {
                       <h5>VIP 멤버십 토너먼트</h5>
                       <div className="text-muted">일요일 16:00</div>
                     </div>
-                    <Button variant="outline-primary" size="sm">상세 보기</Button>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm"
+                      onClick={() => navigate('/mobile/common/under-construction', { 
+                        state: { 
+                          title: '토너먼트 상세', 
+                          message: '토너먼트 상세 보기 기능은 현재 개발 중입니다.' 
+                        } 
+                      })}
+                    >
+                      상세 보기
+                    </Button>
                   </div>
                 </div>
               </Card.Body>

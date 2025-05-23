@@ -12,4 +12,10 @@ export {
   Tournament, 
   PlayerRegistration,
   UserDashboard
-}; 
+};
+
+// Common (공통) 페이지
+export { default as MobileLogin } from './common/MobileLogin';
+export { default as MobileSignup } from './common/MobileSignup';
+export { default as Settings } from './common/Settings';
+export { default as UnderConstruction } from './common/UnderConstruction'; 

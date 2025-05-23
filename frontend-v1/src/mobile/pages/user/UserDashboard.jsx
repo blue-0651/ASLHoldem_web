@@ -107,7 +107,18 @@ const UserDashboard = () => {
                       <h5>주간 토너먼트</h5>
                       <div className="text-muted">오늘 19:00 @ 강남점</div>
                     </div>
-                    <Button variant="outline-primary" size="sm">상세 보기</Button>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm"
+                      onClick={() => navigate('/mobile/common/under-construction', { 
+                        state: { 
+                          title: '예약 상세', 
+                          message: '예약 상세 보기 기능은 현재 개발 중입니다.' 
+                        } 
+                      })}
+                    >
+                      상세 보기
+                    </Button>
                   </div>
                 </div>
                 <div className="asl-reservation-item">
@@ -116,7 +127,18 @@ const UserDashboard = () => {
                       <h5>주말 토너먼트</h5>
                       <div className="text-muted">토요일 14:00 @ 홍대점</div>
                     </div>
-                    <Button variant="outline-primary" size="sm">상세 보기</Button>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm"
+                      onClick={() => navigate('/mobile/common/under-construction', { 
+                        state: { 
+                          title: '예약 상세', 
+                          message: '예약 상세 보기 기능은 현재 개발 중입니다.' 
+                        } 
+                      })}
+                    >
+                      상세 보기
+                    </Button>
                   </div>
                 </div>
                 <div className="asl-reservation-item">
@@ -125,7 +147,18 @@ const UserDashboard = () => {
                       <h5>특별 이벤트</h5>
                       <div className="text-muted">일요일 16:00 @ 강남점</div>
                     </div>
-                    <Button variant="outline-primary" size="sm">상세 보기</Button>
+                    <Button 
+                      variant="outline-primary" 
+                      size="sm"
+                      onClick={() => navigate('/mobile/common/under-construction', { 
+                        state: { 
+                          title: '예약 상세', 
+                          message: '예약 상세 보기 기능은 현재 개발 중입니다.' 
+                        } 
+                      })}
+                    >
+                      상세 보기
+                    </Button>
                   </div>
                 </div>
               </Card.Body>
