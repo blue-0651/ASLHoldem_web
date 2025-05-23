@@ -6,7 +6,7 @@ import NavLeft from './NavLeft';
 import NavRight from './NavRight';
 
 import { ConfigContext } from '../../../contexts/ConfigContext';
-import * as actionType from '../../../store/actions';
+import * as actionType from '../../../constants/actionTypes';
 
 // assets
 import logo from '../../../assets/images/logo.png';

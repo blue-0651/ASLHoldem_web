@@ -5,11 +5,12 @@ import { Outlet } from 'react-router-dom';
 // project import
 import Navigation from './Navigation';
 import NavBar from './NavBar';
+import Breadcrumb from './Breadcrumb';
+import { ConfigContext } from '../../contexts/ConfigContext';
+import * as actionType from '../../constants/actionTypes';
 
 import useWindowSize from '../../hooks/useWindowSize';
 import useOutsideClick from '../../hooks/useOutsideClick';
-import { ConfigContext } from '../../contexts/ConfigContext';
-import * as actionType from '../../store/actions';
 
 // ==============================|| ADMIN LAYOUT ||============================== //
 

@@ -10,8 +10,9 @@ import PerfectScrollbar from 'react-perfect-scrollbar';
 // project import
 import NavCard from './NavCard';
 import NavGroup from './NavGroup';
+import menuItems from '../../../../menu-items';
 import { ConfigContext } from '../../../../contexts/ConfigContext';
-import * as actionType from '../../../../store/actions';
+import * as actionType from '../../../../constants/actionTypes';
 
 // ==============================|| NAV CONTENT ||============================== //
 

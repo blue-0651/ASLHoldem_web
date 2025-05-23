@@ -1,7 +1,7 @@
 import React, { createContext, useReducer } from 'react';
 
 // project import
-import * as actionType from '../store/actions';
+import * as actionType from '../constants/actionTypes';
 import { CONFIG } from '../config/constant';
 
 const initialState = {

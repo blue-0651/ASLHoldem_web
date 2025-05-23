@@ -9,7 +9,7 @@ import NavIcon from '../NavIcon';
 import NavBadge from '../NavBadge';
 
 import { ConfigContext } from '../../../../../contexts/ConfigContext';
-import * as actionType from '../../../../../store/actions';
+import * as actionType from '../../../../../constants/actionTypes';
 import useWindowSize from '../../../../../hooks/useWindowSize';
 
 // ==============================|| NAV ITEM ||============================== //
