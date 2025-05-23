@@ -135,9 +135,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    # 'DEFAULT_PERMISSION_CLASSES': (
-    #     'rest_framework.permissions.IsAuthenticated',
-    # ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
@@ -177,15 +179,11 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '[{asctime}] {levelname} {module} {process:d} {thread:d} {message}',
+            'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
         'simple': {
-            'format': '[{asctime}] {levelname} {message}',
-            'style': '{',
-        },
-        'api': {
-            'format': '[{asctime}] API {message}',
+            'format': '{levelname} {message}',
             'style': '{',
         },
     },
@@ -193,12 +191,7 @@ LOGGING = {
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-        'api_handler': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'api',
+            'formatter': 'verbose',
         },
     },
     'loggers': {
@@ -207,8 +200,13 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        'api': {
-            'handlers': ['api_handler'],
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'views': {
+            'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,
         },

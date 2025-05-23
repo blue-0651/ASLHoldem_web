@@ -4,7 +4,7 @@ from views.user_views import UserViewSet, StoreManagerTokenObtainPairView, UserT
 
 urlpatterns = [
     # 기존 토큰 URL (현재는 매장관리자용으로 사용)
-    path('token/', StoreManagerTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/store/', StoreManagerTokenObtainPairView.as_view(), name='token_obtain_pair_store'),
     # 일반 사용자 토큰 URL
     path('token/user/', UserTokenObtainPairView.as_view(), name='token_obtain_pair_user'),
     # 관리자 토큰 URL
