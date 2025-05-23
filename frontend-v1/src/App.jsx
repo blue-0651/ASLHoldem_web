@@ -11,25 +11,27 @@ import ProtectedRoute from './admin/components/ProtectedRoute';
 
 // 모바일 페이지 컴포넌트
 import {
-  MobileLoginPage,
-  UserDashboard,
   StoreDashboard,
-  Tournament,
   StoreInfo,
-  TournamentsList,
-  Reservations,
-  StoreSearchPage,
-  StoreDetailPage,
-  PlayerRegistration
+  Tournament,
+  PlayerRegistration,
+  UserDashboard
 } from './mobile/pages';
+
+// 모바일 레이아웃
+import NavigationLayout from './mobile/layouts/NavigationLayout';
+
+// 모바일 공통 컴포넌트
+import MobileLogin from './mobile/pages/common/MobileLogin';
+import MobileSignup from './mobile/pages/common/MobileSignup';
+import TournamentsList from './mobile/pages/common/tournaments-list/TournamentsList';
+import Reservations from './mobile/pages/common/reservations/Reservations';
+import StoreSearchPage from './mobile/pages/common/store-search/StoreSearchPage';
+import StoreDetailPage from './mobile/pages/common/store-search/StoreDetailPage';
 
 // 만든 샘플 페이지.
 //import NotFound404 from './views/errors/NotFound404';
 import Maintenance from './views/maintenance/Maintenance';
-import MobileSignUpPage from './mobile/pages/common/MobileSignUpPage';
-// import SampleLogin from './views/sample/SampleLogin';
-// import UserLoginPage from './views/sample/UserLoginPage';
-// import StoreLoginPage from './views/sample/StoreLoginPage';
 
 import { BrowserRouter } from 'react-router-dom';
 import AdminLayout from './layouts/AdminLayout';
@@ -40,7 +42,7 @@ function App() {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         {/* 샘플 페이지: 테스트 용으로 만든 페이지 */}
 
@@ -82,19 +84,30 @@ function App() {
         )}
 
         {/* 모바일 라우트 */}
-        <Route path="/mobile/login" element={<MobileLoginPage />} />
+        <Route path="/mobile" element={<NavigationLayout />}>
+          <Route path="login" element={<MobileLogin />} />
+          <Route path="store" element={<ProtectedRoute userType="store" />}>
+            <Route path="dashboard" element={<StoreDashboard />} />
+            <Route path="tournament" element={<Tournament />} />
+            <Route path="info" element={<StoreInfo />} />
+            <Route path="player-registration" element={<PlayerRegistration />} />
+          </Route>
+          <Route path="user" element={<ProtectedRoute userType="user" />}>
+            <Route path="dashboard" element={<UserDashboard />} />
+          </Route>
+          <Route path="common" element={<ProtectedRoute />}>
+            <Route path="tournaments-list" element={<TournamentsList />} />
+            <Route path="reservations" element={<Reservations />} />
+            <Route path="store-search" element={<StoreSearchPage />} />
+            <Route path="store/:id" element={<StoreDetailPage />} />
+            <Route path="settings" element={<div>환경설정 페이지</div>} />
+          </Route>
+          <Route index element={<Navigate to="/mobile/login" replace />} />
+          <Route path="*" element={<Navigate to="/mobile/login" replace />} />
+        </Route>
 
         {/* 모바일 회원가입 */}
-        <Route path="/mobile/signup" element={<MobileSignUpPage />} />
-
-        {/* 모바일 사용자 라우트 */}
-        <Route path="/mobile/user/dashboard" element={<UserDashboard />} />
-
-        {/* 매장 관리자 라우트 */}
-        <Route path="/mobile/store/dashboard" element={<StoreDashboard />} />
-        <Route path="/mobile/store/tournament" element={<Tournament />} />
-        <Route path="/mobile/store/info" element={<StoreInfo />} />
-        <Route path="/mobile/store/player-registration" element={<PlayerRegistration />} />
+        <Route path="/mobile/signup" element={<MobileSignup />} />
 
         {/* 일반 사용자 라우트 */}
         <Route path="/mobile/common/tournaments-list" element={<TournamentsList />} />
