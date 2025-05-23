@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Container, Button } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated, logout } from '../../../../utils/auth';
-import '../../../styles/MobileStyles.css';
+import MobileHeader from '../../../components/MobileHeader';
 import aslLogo from '../../../../assets/asl_logo.png';
 
 const MobileReservations = () => {
