@@ -364,7 +364,7 @@ class UserViewSet(viewsets.ViewSet):
         """
         모든 사용자 목록을 조회합니다. role 파라미터(ADMIN, STORE_OWNER, USER)로 필터링 가능
         ADMIN: is_superuser=True 또는 role='ADMIN'
-        STORE_OWNER: is_store_owner=True 또는 role='STORE_OWNER'
+        STORE_OWNER(매장관리자)): is_store_owner=True 또는 role='STORE_OWNER'
         USER: is_superuser=False, is_store_owner=False, role='USER'
         """
         role = request.query_params.get('role')
