@@ -29,7 +29,7 @@ class User(AbstractUser):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='USER')
     
     # 사용자 전화번호 - 중복 방지를 위해 unique=True 설정
-    phone = models.CharField(validators=[phone_regex], max_length=13,  unique=True, null=False, blank=False)
+    phone = models.CharField(validators=[phone_regex], max_length=13,  unique=True, null=False, blank=False , default='010-0000-0000')
     
     # 사용자 포인트
     points = models.DecimalField(max_digits=10, decimal_places=2, default=0)
