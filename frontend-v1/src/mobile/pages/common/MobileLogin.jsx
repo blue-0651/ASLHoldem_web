@@ -10,7 +10,7 @@ import '../../../assets/scss/mobile/_mobile-commons.scss';
  */
 const MobileLogin = () => {
   const [formData, setFormData] = useState({
-    username: '',
+    phone: '',
     password: '',
     userType: 'user' // 기본값은 일반 사용자
   });
@@ -28,11 +28,39 @@ const MobileLogin = () => {
     });
   };
 
+  // 전화번호 형식 검증
+  const validatePhone = (phone) => {
+    const phoneRegex = /^\d{3}-\d{4}-\d{4}$/;
+    return phoneRegex.test(phone);
+  };
+
+  // JWT 토큰 디코딩 함수
+  const decodeJWT = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('토큰 디코딩 오류:', error);
+      return null;
+    }
+  };
+
   // 폼 제출 핸들러
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // 전화번호 형식 검증
+    if (!validatePhone(formData.phone)) {
+      setError('전화번호는 010-1234-5678 형식으로 입력해주세요.');
+      setLoading(false);
+      return;
+    }
 
     try {
       // 로그인 API 호출
@@ -40,28 +68,59 @@ const MobileLogin = () => {
       if (formData.userType === 'store') {
         loginUrl = '/accounts/token/store/'; // 매장 관리자
       }
-      const response = await API.post(loginUrl, formData);
       
-      // 토큰 저장
-      localStorage.setItem('asl_holdem_access_token', response.data.access_token);
-      localStorage.setItem('asl_holdem_refresh_token', response.data.refresh_token);
+      console.log(`로그인 시도: ${formData.userType} - ${loginUrl}`);
       
-      // 사용자 정보 저장
-      localStorage.setItem('user_type', formData.userType);
+      const response = await API.post(loginUrl, {
+        phone: formData.phone,
+        password: formData.password
+      });
+      
+      // 토큰 저장 (백엔드 응답에 맞게 수정)
+      localStorage.setItem('asl_holdem_access_token', response.data.access);
+      localStorage.setItem('asl_holdem_refresh_token', response.data.refresh);
+      
+      // 토큰에서 실제 사용자 유형 확인
+      const tokenPayload = decodeJWT(response.data.access);
+      console.log('토큰 내용:', tokenPayload);
+      
+      let actualUserType = 'user'; // 기본값
+      let redirectPath = '/mobile/user/dashboard'; // 기본값
+      
+      if (tokenPayload) {
+        // 토큰에서 사용자 유형 결정
+        if (tokenPayload.user_type === 'store_manager' || tokenPayload.is_store_owner === true) {
+          actualUserType = 'store';
+          redirectPath = '/mobile/store/dashboard';
+        } else if (tokenPayload.user_type === 'admin') {
+          actualUserType = 'admin';
+          redirectPath = '/admin/dashboard';
+        } else {
+          actualUserType = 'user';
+          redirectPath = '/mobile/user/dashboard';
+        }
+      }
+      
+      // 사용자 정보 저장 (실제 토큰 내용 기반)
+      localStorage.setItem('user_type', actualUserType);
       localStorage.setItem('user_data', JSON.stringify({
-        username: formData.username,
-        userType: formData.userType,
+        phone: formData.phone,
+        userType: actualUserType,
+        is_store_owner: tokenPayload?.is_store_owner || false,
+        user_type_from_token: tokenPayload?.user_type || 'unknown'
       }));
       
-      // 리다이렉션
-      if (formData.userType === 'store') {
-        navigate('/mobile/store/dashboard');
-      } else {
-        navigate('/mobile/user/dashboard');
-      }
+      console.log(`실제 사용자 유형: ${actualUserType}, 리다이렉션: ${redirectPath}`);
+      
+      // 실제 사용자 유형에 따른 리다이렉션
+      navigate(redirectPath);
+      
     } catch (err) {
       console.error('로그인 오류:', err);
-      setError('로그인에 실패했습니다. 사용자 이름과 비밀번호를 확인해주세요.');
+      const errorMessage = err.response?.data?.detail || 
+                          err.response?.data?.non_field_errors?.[0] || 
+                          '로그인에 실패했습니다. 전화번호와 비밀번호를 확인해주세요.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -113,12 +172,12 @@ const MobileLogin = () => {
               </Form.Group>
               
               <Form.Group className="mb-3">
-                <Form.Label>아이디</Form.Label>
+                <Form.Label>전화번호</Form.Label>
                 <Form.Control
                   type="text"
-                  name="username"
-                  placeholder="아이디를 입력하세요"
-                  value={formData.username}
+                  name="phone"
+                  placeholder="전화번호를 입력하세요 (010-1234-5678)"
+                  value={formData.phone}
                   onChange={handleChange}
                   required
                   className="asl-mobile-form-control"

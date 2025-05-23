@@ -9,7 +9,7 @@ const USER_INFO_KEY = 'asl_holdem_user_info';
 const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // 로그인 함수
-export const login = async (username, password, userType = 'store') => {
+export const login = async (phone, password, userType = 'store') => {
   try {
     // 모바일 환경에서는 어드민 로그인을 시도하지 않도록 체크
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -20,31 +20,27 @@ export const login = async (username, password, userType = 'store') => {
       };
     }
 
-    // userType에 따라 다른 API 엔드포인트나 파라미터 사용 가능
+    // userType에 따라 다른 API 엔드포인트 사용
     let endpoint;
 
     if (userType === 'admin') {
-     // endpoint = '/accounts/token/admin/';
       endpoint = '/accounts/token/admin/';
-
     } else if (userType === 'store') {
-      endpoint = '/accounts/token/';
+      endpoint = '/accounts/token/store/';
     } else {
       endpoint = '/accounts/token/user/';
     }
 
     console.log('Login attempt:', {
-      username,
+      phone,
       passwordLength: password.length,
       userType,
       endpoint
     });
 
-
     const response = await axios.post(baseURL + endpoint, {
-      username,
-      password,
-      user_type: userType // 백엔드에서 구분할 수 있도록 추가 파라미터
+      phone,
+      password
     });
 
     const { access, refresh } = response.data;
@@ -55,7 +51,7 @@ export const login = async (username, password, userType = 'store') => {
     localStorage.setItem('user_type', userType); // 유저 타입도 저장
 
     // 사용자 정보 가져오기
-    const userInfo = await getUserInfo(username);
+    const userInfo = await getUserInfo(phone);
     localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
 
     return {
@@ -80,12 +76,11 @@ export const logout = () => {
 };
 
 // 사용자 정보 가져오기
-export const getUserInfo = async (username) => {
+export const getUserInfo = async (phone) => {
   try {
-    const formData = new FormData();
-    formData.append('username', username);
-
-    const response = await axios.post(baseURL + '/accounts/users/get_user/', formData);
+    const response = await axios.post(baseURL + '/accounts/users/get_user/', {
+      phone: phone
+    });
 
     return response.data;
   } catch (error) {

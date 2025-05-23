@@ -12,7 +12,7 @@ const BASE_URL = 'http://localhost:8000';
 const getLoginEndpoint = (userType) => {
   const paths = {
     admin: '/api/v1/accounts/token/admin/',
-    store: '/api/v1/accounts/token/',
+    store: '/api/v1/accounts/token/store/',
     user: '/api/v1/accounts/token/user/'
   };
 
@@ -58,7 +58,7 @@ export const reqLogout = () => {
 };
 
 // 로그인 함수
-export const reqLogin = async (username, password, userType = 'user') => {
+export const reqLogin = async (phone, password, userType = 'user') => {
   try {
     if (isMobileDevice() && userType === 'admin') {
       reqLogout();
@@ -69,17 +69,19 @@ export const reqLogin = async (username, password, userType = 'user') => {
     }
 
     const apiService = axios.create();
-    //apiService.defaults.baseURL = BASE_URL;
 
     if (reqIsAuthenticated()) {
       reqLogout();
     }
 
-    const response = await apiService.post(getLoginEndpoint(userType), { username, password, user_type: userType });
+    const response = await apiService.post(getLoginEndpoint(userType), { 
+      phone, 
+      password 
+    });
 
     // 로그 출력
     console.log('Login attempt:', {
-      username,
+      phone,
       passwordLength: password.length,
       userType,
       endpoint: getLoginEndpoint(userType)
@@ -97,7 +99,7 @@ export const reqLogin = async (username, password, userType = 'user') => {
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
     localStorage.setItem(USER_TYPE_KEY, userType);
 
-    const userInfo = await reqGetUserInfo(username, getToken());
+    const userInfo = await reqGetUserInfo(phone, getToken());
     
     if (userInfo.success && userInfo.data) {
       // is_store_owner 값을 로컬 스토리지에 저장
@@ -106,7 +108,7 @@ export const reqLogin = async (username, password, userType = 'user') => {
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo.data));
       
       console.log('사용자 정보 저장 완료:', {
-        username,
+        phone,
         is_store_owner: isStoreOwner,
         user_type: userType
       });
@@ -131,21 +133,19 @@ export const reqLogin = async (username, password, userType = 'user') => {
 };
 
 // 사용자 정보 가져오기
-export const reqGetUserInfo = async (username, tokenValue) => {
+export const reqGetUserInfo = async (phone, tokenValue) => {
   try {
-    const formData = new FormData();
-    formData.append('username', username);
-
     const apiService = axios.create();
-    //apiService.defaults.baseURL = BASE_URL;
 
-    const response = await apiService.post(BASE_URL + '/api/v1/accounts/users/get_user/', formData, {
+    const response = await apiService.post(BASE_URL + '/api/v1/accounts/users/get_user/', {
+      phone: phone
+    }, {
       headers: { Authorization: `Bearer ${tokenValue}` }
     });
 
     //로그 출력
     console.log('사용자 정보 가져오기:', {
-      username,
+      phone,
       tokenValue,
       response: response.data
     });
@@ -164,62 +164,36 @@ export const reqGetUserInfo = async (username, tokenValue) => {
 };
 
 // 사용자 정보 생성 요청
-export const reqSignUp = async (username, email, password, first_name, last_name, is_staff, is_superuser, is_active, phone, birthday, gender) => {
+export const reqSignUp = async (phone, nickname, email, password, first_name, last_name, birthday, gender) => {
   try {
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('email', email);
-    formData.append('password', password);
-
-    formData.append('first_name', first_name);
-    formData.append('last_name', last_name);
-
-    formData.append('is_staff', is_staff);
-    formData.append('is_superuser', is_superuser);
-    formData.append('is_active', is_active);
-    
-    // 전화번호 추가
-    formData.append('phone', phone);
-    
-    // 생일 데이터 형식 변환 및 확인 - birth_date로 필드명 변경
-    try {
-      // YYYY-MM-DD 형식의 날짜 확인
-      const birthdayDate = new Date(birthday);
-      // 형식이 유효한지 확인
-      if (isNaN(birthdayDate)) {
-        console.error('잘못된 날짜 형식:', birthday);
-        formData.append('birth_date', birthday); // 원래 형식 그대로 전송
-      } else {
-        // ISO 형식으로 변환 (YYYY-MM-DD)
-        const formattedDate = birthdayDate.toISOString().split('T')[0];
-        console.log('변환된 생년월일:', formattedDate);
-        formData.append('birth_date', formattedDate);
-      }
-    } catch (dateError) {
-      console.error('날짜 변환 오류:', dateError);
-      formData.append('birth_date', birthday); // 오류 시 원래 형식 그대로 전송
-    }
-    
-    // 성별 데이터 추가
-    formData.append('gender', gender);
-
-    // 폼 데이터 확인용 로그
-    console.log('서버로 전송하는 데이터:');
-    for (let [key, value] of formData.entries()) {
-      console.log(`${key}: ${value}`);
-    }
-
     const apiService = axios.create();
-    //apiService.defaults.baseURL = BASE_URL;
 
-    const response = await apiService.post(BASE_URL + '/api/v1/accounts/users/', formData);
+    const signupData = {
+      phone: phone,
+      nickname: nickname || null, // nickname은 선택사항
+      email: email,
+      password: password,
+      first_name: first_name,
+      last_name: last_name,
+      birth_date: birthday,
+      gender: gender,
+      is_staff: false,
+      is_superuser: false,
+      is_active: true
+    };
+
+    // 로그 출력
+    console.log('서버로 전송하는 회원가입 데이터:', signupData);
+
+    const response = await apiService.post(BASE_URL + '/api/v1/accounts/users/', signupData);
 
     //로그 출력
     console.log('회원가입 결과:', {
-      username,
+      phone,
+      nickname,
       email,
       gender,
-      birth_date: formData.get('birth_date'), // 실제 전송된 생년월일 값 확인
+      birth_date: birthday,
       response: response.data
     });
 
@@ -239,7 +213,7 @@ export const reqSignUp = async (username, email, password, first_name, last_name
 
     return {
       success: false,
-      error: error.response?.data || { detail: '사용자 정보를 가져오는 데 실패했습니다.' }
+      error: error.response?.data || { detail: '회원가입에 실패했습니다.' }
     };
   }
 };

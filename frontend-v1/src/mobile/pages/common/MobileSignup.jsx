@@ -16,26 +16,20 @@ const MobileSignup = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    username: '',
-    phone: '',
+    nickname: '', // 선택사항
+    phone: '', // 필수, 로그인 아이디
     first_name: '',
     last_name: '',
     birthday: '',
-    gender: '',
-    is_staff: false,
-    is_superuser: false,
-    is_active: true
+    gender: ''
   });
 
-  // 화면처리에 필요한 데이터
-  // email(메일), password(비번), passwordConfirm(비번확인), Gender(성별), [firstName(이름), lastName(성)], phone(전화번호), birthday(생년월일)
-
   const [checkPassword, setCheckPassword] = useState('');
-  // 사용자명 중복 체크를 위한 상태 관리
-  const [usernameChecked, setUsernameChecked] = useState(false);
-  const [usernameAvailable, setUsernameAvailable] = useState(false);
-  const [checkingUsername, setCheckingUsername] = useState(false);
-  const [usernameMessage, setUsernameMessage] = useState('');
+  // 전화번호 중복 체크를 위한 상태 관리
+  const [phoneChecked, setPhoneChecked] = useState(false);
+  const [phoneAvailable, setPhoneAvailable] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(false);
+  const [phoneMessage, setPhoneMessage] = useState('');
 
   // 로그인
   const navigate = useNavigate();
@@ -49,59 +43,67 @@ const MobileSignup = () => {
       [name]: value
     });
 
-    // username이 변경되면 중복 체크 상태 초기화
-    if (name === 'username') {
-      setUsernameChecked(false);
-      setUsernameAvailable(false);
-      setUsernameMessage('');
+    // phone이 변경되면 중복 체크 상태 초기화
+    if (name === 'phone') {
+      setPhoneChecked(false);
+      setPhoneAvailable(false);
+      setPhoneMessage('');
     }
   };
 
-  // username 중복 확인 함수
-  const checkUsername = async () => {
-    if (!formData.username.trim()) {
-      setErrors({...errors, username: '사용자 이름을 입력해주세요'});
+  // 전화번호 중복 확인 함수
+  const checkPhone = async () => {
+    if (!formData.phone.trim()) {
+      setErrors({...errors, phone: '전화번호를 입력해주세요'});
       return;
     }
 
-    setCheckingUsername(true);
-    setUsernameMessage('');
+    // 전화번호 형식 검증
+    if (!/^\d{3}-\d{4}-\d{4}$/.test(formData.phone)) {
+      setErrors({...errors, phone: '전화번호 형식이 올바르지 않습니다 (예: 010-1234-5678)'});
+      return;
+    }
+
+    setCheckingPhone(true);
+    setPhoneMessage('');
 
     try {
-      const response = await API.get(`/accounts/users/check_username/`, {
-        params: { username: formData.username }
+      const response = await API.get(`/accounts/users/check_phone/`, {
+        params: { phone: formData.phone }
       });
 
-      setUsernameChecked(true);
-      setUsernameAvailable(response.data.is_available);
+      setPhoneChecked(true);
+      setPhoneAvailable(response.data.is_available);
 
       if (response.data.is_available) {
-        setUsernameMessage('사용할 수 있는 사용자 이름입니다.');
+        setPhoneMessage('사용할 수 있는 전화번호입니다.');
       } else {
-        setUsernameMessage('이미 사용 중인 사용자 이름입니다.');
+        setPhoneMessage('이미 사용 중인 전화번호입니다.');
       }
     } catch (err) {
-      console.error('사용자 이름 확인 오류:', err);
-      setUsernameMessage('사용자 이름 확인 중 오류가 발생했습니다.');
-      setUsernameChecked(false);
-      setUsernameAvailable(false);
+      console.error('전화번호 확인 오류:', err);
+      setPhoneMessage('전화번호 확인 중 오류가 발생했습니다.');
+      setPhoneChecked(false);
+      setPhoneAvailable(false);
     } finally {
-      setCheckingUsername(false);
+      setCheckingPhone(false);
     }
   };
 
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.username.trim()) {
-      newErrors.username = '사용자 이름은 필수입니다';
+    if (!formData.phone.trim()) {
+      newErrors.phone = '전화번호는 필수입니다';
+    } else if (!/^\d{3}-\d{4}-\d{4}$/.test(formData.phone)) {
+      newErrors.phone = '전화번호 형식이 올바르지 않습니다 (예: 010-1234-5678)';
     }
 
-    // 사용자 이름 중복 확인이 필요한 경우
-    if (!usernameChecked) {
-      newErrors.username = '사용자 이름 중복 확인이 필요합니다';
-    } else if (!usernameAvailable) {
-      newErrors.username = '이미 사용 중인 사용자 이름입니다';
+    // 전화번호 중복 확인이 필요한 경우
+    if (!phoneChecked) {
+      newErrors.phone = '전화번호 중복 확인이 필요합니다';
+    } else if (!phoneAvailable) {
+      newErrors.phone = '이미 사용 중인 전화번호입니다';
     }
 
     if (!formData.email.trim()) {
@@ -120,12 +122,6 @@ const MobileSignup = () => {
       newErrors.checkPassword = '비밀번호가 일치하지 않습니다';
     }
 
-    if (!formData.phone) {
-      newErrors.phone = '전화번호는 필수입니다';
-    } else if (!/^\d{3}-\d{4}-\d{4}$/.test(formData.phone)) {
-      newErrors.phone = '전화번호 형식이 올바르지 않습니다 (예: 010-1234-5678)';
-    }
-
     if (!formData.first_name.trim()) {
       newErrors.first_name = '이름은 필수입니다';
     }
@@ -141,7 +137,6 @@ const MobileSignup = () => {
     if (!formData.birthday) {
       newErrors.birthday = '생년월일은 필수입니다';
     }
-    // date 타입은 자동으로 YYYY-MM-DD 형식을 보장하므로 추가 유효성 검사는 불필요
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -156,30 +151,23 @@ const MobileSignup = () => {
 
     // 회원가입 데이터 디버깅
     console.log('회원가입 요청 데이터:', {
-      username: formData.username,
+      phone: formData.phone,
+      nickname: formData.nickname || null,
       email: formData.email,
       password: formData.password.substring(0, 3) + '...', // 보안을 위해 일부만 표시
       first_name: formData.first_name,
       last_name: formData.last_name,
-      phone: formData.phone,
       birthday: formData.birthday,
-      gender: formData.gender,
-      is_staff: formData.is_staff,
-      is_superuser: formData.is_superuser,
-      is_active: formData.is_active
+      gender: formData.gender
     });
 
-    //export const reqSignUp = async (username, email, password, first_name, last_name, is_staff, is_superuser)
     const result = await reqSignUp(
-      formData.username,
+      formData.phone,
+      formData.nickname,
       formData.email,
       formData.password,
       formData.first_name,
       formData.last_name,
-      formData.is_staff,
-      formData.is_superuser,
-      formData.is_active,
-      formData.phone,
       formData.birthday,
       formData.gender
     );
@@ -211,6 +199,55 @@ const MobileSignup = () => {
             <h3 className="text-center mb-4">ASL 회원가입</h3>
 
             <Form className="asl-mobile-form" onSubmit={handleSubmit}>
+              <Row>
+                <Col xs="8" className="mb-3">
+                  <InputGroup>
+                    <InputGroup.Text>
+                      <FeatherIcon icon="phone" />
+                    </InputGroup.Text>
+                    <Form.Control
+                      placeholder="(필수) 전화번호 (010-1234-5678)"
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      isInvalid={!!errors.phone}
+                      className="asl-mobile-form-control"
+                    />
+                  </InputGroup>
+                  {phoneMessage && (
+                    <small className={`mt-1 ${phoneAvailable ? 'text-success' : 'text-danger'}`}>
+                      {phoneMessage}
+                    </small>
+                  )}
+                  {errors.phone && <Form.Text className="text-danger">{errors.phone}</Form.Text>}
+                </Col>
+                <Col xs="4" className="mb-3">
+                  <Button 
+                    variant="outline-secondary" 
+                    onClick={checkPhone}
+                    disabled={checkingPhone || !formData.phone.trim()}
+                    className="w-100"
+                  >
+                    {checkingPhone ? <Spinner size="sm" /> : '중복 확인'}
+                  </Button>
+                </Col>
+              </Row>
+
+              <InputGroup className="mb-3">
+                <InputGroup.Text>
+                  <FeatherIcon icon="user" />
+                </InputGroup.Text>
+                <Form.Control
+                  placeholder="(선택) 닉네임"
+                  id="nickname"
+                  name="nickname"
+                  value={formData.nickname}
+                  onChange={handleChange}
+                  className="asl-mobile-form-control"
+                />
+              </InputGroup>
+
               <InputGroup className="mb-3">
                 <InputGroup.Text>
                   <FeatherIcon icon="mail" />
@@ -262,41 +299,6 @@ const MobileSignup = () => {
               </InputGroup>
 
               <Row>
-                <Col xs="8" className="mb-3">
-                  <InputGroup>
-                    <InputGroup.Text>
-                      <FeatherIcon icon="user" />
-                    </InputGroup.Text>
-                    <Form.Control
-                      placeholder="(필수) 사용자 이름"
-                      id="username"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleChange}
-                      isInvalid={!!errors.username}
-                      className="asl-mobile-form-control"
-                    />
-                  </InputGroup>
-                  {usernameMessage && (
-                    <small className={`mt-1 ${usernameAvailable ? 'text-success' : 'text-danger'}`}>
-                      {usernameMessage}
-                    </small>
-                  )}
-                  {errors.username && <Form.Text className="text-danger">{errors.username}</Form.Text>}
-                </Col>
-                <Col xs="4" className="mb-3">
-                  <Button 
-                    variant="outline-secondary" 
-                    onClick={checkUsername}
-                    disabled={checkingUsername || !formData.username.trim()}
-                    className="w-100"
-                  >
-                    {checkingUsername ? <Spinner size="sm" /> : '중복 확인'}
-                  </Button>
-                </Col>
-              </Row>
-
-              <Row>
                 <Col xs="6" className="mb-3">
                   <InputGroup>
                     <InputGroup.Text>
@@ -329,22 +331,6 @@ const MobileSignup = () => {
                   </InputGroup>
                 </Col>
               </Row>
-
-              <InputGroup className="mb-3">
-                <InputGroup.Text>
-                  <FeatherIcon icon="phone" />
-                </InputGroup.Text>
-                <Form.Control
-                  placeholder="(필수) 전화번호 (예: 010-1234-5678)"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  isInvalid={!!errors.phone}
-                  className="asl-mobile-form-control"
-                />
-                <Form.Control.Feedback type="invalid">{errors.phone}</Form.Control.Feedback>
-              </InputGroup>
 
               <Form.Group className="mb-3">
                 <Form.Label>생년월일</Form.Label>
