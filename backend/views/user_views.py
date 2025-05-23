@@ -81,6 +81,14 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
         if not user.is_active:
             raise serializers.ValidationError("비활성화된 계정입니다.")
         
+        # 매장관리자 계정은 일반사용자 API로 로그인 불가
+        if user.is_store_owner:
+            raise serializers.ValidationError("매장관리자 계정입니다. 매장관리자 로그인을 이용해주세요.")
+        
+        # 관리자 계정은 일반사용자 API로 로그인 불가  
+        if user.is_staff or user.is_superuser:
+            raise serializers.ValidationError("관리자 계정입니다. 관리자 로그인을 이용해주세요.")
+        
         # 직접 토큰 생성
         refresh = self.get_token(user)
         

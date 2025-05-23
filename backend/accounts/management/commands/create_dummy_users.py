@@ -11,16 +11,16 @@ class Command(BaseCommand):
         gender_choices = ['M', 'F', 'O']
         base_birth = date(1990, 1, 1)
         for i in range(1, 11):
-            username = f'user{i}'
-            email = f'user{i}@example.com'
             phone = f'010-0000-00{i:02d}'
+            nickname = f'user{i}_nick' if i % 2 else None
+            email = f'user{i}@example.com'
             birth_date = base_birth + timedelta(days=i*365)
             gender = gender_choices[i % 3]
             user, created = User.objects.get_or_create(
-                username=username,
+                phone=phone,
                 defaults={
+                    'nickname': nickname,
                     'email': email,
-                    'phone': phone,
                     'birth_date': birth_date,
                     'gender': gender,
                 }
@@ -28,6 +28,6 @@ class Command(BaseCommand):
             if created:
                 user.set_password('testpass123')
                 user.save()
-                self.stdout.write(self.style.SUCCESS(f'{username} 생성'))
+                self.stdout.write(self.style.SUCCESS(f'{phone} 생성'))
             else:
-                self.stdout.write(self.style.WARNING(f'{username} 이미 존재')) 
+                self.stdout.write(self.style.WARNING(f'{phone} 이미 존재')) 
