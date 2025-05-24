@@ -81,7 +81,7 @@ const Dashboard = () => {
 
   const dashboardStats = [
     { title: '총 토너먼트 수', value: stats.tournament_count, color: 'blue', icon: 'trophy' },
-    { title: '활성 매장 수', value: stats.active_store_count, color: 'green', icon: 'store' },
+    { title: '토너먼트 개최 매장 수', value: stats.active_store_count, color: 'green', icon: 'store' },
     { title: '등록 선수 수', value: stats.player_count, color: 'yellow', icon: 'users' },
     { title: '좌석권 보유 수', value: stats.ticket_count, color: 'red', icon: 'ticket' }
   ];

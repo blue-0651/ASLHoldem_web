@@ -234,7 +234,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
             # 총 토너먼트 수 계산
             tournament_count = Tournament.objects.count()
             
-            # 활성 매장 수 계산 (최소 1개 이상의 토너먼트를 보유한 매장)
+            # 활성 매장 수 계산 (토너먼트 개최 매장 수)
             active_store_count = Store.objects.filter(tournaments__isnull=False).distinct().count()
             
             # 등록 선수 수 계산 (중복 제거)
