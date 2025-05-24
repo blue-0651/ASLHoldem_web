@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Spinner } from 'react-bootstrap';
 import StorePlayerMapping from '../components/StorePlayerMapping';
 import { dashboardAPI } from '../../utils/api';
+import OrderCard from '../../components/Widgets/Statistic/OrderCard';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -45,12 +46,6 @@ const Dashboard = () => {
 
     fetchDashboardData();
   }, []);
-  const dashboardStats = [
-    { title: '총 토너먼트 수', value: stats.tournament_count, color: 'blue', icon: 'trophy' },
-    { title: '토너먼트 개최 매장 수', value: stats.active_store_count, color: 'green', icon: 'store' },
-    { title: '등록 선수 수', value: stats.player_count, color: 'yellow', icon: 'users' },
-    { title: '좌석권 보유 수', value: stats.ticket_count, color: 'red', icon: 'ticket' }
-  ];
 
   if (loading) {
     return (
@@ -78,22 +73,55 @@ const Dashboard = () => {
       <h2 className="mb-4">대시보드</h2>
 
       {/* 통계 카드 */}
-      <Row className="dashboard-stats mb-4">
-        {dashboardStats.map((stat, index) => (
-          <Col md={3} sm={6} key={index}>
-            <Card className={`card-${stat.color} h-100`}>
-              <Card.Body className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted">{stat.title}</h6>
-                  <h2>{stat.value}</h2>
-                </div>
-                <div className="rounded-circle bg-light p-3">
-                  <i className={`bi bi-${stat.icon} fs-4`}></i>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
+      <Row className="mb-4">
+        <Col md={6} xl={3}>
+          <OrderCard
+            params={{
+              title: '총 토너먼트 수',
+              class: 'bg-c-blue',
+              icon: 'feather icon-award',
+              primaryText: stats.tournament_count.toString(),
+              secondaryText: '전체 토너먼트',
+              extraText: '개'
+            }}
+          />
+        </Col>
+        <Col md={6} xl={3}>
+          <OrderCard
+            params={{
+              title: '토너먼트 개최 매장 수',
+              class: 'bg-c-green',
+              icon: 'feather icon-map-pin',
+              primaryText: stats.active_store_count.toString(),
+              secondaryText: '참여 매장',
+              extraText: '개소'
+            }}
+          />
+        </Col>
+        <Col md={6} xl={3}>
+          <OrderCard
+            params={{
+              title: '등록 선수 수',
+              class: 'bg-c-yellow',
+              icon: 'feather icon-users',
+              primaryText: stats.player_count.toString(),
+              secondaryText: '전체 선수',
+              extraText: '명'
+            }}
+          />
+        </Col>
+        <Col md={6} xl={3}>
+          <OrderCard
+            params={{
+              title: '좌석권 보유 수',
+              class: 'bg-c-red',
+              icon: 'feather icon-credit-card',
+              primaryText: stats.ticket_count.toString(),
+              secondaryText: '보유 좌석권',
+              extraText: '매'
+            }}
+          />
+        </Col>
       </Row>
 
       {/* 매장/선수 매핑 */}

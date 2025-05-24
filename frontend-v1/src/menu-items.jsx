@@ -20,6 +20,13 @@ const menuItems = {
           icon: 'feather icon-bell',
           url: '/board'
         },
+        {
+          id: 'dashboard-logout',
+          title: '로그아웃',
+          type: 'item',
+          icon: 'feather icon-log-out',
+          url: '/logout'
+        },
       ]
     },
     {
@@ -63,6 +70,13 @@ const menuItems = {
           type: 'item',
           icon: 'feather icon-users',
           url: '/users'
+        },
+        {
+          id: 'dashboard-player',
+          title: '선수회원등록',
+          type: 'item',
+          icon: 'feather icon-user-plus',
+          url: '/player-registration'
         }
       ]
     },

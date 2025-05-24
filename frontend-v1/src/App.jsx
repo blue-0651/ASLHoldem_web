@@ -9,6 +9,8 @@ import StoreManagement from './admin/pages/StoreManagement';
 import Layout from './admin/components/Layout';
 import ProtectedRoute from './admin/components/ProtectedRoute';
 import UserInfoPage from './admin/pages/UserInfoPage';
+import PlayerRegistrationPage from './admin/pages/PlayerRegistrationPage';
+import LogoutPage from './admin/pages/LogoutPage';
 
 // 모바일 페이지 컴포넌트
 import {
@@ -132,7 +134,8 @@ function App() {
         {/* 공개 라우트 - 모바일이 아닌 경우에만 적용 */}
         {/* Login --> LoginPage 변경 */}
         {!isMobile && <Route path="/login" element={<LoginPage />} />}
-
+        
+        
         {/* 보호된 라우트 - 모바일이 아닌 경우에만 적용 */}
         {!isMobile && (
           <Route element={<ProtectedRoute />}>
@@ -141,9 +144,11 @@ function App() {
               <Route path="/tournaments" element={<TournamentManagement />} />
               <Route path="/stores" element={<StoreManagement />} />
               <Route path="/users" element={<UserInfoPage />} />
+              <Route path="/player-registration" element={<PlayerRegistrationPage />} />
               <Route path="/board" element={<BoardManagementPage />} />
               <Route path="/sample-page" element={<SamplePage />} />
               <Route path="/dash-analytics" element={<DashAnalytics />} />
+              <Route path="/logout" element={<LogoutPage />} />
             </Route>
           </Route>
         )}

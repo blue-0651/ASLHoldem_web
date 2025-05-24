@@ -70,7 +70,7 @@ const LoginPage = () => {
                     <div className="d-flex justify-content-center">
                       <InputGroup className="mb-3">
                         <InputGroup.Text>
-                          <FeatherIcon icon="user" />
+                          <FeatherIcon icon="smartphone" />
                         </InputGroup.Text>
                         <Form.Control
                           type="text"
