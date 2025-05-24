@@ -12,7 +12,14 @@ const menuItems = {
           type: 'item',
           icon: 'feather icon-home',
           url: '/dashboard'
-        }
+        },
+        {
+          id: 'dashboard-board',
+          title: '공지사항 관리',
+          type: 'item',
+          icon: 'feather icon-bell',
+          url: '/board'
+        },
       ]
     },
     {
@@ -25,7 +32,7 @@ const menuItems = {
           id: 'dashboard-tournament',
           title: '토너먼트 관리',
           type: 'item',
-          icon: 'feather icon-home',
+          icon: 'feather icon-award',
           url: '/tournaments'
         }
       ]
@@ -44,9 +51,7 @@ const menuItems = {
           url: '/stores'
         }
       ]
-    },
-
-    {
+    },    {
       id: 'navigation-user',
       title: '사용자',
       type: 'group',
@@ -56,7 +61,7 @@ const menuItems = {
           id: 'dashboard-user',
           title: '사용자 관리',
           type: 'item',
-          icon: 'feather icon-help-circle',
+          icon: 'feather icon-users',
           url: '/users'
         }
       ]

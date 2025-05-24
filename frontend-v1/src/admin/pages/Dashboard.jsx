@@ -11,7 +11,7 @@ const Dashboard = () => {
     player_count: 0,
     ticket_count: 0
   });
-  const [mappingData, setMappingData] = useState(null);
+  // const [mappingData, setMappingData] = useState(null);
   const [error, setError] = useState(null);
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -24,6 +24,7 @@ const Dashboard = () => {
         console.log('대시보드 통계 응답:', statsResponse.data);
         setStats(statsResponse.data);
 
+        /*
         try {
           // 매장/선수 매핑 데이터 가져오기 (실패해도 전체 대시보드가 중단되지 않도록 별도 try-catch로 처리)
           const mappingResponse = await dashboardAPI.getPlayerMapping();
@@ -32,6 +33,7 @@ const Dashboard = () => {
           console.error('매핑 데이터 로드 오류:', mappingError);
           // 매핑 데이터는 선택사항이므로 실패해도 대시보드는 정상 표시
         }
+        */
 
         setLoading(false);
       } catch (err) {
@@ -95,7 +97,7 @@ const Dashboard = () => {
       </Row>
 
       {/* 매장/선수 매핑 */}
-      {mappingData && <StorePlayerMapping data={mappingData} />}
+      {/* {mappingData && <StorePlayerMapping data={mappingData} />} */}
     </div>
   );
 };
