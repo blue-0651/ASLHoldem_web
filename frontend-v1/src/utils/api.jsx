@@ -3,7 +3,7 @@ import { getToken, refreshToken, logout } from './auth';
 
 // API 기본 설정 - content-type 기본값 제거
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api/v1'
+  baseURL: 'http://localhost:8000/api/v1'
 });
 
 // 요청 인터셉터 - 인증 토큰 추가

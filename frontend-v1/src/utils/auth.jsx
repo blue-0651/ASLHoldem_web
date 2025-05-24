@@ -6,7 +6,7 @@ const REFRESH_TOKEN_KEY = 'asl_holdem_refresh_token';
 const USER_INFO_KEY = 'asl_holdem_user_info';
 
 // API 기본 URL 설정
-const baseURL = import.meta.env.VITE_API_URL || '/api/v1';
+const baseURL = 'http://localhost:8000/api/v1/api/v1';
 
 // 로그인 함수
 export const login = async (phone, password, userType = 'store') => {

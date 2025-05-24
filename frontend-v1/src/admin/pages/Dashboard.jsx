@@ -13,14 +13,15 @@ const Dashboard = () => {
   });
   const [mappingData, setMappingData] = useState(null);
   const [error, setError] = useState(null);
-
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
+        setError(null);
 
         // 대시보드 통계 데이터 가져오기
         const statsResponse = await dashboardAPI.getStats();
+        console.log('대시보드 통계 응답:', statsResponse.data);
         setStats(statsResponse.data);
 
         try {
@@ -29,26 +30,7 @@ const Dashboard = () => {
           setMappingData(mappingResponse.data);
         } catch (mappingError) {
           console.error('매핑 데이터 로드 오류:', mappingError);
-
-          console.warn('매핑 데이터 로드 실패: API가 구현되지 않았습니다.');
-
-          // 임시 매핑 데이터 생성 (API가 구현될 때까지 더미 데이터 사용)
-          setMappingData({
-            토너먼트명: '임시 토너먼트',
-            토너먼트_시작시간: new Date().toISOString(),
-            총_좌석권_수량: 100,
-            배포된_좌석권_수량: 75,
-            매장별_현황: [
-              { 매장명: 'A 매장', 좌석권_수량: 30 },
-              { 매장명: 'B 매장', 좌석권_수량: 25 },
-              { 매장명: 'C 매장', 좌석권_수량: 20 }
-            ],
-            선수별_현황: [
-              { 선수명: '선수 1', 매장명: 'A 매장', 좌석권_보유: '있음' },
-              { 선수명: '선수 2', 매장명: 'B 매장', 좌석권_보유: '있음' },
-              { 선수명: '선수 3', 매장명: 'C 매장', 좌석권_보유: '있음' }
-            ]
-          });
+          // 매핑 데이터는 선택사항이므로 실패해도 대시보드는 정상 표시
         }
 
         setLoading(false);
@@ -59,26 +41,8 @@ const Dashboard = () => {
       }
     };
 
-    //fetchDashboardData();
-    // 임시 매핑 데이터 생성 (API가 구현될 때까지 더미 데이터 사용)
-    setMappingData({
-      토너먼트명: '임시 토너먼트',
-      토너먼트_시작시간: new Date().toISOString(),
-      총_좌석권_수량: 100,
-      배포된_좌석권_수량: 75,
-      매장별_현황: [
-        { 매장명: 'A 매장', 좌석권_수량: 30 },
-        { 매장명: 'B 매장', 좌석권_수량: 25 },
-        { 매장명: 'C 매장', 좌석권_수량: 20 }
-      ],
-      선수별_현황: [
-        { 선수명: '선수 1', 매장명: 'A 매장', 좌석권_보유: '있음' },
-        { 선수명: '선수 2', 매장명: 'B 매장', 좌석권_보유: '있음' },
-        { 선수명: '선수 3', 매장명: 'C 매장', 좌석권_보유: '있음' }
-      ]
-    });
+    fetchDashboardData();
   }, []);
-
   const dashboardStats = [
     { title: '총 토너먼트 수', value: stats.tournament_count, color: 'blue', icon: 'trophy' },
     { title: '토너먼트 개최 매장 수', value: stats.active_store_count, color: 'green', icon: 'store' },
@@ -86,14 +50,14 @@ const Dashboard = () => {
     { title: '좌석권 보유 수', value: stats.ticket_count, color: 'red', icon: 'ticket' }
   ];
 
-  // if (loading) {
-  //   return (
-  //     <div className="text-center p-5">
-  //       <Spinner animation="border" variant="primary" />
-  //       <p className="mt-3">데이터를 불러오는 중입니다...</p>
-  //     </div>
-  //   );
-  // }
+  if (loading) {
+    return (
+      <div className="text-center p-5">
+        <Spinner animation="border" variant="primary" />
+        <p className="mt-3">데이터를 불러오는 중입니다...</p>
+      </div>
+    );
+  }
 
   if (error) {
     return (
