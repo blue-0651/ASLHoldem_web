@@ -397,7 +397,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
             tournament = self.get_object()
             
             # 매장 관리자가 해당 토너먼트의 매장을 관리하는지 확인
-            if tournament.store.manager != user:
+            if tournament.store.owner != user:
                 return Response({"error": "이 토너먼트를 관리할 권한이 없습니다."}, 
                                status=status.HTTP_403_FORBIDDEN)
             
