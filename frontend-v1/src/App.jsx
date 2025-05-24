@@ -8,6 +8,7 @@ import TournamentManagement from './admin/pages/TournamentManagement';
 import StoreManagement from './admin/pages/StoreManagement';
 import Layout from './admin/components/Layout';
 import ProtectedRoute from './admin/components/ProtectedRoute';
+import UserInfoPage from './admin/pages/UserInfoPage';
 
 // 모바일 페이지 컴포넌트
 import {
@@ -137,6 +138,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/tournaments" element={<TournamentManagement />} />
               <Route path="/stores" element={<StoreManagement />} />
+              <Route path="/users" element={<UserInfoPage />} />
               <Route path="/sample-page" element={<SamplePage />} />
             </Route>
           </Route>

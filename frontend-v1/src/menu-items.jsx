@@ -57,7 +57,7 @@ const menuItems = {
           title: '사용자 관리',
           type: 'item',
           icon: 'feather icon-help-circle',
-          url: '/sample-page'
+          url: '/users'
         }
       ]
     },
