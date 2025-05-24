@@ -10,8 +10,8 @@ import LoopNavCollapse from './index';
 import NavIcon from '../NavIcon';
 import NavBadge from '../NavBadge';
 
-import { ConfigContext } from '../../../../../contexts/ConfigContext';
-import * as actionType from '../../../../../constants/actionTypes';
+import { ConfigContext } from '../../../../../../contexts/ConfigContext';
+import * as actionType from '../../../../../../constants/actionTypes';
 
 // ==============================|| NAV COLLAPSE ||============================== //
 

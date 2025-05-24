@@ -6,7 +6,7 @@ import { Card, Dropdown, ListGroup } from 'react-bootstrap';
 // project import
 import NavSearch from './NavSearch';
 import { Link } from 'react-router-dom';
-import avatar2 from '../../../../assets/images/user/avatar-2.jpg';
+import avatar2 from '../../../../../assets/images/user/avatar-2.jpg';
 
 // ==============================|| NAV LEFT ||============================== //
 

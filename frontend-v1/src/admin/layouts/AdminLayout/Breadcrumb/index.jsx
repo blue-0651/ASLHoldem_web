@@ -5,8 +5,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { ListGroup } from 'react-bootstrap';
 
 // project import
-import navigation from '../../../menu-items';
-import { BASE_TITLE } from '../../../config/constant';
+import navigation from '../../../../menu-items';
+import { BASE_TITLE } from '../../../../config/constant';
 
 // ==============================|| BREADCRUMB ||============================== //
 

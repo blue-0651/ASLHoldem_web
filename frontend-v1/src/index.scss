@@ -3,6 +3,13 @@
 // 중복 삭제
 //@import 'assets/scss/settings/custom-variables';
 
+/* 메뉴 그룹 제목 가독성 개선 */
+.pcoded-navbar .pcoded-inner-navbar > li.pcoded-menu-caption {
+  color: #e1e6ea !important; /* 더 밝은 회색으로 변경 */
+  font-weight: 700 !important; /* 폰트 굵기 증가 */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important; /* 텍스트 그림자 추가 */
+}
+
 .pcoded-navbar {
   &.mob-open ~ .pcoded-header:before,
   &.navbar-collapsed:hover ~ .pcoded-header:before {

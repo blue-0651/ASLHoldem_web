@@ -5,11 +5,11 @@ import { Link } from 'react-router-dom';
 import NavLeft from './NavLeft';
 import NavRight from './NavRight';
 
-import { ConfigContext } from '../../../contexts/ConfigContext';
-import * as actionType from '../../../constants/actionTypes';
+import { ConfigContext } from '../../../../contexts/ConfigContext';
+import * as actionType from '../../../../constants/actionTypes';
 
 // assets
-import logo from '../../../assets/images/logo.png';
+import logo from '../../../../assets/images/logo.png';
 
 // ==============================|| NAV BAR ||============================== //
 

@@ -37,9 +37,10 @@ import UnderConstruction from './mobile/pages/common/UnderConstruction';
 import Maintenance from './views/maintenance/Maintenance';
 
 import { BrowserRouter } from 'react-router-dom';
-import AdminLayout from './layouts/AdminLayout';
+import AdminLayout from './admin/layouts/AdminLayout';
 import SamplePage from './views/extra/SamplePage';
 import BoardManagementPage from './admin/pages/BoardManagementPage';
+import DashAnalytics from './views/dashboard/index';
 
 function App() {
   // 모바일 디바이스 체크
@@ -142,6 +143,7 @@ function App() {
               <Route path="/users" element={<UserInfoPage />} />
               <Route path="/board" element={<BoardManagementPage />} />
               <Route path="/sample-page" element={<SamplePage />} />
+              <Route path="/dash-analytics" element={<DashAnalytics />} />
             </Route>
           </Route>
         )}

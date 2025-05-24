@@ -1,11 +1,11 @@
 import React, { useContext } from 'react';
 
 // project import
-import { ConfigContext } from '../../../contexts/ConfigContext';
-import useWindowSize from '../../../hooks/useWindowSize';
+import { ConfigContext } from '../../../../contexts/ConfigContext';
+import useWindowSize from '../../../../hooks/useWindowSize';
 
 import NavContent from './NavContent';
-import navigation from '../../../menu-items';
+import navigation from '../../../../menu-items';
 
 // ==============================|| NAVIGATION ||============================== //
 

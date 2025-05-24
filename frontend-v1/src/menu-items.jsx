@@ -47,7 +47,7 @@ const menuItems = {
           id: 'dashboard-store',
           title: '매장관리',
           type: 'item',
-          icon: 'feather icon-box',
+          icon: 'feather icon-map-pin',
           url: '/stores'
         }
       ]
@@ -80,6 +80,14 @@ const menuItems = {
           url: '/sample-page',
           classes: 'nav-item',
           icon: 'feather icon-sidebar'
+        },
+        {
+          id: 'dash-analytics',
+          title: 'Dash Analytics',
+          type: 'item',
+          url: '/dash-analytics',
+          classes: 'nav-item',
+          icon: 'feather icon-bar-chart'
         }
       ]
     }
