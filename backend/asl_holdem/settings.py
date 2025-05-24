@@ -33,8 +33,15 @@ SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+#ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'], '192.168.0.34')
+ALLOWED_HOSTS = ['*']
+#ALLOWED_HOSTS = ['localhost', '127.0.0.1', '3.38.245.204', '192.168.0.34']
 
+# CORS_ALLOWED_ORIGINS = [
+#     "https://your-domain.com",  # 허용할 도메인
+#     "http://localhost:8000",    # 로컬 개발 중일 때 허용
+#     "http://.247.200.5",     # 서버의 IP 주소 (예시)
+# ]
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -146,10 +153,11 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
-    "http://localhost:3000",
-    "http://localhost:8000",
-])
+#CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
+#    "http://localhost:3000",
+#    "http://localhost:8000",
+#])
+
 CORS_ALLOW_CREDENTIALS = True
 
 # JWT settings
@@ -212,3 +220,6 @@ LOGGING = {
         },
     },
 } 
+CORS_ALLOW_ALL_ORIGINS = True  # 개발 환경에서는 True, 운영에서는 도메인 지정
+#CORS_ALLOW_HEADERS = ['*']
+CORS_ALLOW_METHODS = ['*']
