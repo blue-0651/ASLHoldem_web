@@ -8,9 +8,12 @@ import MobileHeader from '../../components/MobileHeader';
 
 const StoreInfo = () => {
   const [storeData, setStoreData] = useState(null);
+  const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tournamentLoading, setTournamentLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [tournamentError, setTournamentError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,6 +33,12 @@ const StoreInfo = () => {
   useEffect(() => {
     fetchStoreInfo();
   }, []);
+
+  useEffect(() => {
+    if (storeData?.id) {
+      fetchStoreTournaments(storeData.id);
+    }
+  }, [storeData]);
 
   const fetchStoreInfo = async () => {
     try {
@@ -59,6 +68,20 @@ const StoreInfo = () => {
       setError('매장 정보를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStoreTournaments = async (storeId) => {
+    try {
+      setTournamentLoading(true);
+      const response = await API.get(`/store/tournaments/?store_id=${storeId}`);
+      setTournaments(response.data);
+      setTournamentError(null);
+    } catch (err) {
+      console.error('토너먼트 목록 가져오기 오류:', err);
+      setTournamentError('토너먼트 목록을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setTournamentLoading(false);
     }
   };
 
@@ -332,6 +355,38 @@ const StoreInfo = () => {
             </Card>
           </div>
         )}
+
+        {/* 토너먼트 목록 섹션 */}
+        <Card className="asl-mobile-card mt-4">
+          <Card.Body>
+            <h3 style={{ fontSize: '18px', marginBottom: '20px' }}>토너먼트 목록</h3>
+            
+            {tournamentLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <Spinner animation="border" size="sm" />
+                <p style={{ marginTop: '10px' }}>토너먼트 목록을 불러오는 중...</p>
+              </div>
+            ) : tournamentError ? (
+              <Alert variant="danger">{tournamentError}</Alert>
+            ) : tournaments.length === 0 ? (
+              <p className="text-muted">등록된 토너먼트가 없습니다.</p>
+            ) : (
+              <div className="tournament-list">
+                {tournaments.map((tournament) => (
+                  <Card key={tournament.id} className="mb-3">
+                    <Card.Body>
+                      <h5>{tournament.name}</h5>
+                      <p className="mb-1">시작 시간: {new Date(tournament.start_time).toLocaleString()}</p>
+                      <p className="mb-1">상태: {tournament.status}</p>
+                      <p className="mb-1">참가비: {tournament.buy_in}원</p>
+                      <p className="mb-0">남은 좌석: {tournament.ticket_quantity - tournament.participant_count}석</p>
+                    </Card.Body>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </Card.Body>
+        </Card>
       </Container>
     </div>
   );
