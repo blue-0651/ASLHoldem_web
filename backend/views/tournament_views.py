@@ -201,13 +201,13 @@ class TournamentViewSet(viewsets.ModelViewSet):
                     'name': tournament.name,
                     'start_time': tournament.start_time,
                     'buy_in': tournament.buy_in,
-                    'ticket_quantity': tournament.max_seats,  # ticket_quantity 대신 max_seats 사용
+                    'ticket_quantity': tournament.ticket_quantity,
                     'description': tournament.description,
                     'status': tournament.status,
                     'created_at': tournament.created_at,
                     'updated_at': tournament.updated_at,
                     'participant_count': participant_count,
-                    'remaining_tickets': tournament.max_seats - participant_count if tournament.max_seats else None,  # ticket_quantity 대신 max_seats 사용
+                    'remaining_tickets': tournament.ticket_quantity - participant_count if tournament.ticket_quantity else None,
                     'registrations': registration_info
                 }
                 
@@ -316,7 +316,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
             result = {
                 '토너먼트명': tournament.name,
                 '토너먼트_시작시간': tournament.start_time,
-                '총_좌석권_수량': tournament.max_seats,  # ticket_quantity 대신 max_seats 사용
+                '총_좌석권_수량': tournament.ticket_quantity,
                 '배포된_좌석권_수량': distributed_tickets,
                 '매장별_현황': store_ticket_status,
                 '선수별_현황': player_ticket_status

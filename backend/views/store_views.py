@@ -203,9 +203,9 @@ class StoreViewSet(viewsets.ViewSet):
                     '토너먼트_id': tournament.id,
                     '토너먼트명': tournament.name,
                     '시작_시간': tournament.start_time.strftime('%Y-%m-%d %H:%M'),
-                    '총_좌석권_수량': tournament.max_seats,
+                    '총_좌석권_수량': tournament.ticket_quantity,
                     '배포된_좌석권_수량': registrations.count(),
-                    '남은_좌석권_수량': tournament.max_seats - registrations.count(),
+                    '남은_좌석권_수량': tournament.ticket_quantity - registrations.count(),
                     '선수별_좌석권': player_tickets
                 }
                 
