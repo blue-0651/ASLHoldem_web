@@ -333,50 +333,32 @@ class TournamentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def store_tournaments(self, request):
         """
-        현재 로그인한 매장 관리자의 매장에 속한 토너먼트 목록을 반환합니다.
+        특정 매장의 토너먼트 목록을 반환합니다.
+        파라미터:
+        - store_id: 매장 ID
         """
         try:
-            # 디버깅을 위한 요청 정보 출력
-            print(f"요청 헤더: {request.headers}")
-            print(f"인증 헤더: {request.META.get('HTTP_AUTHORIZATION', 'None')}")
-            print(f"인증된 사용자: {request.user}")
+            # store_id 파라미터 처리
+            store_id = request.query_params.get('store_id')
+            if not store_id:
+                return Response({"error": "store_id 파라미터가 필요합니다."}, 
+                              status=status.HTTP_400_BAD_REQUEST)
             
-            # 토큰에서 사용자 정보 확인
-            user = request.user
-            
-            # 매장 관리자 권한 확인 - 임시로 AllowAny 권한 부여
-            if not user.is_authenticated:
-                print("사용자 인증 실패")
-                return Response({"error": "인증이 필요합니다."}, 
-                               status=status.HTTP_401_UNAUTHORIZED)
-            
-            # 매장 관리자 권한 확인 - 개발 중에는 임시로 주석 처리
-            # if not hasattr(user, 'is_store_owner') or not user.is_store_owner:
-            #     return Response({"error": "매장 관리자 권한이 없습니다."}, 
-            #                    status=status.HTTP_403_FORBIDDEN)
-            
-            # 개발 중 테스트용 - 관리자 권한 체크 없이 첫 번째 매장 반환
-            from stores.models import Store
-            store = Store.objects.first()
-            
-            if not store:
-                return Response({"error": "매장 정보가 없습니다."}, 
-                               status=status.HTTP_404_NOT_FOUND)
-                
-            print(f"사용 매장: {store.name}")
+            # 매장 조회
+            try:
+                store = Store.objects.get(id=store_id)
+            except Store.DoesNotExist:
+                return Response({"error": "해당 매장을 찾을 수 없습니다."}, 
+                              status=status.HTTP_404_NOT_FOUND)
             
             # 매장에 속한 토너먼트 목록 조회
             tournaments = Tournament.objects.filter(store=store).order_by('-start_time')
             
             # 토너먼트 목록 시리얼라이즈
             serializer = self.get_serializer(tournaments, many=True)
-            print(f"토너먼트 수: {len(tournaments)}")
             
             return Response(serializer.data)
         except Exception as e:
-            import traceback
-            print(f"오류 발생: {str(e)}")
-            print(traceback.format_exc())
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
