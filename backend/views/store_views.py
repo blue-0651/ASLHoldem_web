@@ -347,4 +347,27 @@ class StoreViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['get'])
+    def by_owner(self, request):
+        """
+        매장 소유자 ID로 매장을 조회합니다.
+        파라미터:
+        - owner_id: 소유자 ID
+        """
+        try:
+            owner_id = request.query_params.get('owner_id')
+            if not owner_id:
+                return Response({"error": "owner_id 파라미터가 필요합니다."}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+            
+            store = Store.objects.filter(owner_id=owner_id).first()
+            if not store:
+                return Response({"error": "해당 소유자의 매장을 찾을 수 없습니다."}, 
+                              status=status.HTTP_404_NOT_FOUND)
+            
+            serializer = StoreSerializer(store)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 from django.db import models 
