@@ -134,11 +134,7 @@ export const storeAPI = {
   getAllStores: () => API.get('/stores/'),
 
   // 특정 매장 방문 사용자 목록
-  getStoreUsers: (storeId) => {
-    const formData = new FormData();
-    formData.append('store_id', storeId);
-    return API.post(`/stores/${storeId}/users/`, formData);
-  },
+  getStoreUsers: (storeId) => API.post(`/stores/${storeId}/users/`),
 
   // 매장 이름과 사용자 이름으로 검색
   searchUserByStore: (data) => {
