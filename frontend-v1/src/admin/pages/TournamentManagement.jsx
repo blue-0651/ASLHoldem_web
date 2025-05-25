@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Form, Button, Table, Modal, Spinner, Alert } from 'react-bootstrap';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Row, Col, Card, Form, Button, Modal, Spinner, Alert, Table } from 'react-bootstrap';
 import { tournamentAPI, storeAPI } from '../../utils/api';
+
+// third party
+import DataTable from 'react-data-table-component';
 
 const TournamentManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -10,6 +13,10 @@ const TournamentManagement = () => {
   const [loadingStores, setLoadingStores] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [expandedRows, setExpandedRows] = useState(new Set()); // 확장된 행 상태 관리
+  
+  // API 호출 중복 방지를 위한 ref
+  const hasFetchedData = useRef(false);
   
   // 폼 상태
   const [formData, setFormData] = useState({
@@ -25,82 +32,34 @@ const TournamentManagement = () => {
   
   // 필터 상태
   const [filters, setFilters] = useState({
-    status: '',
-    store: '',
-    startDate: '',
-    endDate: ''
+    tournament: 'all',
+    status: 'all'
   });
   
   // 페이지 로드 시 토너먼트 목록 가져오기
   useEffect(() => {
-    fetchTournaments();
-    fetchStores();
+    if (!hasFetchedData.current) {
+      hasFetchedData.current = true;
+      fetchTournaments();
+      fetchStores();
+    }
   }, []);
   
   const fetchTournaments = async () => {
     try {
       setLoading(true);
       
-      // 실제 API 연동
+      // getAllTournamentInfo로 변경 - 더 풍부한 데이터 제공
       const response = await tournamentAPI.getAllTournamentInfo();
-      setTournaments(response.data);
-      setLoading(false);
+      setTournaments(response.data); // .results 제거 - 직접 배열 구조
+      console.log('토너먼트 목록:', response.data);
       
-      // 샘플 데이터 부분은 주석 처리
-      /*
-      setTimeout(() => {
-        const sampleData = [
-          // ... 샘플 데이터 ...
-        ];
-        
-        setTournaments(sampleData);
-        setLoading(false);
-      }, 500);
-      */
+      setLoading(false);
       
     } catch (err) {
       console.error('토너먼트 목록 로드 오류:', err);
       setError('토너먼트 목록을 불러오는 중 오류가 발생했습니다.');
       setLoading(false);
-      
-      // API 연동 오류 시 샘플 데이터 사용
-      setTimeout(() => {
-        const sampleData = [
-          {
-            id: 1,
-            name: 'ASL A 대회',
-            store_name: 'AA 매장',
-            store: 1,
-            start_time: '2024-05-15T13:00:00',
-            status: 'UPCOMING',
-            ticket_quantity: 100,
-            participant_count: 70
-          },
-          {
-            id: 2,
-            name: 'ASL B 대회',
-            store_name: 'BB 매장',
-            store: 2,
-            start_time: '2024-05-20T14:00:00',
-            status: 'UPCOMING',
-            ticket_quantity: 80,
-            participant_count: 45
-          },
-          {
-            id: 3,
-            name: 'ASL C 대회',
-            store_name: 'CC 매장',
-            store: 3,
-            start_time: '2024-04-10T10:00:00',
-            status: 'COMPLETED',
-            ticket_quantity: 120,
-            participant_count: 120
-          }
-        ];
-        
-        setTournaments(sampleData);
-        setLoading(false);
-      }, 500);
     }
   };
   
@@ -113,35 +72,9 @@ const TournamentManagement = () => {
       setStores(response.data);
       setLoadingStores(false);
       
-      // 샘플 데이터 부분은 주석 처리
-      /*
-      setTimeout(() => {
-        const sampleStores = [
-          { id: 1, name: 'AA 매장' },
-          { id: 2, name: 'BB 매장' },
-          { id: 3, name: 'CC 매장' }
-        ];
-        
-        setStores(sampleStores);
-        setLoadingStores(false);
-      }, 300);
-      */
-      
     } catch (err) {
       console.error('매장 목록 로드 오류:', err);
       setLoadingStores(false);
-      
-      // API 연동 오류 시 샘플 데이터 사용
-      setTimeout(() => {
-        const sampleStores = [
-          { id: 1, name: 'AA 매장' },
-          { id: 2, name: 'BB 매장' },
-          { id: 3, name: 'CC 매장' }
-        ];
-        
-        setStores(sampleStores);
-        setLoadingStores(false);
-      }, 300);
     }
   };
   
@@ -154,29 +87,30 @@ const TournamentManagement = () => {
     });
   };
   
-  // 필터 변경 핸들러
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
+  // 토너먼트 필터 변경 핸들러
+  const handleFilterTournamentChange = (e) => {
+    const { value } = e.target;
+    console.log('토너먼트 필터 변경:', value);
     setFilters({
       ...filters,
-      [name]: value
+      tournament: value
     });
   };
   
-  // 필터 적용
-  const applyFilters = () => {
-    // 실제 API 연동 시 필터를 적용한 API 호출
-    // fetchTournaments(filters);
-    console.log('필터 적용:', filters);
+  // 상태 필터 변경 핸들러
+  const handleFilterStateChange = (e) => {
+    const { value } = e.target;
+    setFilters({
+      ...filters,
+      status: value
+    });
   };
   
   // 필터 초기화
   const resetFilters = () => {
     setFilters({
-      status: '',
-      store: '',
-      startDate: '',
-      endDate: ''
+      tournament: 'all',
+      status: 'all'
     });
   };
   
@@ -258,6 +192,229 @@ const TournamentManagement = () => {
     return date.toLocaleDateString('ko-KR');
   };
 
+  // 필터링된 토너먼트 목록 계산
+  const getFilteredTournaments = () => {
+    console.log('필터링 시작 - filters:', filters);
+    console.log('전체 tournaments:', tournaments);
+    
+    // tournaments가 배열이 아닌 경우 빈 배열 반환
+    if (!Array.isArray(tournaments)) {
+      console.log('tournaments가 배열이 아님:', tournaments);
+      return [];
+    }
+    
+    const filtered = tournaments.filter(tournament => {
+      console.log('토너먼트 확인:', tournament);
+      
+      // 토너먼트 필터 - "all"이 아닌 경우에만 필터링 적용
+      if (filters.tournament !== 'all') {
+        console.log(`토너먼트 필터 체크: filters.tournament=${filters.tournament}, tournament.id=${tournament.id}`);
+        if (parseInt(filters.tournament) !== tournament.id) {
+          console.log('토너먼트 필터로 제외됨');
+          return false;
+        }
+      }
+      
+      // 상태 필터 - "all"이 아닌 경우에만 필터링 적용
+      if (filters.status !== 'all') {
+        console.log(`상태 필터 체크: filters.status=${filters.status}, tournament.status=${tournament.status}`);
+        if (tournament.status !== filters.status) {
+          console.log('상태 필터로 제외됨');
+          return false;
+        }
+      }
+      
+      console.log('필터 통과');
+      return true;
+    });
+    
+    console.log('필터링 결과:', filtered);
+    return filtered;
+  };
+
+  // 토너먼트 테이블 컬럼 정의
+  const tournamentColumns = useMemo(() => [
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>대회명</span>,
+      selector: (row) => row.description || row.name,
+      sortable: true,
+      center: true,
+      style: (row) => ({
+        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
+        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      })
+    },
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>SEAT권 총 수량</span>,
+      selector: (row) => row.ticket_quantity,
+      sortable: true,
+      center: true,
+      style: (row) => ({
+        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
+        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      })
+    },
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>매장 수량</span>,
+      selector: (row) => row.remaining_tickets || 0,
+      sortable: true,
+      center: true,
+      style: (row) => ({
+        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
+        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      })
+    },
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>선수 수량</span>,
+      selector: (row) => row.participant_count || 0,
+      sortable: true,
+      center: true,
+      style: (row) => ({
+        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
+        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      })
+    },
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>시작시간</span>,
+      selector: (row) => formatDate(row.start_time),
+      sortable: true,
+      center: true,
+      style: (row) => ({
+        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
+        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      })
+    }
+  ], [expandedRows]);
+
+  // 행 확장/축소 핸들러
+  const handleRowExpandToggled = (expanded, row) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (expanded) {
+      newExpandedRows.add(row.id);
+    } else {
+      newExpandedRows.delete(row.id);
+    }
+    setExpandedRows(newExpandedRows);
+  };
+
+  // 확장된 행에 표시될 더미 데이터 컴포넌트
+  const ExpandedTournamentComponent = ({ data }) => (
+    <div className="p-4 border border-danger rounded" style={{ backgroundColor: '#dc3545' }}>
+      <div className="row">
+        {/* 매장별 현황 */}
+        <div className="col-md-6">
+          <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
+            <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>매장별 현황</h4>
+            <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
+              <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
+                <tr>
+                  <th className="border border-dark text-white">매장명</th>
+                  <th className="border border-dark text-white">SEAT권 수량</th>
+                  <th className="border border-dark text-white">SEAT권 배포 수량</th>
+                  <th className="border border-dark text-white">현재 보유 수량</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border border-secondary">🅰️ AA 매장</td>
+                  <td className="text-center border border-secondary">10</td>
+                  <td className="text-center border border-secondary">5</td>
+                  <td className="text-center border border-secondary">5</td>
+                </tr>
+                <tr>
+                  <td className="border border-secondary">🅱️ BB 매장</td>
+                  <td className="text-center border border-secondary">10</td>
+                  <td className="text-center border border-secondary">5</td>
+                  <td className="text-center border border-secondary">5</td>
+                </tr>
+                <tr>
+                  <td className="border border-secondary">🅲 CC 매장</td>
+                  <td className="text-center border border-secondary">10</td>
+                  <td className="text-center border border-secondary">5</td>
+                  <td className="text-center border border-secondary">5</td>
+                </tr>
+                <tr style={{ backgroundColor: '#ffc107', color: '#000' }}>
+                  <td className="border border-warning"><strong>총계</strong></td>
+                  <td className="text-center border border-warning"><strong>30</strong></td>
+                  <td className="text-center border border-warning"><strong>15</strong></td>
+                  <td className="text-center border border-warning"><strong>15</strong></td>
+                </tr>
+              </tbody>
+            </Table>
+          </div>
+        </div>
+
+        {/* 선수별 현황 */}
+        <div className="col-md-6">
+          <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
+            <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>👥 선수별 현황</h4>
+            <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
+              <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
+                <tr>
+                  <th className="border border-dark text-white">선수</th>
+                  <th className="border border-dark text-white">SEAT권 보유 수량</th>
+                  <th className="border border-dark text-white">획득매장</th>
+                  <th className="border border-dark text-white">SEAT권 사용 정보</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border border-secondary">🏆 A 선수</td>
+                  <td className="text-center border border-secondary">10</td>
+                  <td className="border border-secondary">보기 버튼</td>
+                  <td className="border border-secondary">보기버튼</td>
+                </tr>
+                <tr>
+                  <td className="border border-secondary">🥈 B 선수</td>
+                  <td className="text-center border border-secondary">10</td>
+                  <td className="border border-secondary">보기 버튼</td>
+                  <td className="border border-secondary">보기버튼</td>
+                </tr>
+                <tr>
+                  <td className="border border-secondary">🥉 C 선수</td>
+                  <td className="text-center border border-secondary">10</td>
+                  <td className="border border-secondary">보기 버튼</td>
+                  <td className="border border-secondary">보기버튼</td>
+                </tr>
+              </tbody>
+            </Table>
+          </div>
+        </div>
+      </div>
+
+      {/* 요약 정보 */}
+      <div className="row mt-3">
+        <div className="col-12">
+          <div className="text-white p-3 rounded border border-light" style={{ backgroundColor: '#721c24' }}>
+            <div className="row text-center">
+              <div className="col-md-3 border-end border-light">
+                <h6 className="text-white">총 SEAT권</h6>
+                <h4 className="text-white">100</h4>
+              </div>
+              <div className="col-md-3 border-end border-light">
+                <h6 className="text-white">배포된 SEAT권</h6>
+                <h4 className="text-white">70</h4>
+              </div>
+              <div className="col-md-3 border-end border-light">
+                <h6 className="text-white">사용된 SEAT권</h6>
+                <h4 className="text-white">30</h4>
+              </div>
+              <div className="col-md-3">
+                <h6 className="text-white">참가 선수 수</h6>
+                <h4 className="text-white">15명</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -283,69 +440,62 @@ const TournamentManagement = () => {
       <Card className="mb-4">
         <Card.Body>
           <Row>
-            <Col md={3}>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>토너먼트</Form.Label>
+                <Form.Select 
+                  name="tournament" 
+                  value={filters.tournament} 
+                  onChange={handleFilterTournamentChange}
+                >
+                  <option value="all">모든 토너먼트</option>
+                  {(() => {
+                    console.log('토너먼트 필터 옵션 생성 - tournaments:', tournaments);
+                    console.log('tournaments 타입:', typeof tournaments);
+                    console.log('tournaments 배열 여부:', Array.isArray(tournaments));
+                    console.log('tournaments 길이:', tournaments?.length);
+                    
+                    if (Array.isArray(tournaments)) {
+                      return tournaments.map(tournament => {
+                        console.log('토너먼트 옵션 생성:', tournament);
+                        return (
+                          <option key={tournament.id} value={tournament.id}>
+                            {tournament.name || `토너먼트 ${tournament.id}`}
+                          </option>
+                        );
+                      });
+                    }
+                    return null;
+                  })()}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col md={6}>
               <Form.Group className="mb-3">
                 <Form.Label>상태</Form.Label>
                 <Form.Select 
                   name="status" 
                   value={filters.status} 
-                  onChange={handleFilterChange}
+                  onChange={handleFilterStateChange}
                 >
-                  <option value="">모든 상태</option>
-                  <option value="UPCOMING">예정</option>
-                  <option value="ONGOING">진행중</option>
-                  <option value="COMPLETED">완료</option>
-                  <option value="CANCELLED">취소</option>
+                  <option value="all">모든 상태</option>
+                  <option value="UPCOMING">UPCOMING</option>
+                  <option value="ONGOING">ONGOING</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="CANCELLED">CANCELLED</option>
                 </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>매장</Form.Label>
-                <Form.Select 
-                  name="store" 
-                  value={filters.store} 
-                  onChange={handleFilterChange}
-                >
-                  <option value="">모든 매장</option>
-                  {stores.map(store => (
-                    <option key={store.id} value={store.id}>{store.name}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>시작일</Form.Label>
-                <Form.Control 
-                  type="date" 
-                  name="startDate" 
-                  value={filters.startDate} 
-                  onChange={handleFilterChange}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={3}>
-              <Form.Group className="mb-3">
-                <Form.Label>종료일</Form.Label>
-                <Form.Control 
-                  type="date" 
-                  name="endDate" 
-                  value={filters.endDate} 
-                  onChange={handleFilterChange}
-                />
               </Form.Group>
             </Col>
           </Row>
-          <div className="text-end">
-            <Button variant="secondary" className="me-2" onClick={resetFilters}>초기화</Button>
-            <Button variant="primary" onClick={applyFilters}>필터 적용</Button>
-          </div>
         </Card.Body>
       </Card>
 
       {/* 토너먼트 목록 */}
       <Card>
+        <Card.Header>
+          <h5>토너먼트 목록</h5>
+          <small>정렬 가능하고 확장 가능한 토너먼트 테이블입니다. 행을 클릭하면 상세 정보를 볼 수 있습니다.</small>
+        </Card.Header>
         <Card.Body>
           {loading ? (
             <div className="text-center p-5">
@@ -353,56 +503,34 @@ const TournamentManagement = () => {
               <p className="mt-3">데이터를 불러오는 중입니다...</p>
             </div>
           ) : (
-            <div className="table-responsive">
-              <Table striped bordered hover>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>이름</th>
-                    <th>매장</th>
-                    <th>시작일</th>
-                    <th>상태</th>
-                    <th>좌석권 수량</th>
-                    <th>등록 수</th>
-                    <th>액션</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tournaments.length > 0 ? (
-                    tournaments.map(tournament => (
-                      <tr key={tournament.id}>
-                        <td>{tournament.id}</td>
-                        <td>{tournament.name}</td>
-                        <td>{tournament.store_name}</td>
-                        <td>{formatDate(tournament.start_time)}</td>
-                        <td>
-                          <span className={`badge bg-${
-                            tournament.status === 'UPCOMING' ? 'warning' :
-                            tournament.status === 'ONGOING' ? 'success' :
-                            tournament.status === 'COMPLETED' ? 'secondary' : 'danger'
-                          }`}>
-                            {tournament.status === 'UPCOMING' ? '예정' :
-                            tournament.status === 'ONGOING' ? '진행중' :
-                            tournament.status === 'COMPLETED' ? '완료' : '취소'}
-                          </span>
-                        </td>
-                        <td>{tournament.ticket_quantity}</td>
-                        <td>{tournament.participant_count}</td>
-                        <td>
-                          <Button variant="outline-primary" size="sm">
-                            수정
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="8" className="text-center">토너먼트 데이터가 없습니다.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </Table>
-            </div>
+            <DataTable 
+              columns={tournamentColumns} 
+              data={getFilteredTournaments()} 
+              pagination
+              paginationPerPage={10}
+              paginationRowsPerPageOptions={[5, 10, 15, 20]}
+              expandableRows
+              expandableRowsComponent={ExpandedTournamentComponent}
+              onRowExpandToggled={handleRowExpandToggled}
+              expandableRowsComponentProps={{ expandedRows }}
+              conditionalRowStyles={[
+                {
+                  when: row => expandedRows.has(row.id),
+                  style: {
+                    backgroundColor: '#e3f2fd',
+                    borderLeft: '4px solid #2196f3',
+                    fontWeight: 'bold'
+                  }
+                }
+              ]}
+              noDataComponent={
+                <div className="text-center p-4">
+                  {tournaments.length === 0 ? '토너먼트 데이터가 없습니다.' : '필터 조건에 맞는 토너먼트가 없습니다.'}
+                </div>
+              }
+              highlightOnHover
+              striped
+            />
           )}
         </Card.Body>
       </Card>

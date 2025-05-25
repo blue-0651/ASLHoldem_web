@@ -44,6 +44,9 @@ import SamplePage from './views/extra/SamplePage';
 import BoardManagementPage from './admin/pages/BoardManagementPage';
 import DashAnalytics from './views/dashboard/index';
 
+// 테이블 컴포넌트
+import ReactTable from './views/tables/datatable/React';
+
 function App() {
   // 모바일 디바이스 체크
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -149,6 +152,8 @@ function App() {
               <Route path="/sample-page" element={<SamplePage />} />
               <Route path="/dash-analytics" element={<DashAnalytics />} />
               <Route path="/logout" element={<LogoutPage />} />
+
+              <Route path="/react/table" element={<ReactTable />} />
             </Route>
           </Route>
         )}
