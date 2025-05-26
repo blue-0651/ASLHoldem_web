@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated, logout } from '../../../utils/auth';
+import { getDisplayName } from '../../../utils/userUtils';
 import MobileHeader from '../../components/MobileHeader';
 // MobileStyles.css는 _mobile-commons.scss로 통합됨
 
@@ -31,7 +32,7 @@ const UserDashboard = () => {
         <Row className="mb-4">
           <Col>
             <div className="asl-welcome-card">
-              <h2>환영합니다, {user?.username || '사용자'}님!</h2>
+              <h2>환영합니다, {getDisplayName(user, '사용자')}님!</h2>
               <p>ASL 홀덤에서 즐거운 시간을 보내세요.</p>
             </div>
           </Col>

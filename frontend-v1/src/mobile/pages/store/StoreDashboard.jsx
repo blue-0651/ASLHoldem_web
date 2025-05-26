@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Card, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated, logout } from '../../../utils/auth';
+import { getDisplayName } from '../../../utils/userUtils';
 import MobileHeader from '../../components/MobileHeader';
-// MobileStyles.css는 _mobile-commons.scss로 통합됨
 
 const StoreDashboard = () => {
   const [user, setUser] = useState(null);
@@ -32,7 +32,7 @@ const StoreDashboard = () => {
         <Row className="mb-4">
           <Col>
             <div className="asl-welcome-card">
-              <h2>환영합니다, {user?.username || '매장 관리자'}님!</h2>
+              <h2>환영합니다, {getDisplayName(user, '매장 관리자')}님!</h2>
               <p>매장과 토너먼트를 효율적으로 관리하세요.</p>
             </div>
           </Col>
