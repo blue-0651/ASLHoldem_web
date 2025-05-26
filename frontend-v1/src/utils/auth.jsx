@@ -50,9 +50,77 @@ export const login = async (phone, password, userType = 'store') => {
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
     localStorage.setItem('user_type', userType); // 유저 타입도 저장
 
-    // 사용자 정보 가져오기
-    const userInfo = await getUserInfo(phone);
-    localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+    // JWT 토큰에서 사용자 정보 추출
+    let userInfo = null;
+    
+    try {
+      const tokenParts = access.split('.');
+      const tokenPayload = JSON.parse(atob(tokenParts[1]));
+      
+      // 닉네임 추출 및 처리
+      let nickname = tokenPayload.nickname || '';
+      
+      // 유니코드 이스케이프 처리
+      if (nickname && typeof nickname === 'string') {
+        try {
+          // 유니코드 이스케이프 시퀀스를 실제 문자로 변환
+          const decodedNickname = JSON.parse('"' + nickname + '"');
+          nickname = decodedNickname;
+        } catch (e) {
+          // 디코딩 실패 시 원본 사용
+        }
+      }
+      
+      // 닉네임이 정상적인 한글인지 확인
+      if (nickname && typeof nickname === 'string' && nickname.trim()) {
+        nickname = nickname.trim();
+      } else {
+        nickname = '';
+      }
+      
+      userInfo = {
+        id: tokenPayload.user_id,
+        phone: tokenPayload.phone,
+        nickname: nickname,
+        email: tokenPayload.email || '',
+        is_store_owner: tokenPayload.is_store_owner || false,
+        role: tokenPayload.role || (userType === 'store' ? 'STORE_OWNER' : 'USER')
+      };
+      
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+      
+    } catch (error) {
+      console.error('JWT 토큰 파싱 오류:', error);
+      
+      // 서버에서 사용자 정보 직접 가져오기 시도
+      try {
+        const fallbackUserInfo = await getUserInfo(phone);
+        
+        userInfo = {
+          id: fallbackUserInfo.id || 0,
+          phone: fallbackUserInfo.phone || phone,
+          nickname: fallbackUserInfo.nickname || '',
+          email: fallbackUserInfo.email || '',
+          is_store_owner: fallbackUserInfo.is_store_owner || (userType === 'store'),
+          role: fallbackUserInfo.role || (userType === 'store' ? 'STORE_OWNER' : 'USER')
+        };
+        
+        localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+      } catch (fallbackError) {
+        console.error('서버에서 사용자 정보 가져오기도 실패:', fallbackError);
+        
+        // 최종 폴백
+        userInfo = {
+          id: 0,
+          phone: phone,
+          nickname: '',
+          email: '',
+          is_store_owner: userType === 'store',
+          role: userType === 'store' ? 'STORE_OWNER' : 'USER'
+        };
+        localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+      }
+    }
 
     return {
       success: true,
@@ -138,5 +206,10 @@ export const isAuthenticated = () => {
 // 현재 사용자 정보
 export const getCurrentUser = () => {
   const userInfoStr = localStorage.getItem(USER_INFO_KEY);
-  return userInfoStr ? JSON.parse(userInfoStr) : null;
+  
+  if (userInfoStr) {
+    return JSON.parse(userInfoStr);
+  } else {
+    return null;
+  }
 };
