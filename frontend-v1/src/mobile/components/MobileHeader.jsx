@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getCurrentUser, isAuthenticated, logout } from '../../utils/auth';
+import { getDisplayName } from '../../utils/userUtils';
 
 /**
  * 모바일 화면의 헤더 컴포넌트
@@ -60,6 +61,15 @@ const MobileHeader = ({ title, backButton = false, onBackClick, showMenuButton =
     } else {
       navigate(-1);
     }
+  };
+
+  // 대시보드로 이동하는 함수
+  const handleGoToDashboard = () => {
+    const dashboardPath = userType === 'store' 
+      ? '/mobile/store/dashboard' 
+      : '/mobile/user/dashboard';
+    navigate(dashboardPath);
+    setIsNavOpen(false); // 사이드바 닫기
   };
 
   // 메뉴 항목 정의
@@ -131,13 +141,25 @@ const MobileHeader = ({ title, backButton = false, onBackClick, showMenuButton =
       >
         {/* 사이드바 헤더 */}
         <div className={`asl-mobile-drawer-header ${userType === 'store' ? 'store' : 'user'}`}>
-          <div className="drawer-icon">
-            <i className={userType === 'store' ? "fas fa-store" : "fas fa-user"}></i>
-          </div>
-          <div className="drawer-title">
-            <div className="main-title">ASL 홀덤</div>
-            <div className="sub-title">
-              {userType === 'store' ? '매장 관리자' : '일반 사용자'}
+          <div 
+            className="drawer-logo-section" 
+            onClick={handleGoToDashboard}
+            style={{ 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center',
+              flex: 1,
+              padding: '10px 0'
+            }}
+          >
+            <div className="drawer-icon">
+              <i className={userType === 'store' ? "fas fa-store" : "fas fa-user"}></i>
+            </div>
+            <div className="drawer-title">
+              <div className="main-title">ASL 홀덤</div>
+              <div className="sub-title">
+                {userType === 'store' ? '매장 관리자' : '일반 사용자'}
+              </div>
             </div>
           </div>
           <button className="close-button" onClick={toggleNav}>
@@ -152,7 +174,7 @@ const MobileHeader = ({ title, backButton = false, onBackClick, showMenuButton =
               <i className="fas fa-user"></i>
             </div>
             <div className="user-details">
-              <div className="username">{user.username || '사용자'}</div>
+              <div className="username">{getDisplayName(user, '사용자')}</div>
               <div className="email">{user.email || '이메일 정보 없음'}</div>
             </div>
           </div>
