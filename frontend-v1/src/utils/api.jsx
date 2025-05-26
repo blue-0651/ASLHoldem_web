@@ -9,8 +9,7 @@ const API = axios.create({
 // 요청 인터셉터 - 인증 토큰 추가
 API.interceptors.request.use(
   async (config) => {
-    // 로그 출력
-    console.log(`API 요청: ${config.method.toUpperCase()} ${config.url}`, config);
+    // API 요청 로깅 (개발 환경에서만)
 
     // 토큰이 있으면 헤더에 추가
     const token = getToken();
@@ -21,7 +20,6 @@ API.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('API 요청 오류:', error);
     return Promise.reject(error);
   }
 );
@@ -29,7 +27,6 @@ API.interceptors.request.use(
 // 응답 인터셉터 - 토큰 만료 시 갱신
 API.interceptors.response.use(
   (response) => {
-    console.log(`API 응답: ${response.status}`, response.data);
     return response;
   },
   async (error) => {
@@ -56,7 +53,6 @@ API.interceptors.response.use(
           return Promise.reject(error);
         }
       } catch (refreshError) {
-        console.error('토큰 갱신 오류:', refreshError);
         // 로그아웃 처리
         logout();
         // 로그인 페이지로 리다이렉트
@@ -65,14 +61,7 @@ API.interceptors.response.use(
       }
     }
 
-    // 기타 오류 처리
-    if (error.response) {
-      console.error(`API 응답 오류: ${error.response.status}`, error.response.data);
-    } else if (error.request) {
-      console.error('API 응답 없음:', error.request);
-    } else {
-      console.error('API 오류:', error.message);
-    }
+    // 기타 오류 처리는 각 컴포넌트에서 처리
 
     return Promise.reject(error);
   }
@@ -103,19 +92,24 @@ export const tournamentAPI = {
   // 모든 토너먼트 상세 정보 조회
   getAllTournamentInfo: (params = {}) => API.get('/tournaments/all_info/', { params }),
 
-  // 토너먼트 생성 - FormData 형식으로 변경
+  // 토너먼트 생성 - 기본 엔드포인트 (POST /tournaments/)
   createTournament: (data) => {
     const formData = new FormData();
     Object.keys(data).forEach((key) => {
       formData.append(key, data[key]);
     });
 
-    // FormData 내용 로깅
-    for (let pair of formData.entries()) {
-      console.log(`FormData 항목: ${pair[0]}: ${pair[1]}`);
-    }
-
     return API.post('/tournaments/', formData);
+  },
+
+  // 토너먼트 생성 - 추가 엔드포인트 (POST /tournaments/create/)
+  createTournamentAlternative: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      formData.append(key, data[key]);
+    });
+
+    return API.post('/tournaments/create/', formData);
   },
 
   // 토너먼트 수정 - FormData 형식으로 변경

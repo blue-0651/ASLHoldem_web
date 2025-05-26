@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Row, Col, Card, Form, Button, Modal, Spinner, Alert, Table } from 'react-bootstrap';
-import { tournamentAPI, storeAPI } from '../../utils/api';
+import { tournamentAPI, storeAPI, dashboardAPI } from '../../utils/api';
 
 // third party
 import DataTable from 'react-data-table-component';
@@ -14,6 +14,10 @@ const TournamentManagement = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [expandedRows, setExpandedRows] = useState(new Set()); // 확장된 행 상태 관리
+  
+  // 토너먼트별 상세 데이터 캐시
+  const [tournamentDetailsCache, setTournamentDetailsCache] = useState(new Map());
+  const [loadingDetails, setLoadingDetails] = useState(new Set());
   
   // API 호출 중복 방지를 위한 ref
   const hasFetchedData = useRef(false);
@@ -52,12 +56,10 @@ const TournamentManagement = () => {
       // getAllTournamentInfo로 변경 - 더 풍부한 데이터 제공
       const response = await tournamentAPI.getAllTournamentInfo();
       setTournaments(response.data); // .results 제거 - 직접 배열 구조
-      console.log('토너먼트 목록:', response.data);
       
       setLoading(false);
       
     } catch (err) {
-      console.error('토너먼트 목록 로드 오류:', err);
       setError('토너먼트 목록을 불러오는 중 오류가 발생했습니다.');
       setLoading(false);
     }
@@ -73,8 +75,33 @@ const TournamentManagement = () => {
       setLoadingStores(false);
       
     } catch (err) {
-      console.error('매장 목록 로드 오류:', err);
       setLoadingStores(false);
+    }
+  };
+  
+  // 토너먼트 상세 정보 가져오기
+  const fetchTournamentDetails = async (tournamentId) => {
+    // 이미 로딩 중이거나 캐시에 있으면 스킵
+    if (loadingDetails.has(tournamentId) || tournamentDetailsCache.has(tournamentId)) {
+      return;
+    }
+
+    try {
+      setLoadingDetails(prev => new Set([...prev, tournamentId]));
+      
+      const response = await dashboardAPI.getPlayerMapping(tournamentId);
+      
+      // 캐시에 저장
+      setTournamentDetailsCache(prev => new Map([...prev, [tournamentId, response.data]]));
+      
+    } catch (err) {
+      setError(`토너먼트 상세 정보를 불러오는 중 오류가 발생했습니다.`);
+    } finally {
+      setLoadingDetails(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(tournamentId);
+        return newSet;
+      });
     }
   };
   
@@ -90,7 +117,6 @@ const TournamentManagement = () => {
   // 토너먼트 필터 변경 핸들러
   const handleFilterTournamentChange = (e) => {
     const { value } = e.target;
-    console.log('토너먼트 필터 변경:', value);
     setFilters({
       ...filters,
       tournament: value
@@ -144,8 +170,6 @@ const TournamentManagement = () => {
         status: formData.status
       };
       
-      console.log('토너먼트 생성 데이터:', tournamentData);
-      
       // 실제 API 연동
       await tournamentAPI.createTournament(tournamentData);
       
@@ -175,7 +199,6 @@ const TournamentManagement = () => {
       }, 3000);
       
     } catch (err) {
-      console.error('토너먼트 생성 오류:', err);
       if (err.response && err.response.data) {
         // 백엔드 오류 메시지 표시
         setError(`토너먼트 생성 중 오류가 발생했습니다: ${JSON.stringify(err.response.data)}`);
@@ -194,41 +217,29 @@ const TournamentManagement = () => {
 
   // 필터링된 토너먼트 목록 계산
   const getFilteredTournaments = () => {
-    console.log('필터링 시작 - filters:', filters);
-    console.log('전체 tournaments:', tournaments);
-    
     // tournaments가 배열이 아닌 경우 빈 배열 반환
     if (!Array.isArray(tournaments)) {
-      console.log('tournaments가 배열이 아님:', tournaments);
       return [];
     }
     
     const filtered = tournaments.filter(tournament => {
-      console.log('토너먼트 확인:', tournament);
-      
       // 토너먼트 필터 - "all"이 아닌 경우에만 필터링 적용
       if (filters.tournament !== 'all') {
-        console.log(`토너먼트 필터 체크: filters.tournament=${filters.tournament}, tournament.id=${tournament.id}`);
         if (parseInt(filters.tournament) !== tournament.id) {
-          console.log('토너먼트 필터로 제외됨');
           return false;
         }
       }
       
       // 상태 필터 - "all"이 아닌 경우에만 필터링 적용
       if (filters.status !== 'all') {
-        console.log(`상태 필터 체크: filters.status=${filters.status}, tournament.status=${tournament.status}`);
         if (tournament.status !== filters.status) {
-          console.log('상태 필터로 제외됨');
           return false;
         }
       }
       
-      console.log('필터 통과');
       return true;
     });
     
-    console.log('필터링 결과:', filtered);
     return filtered;
   };
 
@@ -296,124 +307,145 @@ const TournamentManagement = () => {
     const newExpandedRows = new Set(expandedRows);
     if (expanded) {
       newExpandedRows.add(row.id);
+      // 확장 시 상세 정보 가져오기
+      fetchTournamentDetails(row.id);
     } else {
       newExpandedRows.delete(row.id);
     }
     setExpandedRows(newExpandedRows);
   };
 
-  // 확장된 행에 표시될 더미 데이터 컴포넌트
-  const ExpandedTournamentComponent = ({ data }) => (
-    <div className="p-4 border border-danger rounded" style={{ backgroundColor: '#dc3545' }}>
-      <div className="row">
-        {/* 매장별 현황 */}
-        <div className="col-md-6">
-          <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
-            <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>매장별 현황</h4>
-            <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
-              <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
-                <tr>
-                  <th className="border border-dark text-white">매장명</th>
-                  <th className="border border-dark text-white">SEAT권 수량</th>
-                  <th className="border border-dark text-white">SEAT권 배포 수량</th>
-                  <th className="border border-dark text-white">현재 보유 수량</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-secondary">🅰️ AA 매장</td>
-                  <td className="text-center border border-secondary">10</td>
-                  <td className="text-center border border-secondary">5</td>
-                  <td className="text-center border border-secondary">5</td>
-                </tr>
-                <tr>
-                  <td className="border border-secondary">🅱️ BB 매장</td>
-                  <td className="text-center border border-secondary">10</td>
-                  <td className="text-center border border-secondary">5</td>
-                  <td className="text-center border border-secondary">5</td>
-                </tr>
-                <tr>
-                  <td className="border border-secondary">🅲 CC 매장</td>
-                  <td className="text-center border border-secondary">10</td>
-                  <td className="text-center border border-secondary">5</td>
-                  <td className="text-center border border-secondary">5</td>
-                </tr>
-                <tr style={{ backgroundColor: '#ffc107', color: '#000' }}>
-                  <td className="border border-warning"><strong>총계</strong></td>
-                  <td className="text-center border border-warning"><strong>30</strong></td>
-                  <td className="text-center border border-warning"><strong>15</strong></td>
-                  <td className="text-center border border-warning"><strong>15</strong></td>
-                </tr>
-              </tbody>
-            </Table>
+  // 확장된 행에 표시될 실제 데이터 컴포넌트
+  const ExpandedTournamentComponent = ({ data }) => {
+    const tournamentDetails = tournamentDetailsCache.get(data.id);
+    const isLoadingDetails = loadingDetails.has(data.id);
+
+    if (isLoadingDetails) {
+      return (
+        <div className="p-4 text-center">
+          <Spinner animation="border" variant="primary" />
+          <p className="mt-3">토너먼트 상세 정보를 불러오는 중입니다...</p>
+        </div>
+      );
+    }
+
+    if (!tournamentDetails) {
+      return (
+        <div className="p-4 text-center">
+          <Alert variant="warning">
+            토너먼트 상세 정보를 불러올 수 없습니다.
+          </Alert>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-4 border border-danger rounded" style={{ backgroundColor: '#dc3545' }}>
+        <div className="row">
+          {/* 매장별 현황 */}
+          <div className="col-md-6">
+            <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
+              <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>매장별 현황</h4>
+              <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
+                <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
+                  <tr>
+                    <th className="border border-dark text-white">매장명</th>
+                    <th className="border border-dark text-white">SEAT권 수량</th>
+                    <th className="border border-dark text-white">SEAT권 배포 수량</th>
+                    <th className="border border-dark text-white">현재 보유 수량</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tournamentDetails.매장별_현황?.length > 0 ? (
+                    tournamentDetails.매장별_현황.map((store, index) => (
+                      <tr key={index}>
+                        <td className="border border-secondary">{store.매장명}</td>
+                        <td className="text-center border border-secondary">{store.좌석권_수량 || 0}</td>
+                        <td className="text-center border border-secondary">{store.배포된_수량 || 0}</td>
+                        <td className="text-center border border-secondary">{(store.좌석권_수량 || 0) - (store.배포된_수량 || 0)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="text-center border border-secondary">매장 데이터가 없습니다.</td>
+                    </tr>
+                  )}
+                  {/* 총계 행 */}
+                  <tr style={{ backgroundColor: '#ffc107', color: '#000' }}>
+                    <td className="border border-warning"><strong>총계</strong></td>
+                    <td className="text-center border border-warning"><strong>{tournamentDetails.총_좌석권_수량 || 0}</strong></td>
+                    <td className="text-center border border-warning"><strong>{tournamentDetails.배포된_좌석권_수량 || 0}</strong></td>
+                    <td className="text-center border border-warning"><strong>{(tournamentDetails.총_좌석권_수량 || 0) - (tournamentDetails.배포된_좌석권_수량 || 0)}</strong></td>
+                  </tr>
+                </tbody>
+              </Table>
+            </div>
+          </div>
+
+          {/* 선수별 현황 */}
+          <div className="col-md-6">
+            <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
+              <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>선수별 현황</h4>
+              <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
+                <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
+                  <tr>
+                    <th className="border border-dark text-white">선수</th>
+                    <th className="border border-dark text-white">SEAT권 보유 수량</th>
+                    <th className="border border-dark text-white">획득매장</th>
+                    <th className="border border-dark text-white">SEAT권 사용 정보</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tournamentDetails.선수별_현황?.length > 0 ? (
+                    tournamentDetails.선수별_현황.map((player, index) => (
+                      <tr key={index}>
+                        <td className="border border-secondary">{player.선수명}</td>
+                        <td className="text-center border border-secondary">{player.좌석권_보유 === 'Y' ? '1' : '0'}</td>
+                        <td className="border border-secondary">{player.매장명}</td>
+                        <td className="border border-secondary">
+                          <Button variant="outline-primary" size="sm">보기</Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="text-center border border-secondary">선수 데이터가 없습니다.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
           </div>
         </div>
 
-        {/* 선수별 현황 */}
-        <div className="col-md-6">
-          <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
-            <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>👥 선수별 현황</h4>
-            <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
-              <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
-                <tr>
-                  <th className="border border-dark text-white">선수</th>
-                  <th className="border border-dark text-white">SEAT권 보유 수량</th>
-                  <th className="border border-dark text-white">획득매장</th>
-                  <th className="border border-dark text-white">SEAT권 사용 정보</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-secondary">🏆 A 선수</td>
-                  <td className="text-center border border-secondary">10</td>
-                  <td className="border border-secondary">보기 버튼</td>
-                  <td className="border border-secondary">보기버튼</td>
-                </tr>
-                <tr>
-                  <td className="border border-secondary">🥈 B 선수</td>
-                  <td className="text-center border border-secondary">10</td>
-                  <td className="border border-secondary">보기 버튼</td>
-                  <td className="border border-secondary">보기버튼</td>
-                </tr>
-                <tr>
-                  <td className="border border-secondary">🥉 C 선수</td>
-                  <td className="text-center border border-secondary">10</td>
-                  <td className="border border-secondary">보기 버튼</td>
-                  <td className="border border-secondary">보기버튼</td>
-                </tr>
-              </tbody>
-            </Table>
-          </div>
-        </div>
-      </div>
-
-      {/* 요약 정보 */}
-      <div className="row mt-3">
-        <div className="col-12">
-          <div className="text-white p-3 rounded border border-light" style={{ backgroundColor: '#721c24' }}>
-            <div className="row text-center">
-              <div className="col-md-3 border-end border-light">
-                <h6 className="text-white">총 SEAT권</h6>
-                <h4 className="text-white">100</h4>
-              </div>
-              <div className="col-md-3 border-end border-light">
-                <h6 className="text-white">배포된 SEAT권</h6>
-                <h4 className="text-white">70</h4>
-              </div>
-              <div className="col-md-3 border-end border-light">
-                <h6 className="text-white">사용된 SEAT권</h6>
-                <h4 className="text-white">30</h4>
-              </div>
-              <div className="col-md-3">
-                <h6 className="text-white">참가 선수 수</h6>
-                <h4 className="text-white">15명</h4>
+        {/* 요약 정보 */}
+        <div className="row mt-3">
+          <div className="col-12">
+            <div className="text-white p-3 rounded border border-light" style={{ backgroundColor: '#721c24' }}>
+              <div className="row text-center">
+                <div className="col-md-3 border-end border-light">
+                  <h6 className="text-white">총 SEAT권</h6>
+                  <h4 className="text-white">{tournamentDetails.총_좌석권_수량 || 0}</h4>
+                </div>
+                <div className="col-md-3 border-end border-light">
+                  <h6 className="text-white">배포된 SEAT권</h6>
+                  <h4 className="text-white">{tournamentDetails.배포된_좌석권_수량 || 0}</h4>
+                </div>
+                <div className="col-md-3 border-end border-light">
+                  <h6 className="text-white">사용된 SEAT권</h6>
+                  <h4 className="text-white">{tournamentDetails.사용된_좌석권_수량 || 0}</h4>
+                </div>
+                <div className="col-md-3">
+                  <h6 className="text-white">참가 선수 수</h6>
+                  <h4 className="text-white">{tournamentDetails.선수별_현황?.length || 0}명</h4>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div>
@@ -449,24 +481,11 @@ const TournamentManagement = () => {
                   onChange={handleFilterTournamentChange}
                 >
                   <option value="all">모든 토너먼트</option>
-                  {(() => {
-                    console.log('토너먼트 필터 옵션 생성 - tournaments:', tournaments);
-                    console.log('tournaments 타입:', typeof tournaments);
-                    console.log('tournaments 배열 여부:', Array.isArray(tournaments));
-                    console.log('tournaments 길이:', tournaments?.length);
-                    
-                    if (Array.isArray(tournaments)) {
-                      return tournaments.map(tournament => {
-                        console.log('토너먼트 옵션 생성:', tournament);
-                        return (
-                          <option key={tournament.id} value={tournament.id}>
-                            {tournament.name || `토너먼트 ${tournament.id}`}
-                          </option>
-                        );
-                      });
-                    }
-                    return null;
-                  })()}
+                  {Array.isArray(tournaments) && tournaments.map(tournament => (
+                    <option key={tournament.id} value={tournament.id}>
+                      {tournament.name || `토너먼트 ${tournament.id}`}
+                    </option>
+                  ))}
                 </Form.Select>
               </Form.Group>
             </Col>
