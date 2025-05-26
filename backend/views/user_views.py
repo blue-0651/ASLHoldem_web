@@ -51,9 +51,8 @@ class StoreManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['user_type'] = 'store_manager'
         token['phone'] = user.phone
-        token['nickname'] = user.nickname
+        token['nickname'] = user.nickname if user.nickname else ''
         token['email'] = user.email if user.email else ''
         token['is_store_owner'] = user.is_store_owner
         token['role'] = user.role
@@ -100,10 +99,10 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['user_type'] = 'regular_user'
         token['phone'] = user.phone
-        token['nickname'] = user.nickname
+        token['nickname'] = user.nickname if user.nickname else ''
         token['email'] = user.email if user.email else ''
+        token['role'] = user.role
         return token
 
 # 관리자용 토큰 시리얼라이저
@@ -142,12 +141,12 @@ class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['user_type'] = 'admin'
         token['phone'] = user.phone
-        token['nickname'] = user.nickname
+        token['nickname'] = user.nickname if user.nickname else ''
         token['email'] = user.email if user.email else ''
         token['is_staff'] = user.is_staff
         token['is_superuser'] = user.is_superuser
+        token['role'] = user.role
         return token
 
 # 매장 관리자용 토큰 뷰
