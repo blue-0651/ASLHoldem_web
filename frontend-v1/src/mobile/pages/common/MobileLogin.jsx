@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Container, Form, Button, Card, Alert, Spinner, Row, Col } from 'react-bootstrap';
-import API from '../../../utils/api';
+import { login } from '../../../utils/auth';
 import '../../../assets/scss/mobile/_mobile-commons.scss';
 
 /**
@@ -34,20 +34,7 @@ const MobileLogin = () => {
     return phoneRegex.test(phone);
   };
 
-  // JWT 토큰 디코딩 함수
-  const decodeJWT = (token) => {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      return JSON.parse(jsonPayload);
-    } catch (error) {
-      console.error('토큰 디코딩 오류:', error);
-      return null;
-    }
-  };
+
 
   // 폼 제출 핸들러
   const handleSubmit = async (e) => {
@@ -63,57 +50,28 @@ const MobileLogin = () => {
     }
 
     try {
-      // 로그인 API 호출
-      let loginUrl = '/accounts/token/user/'; // 기본값: 일반 사용자
-      if (formData.userType === 'store') {
-        loginUrl = '/accounts/token/store/'; // 매장 관리자
-      }
+      console.log(`로그인 시도: ${formData.userType}`);
       
-      console.log(`로그인 시도: ${formData.userType} - ${loginUrl}`);
+      // auth.jsx의 login 함수 사용
+      const result = await login(formData.phone, formData.password, formData.userType);
       
-      const response = await API.post(loginUrl, {
-        phone: formData.phone,
-        password: formData.password
-      });
-      
-      // 토큰 저장 (백엔드 응답에 맞게 수정)
-      localStorage.setItem('asl_holdem_access_token', response.data.access);
-      localStorage.setItem('asl_holdem_refresh_token', response.data.refresh);
-      
-      // 토큰에서 실제 사용자 유형 확인
-      const tokenPayload = decodeJWT(response.data.access);
-      console.log('토큰 내용:', tokenPayload);
-      
-      let actualUserType = 'user'; // 기본값
-      let redirectPath = '/mobile/user/dashboard'; // 기본값
-      
-      if (tokenPayload) {
-        // 토큰에서 사용자 유형 결정
-        if (tokenPayload.user_type === 'store_manager' || tokenPayload.is_store_owner === true) {
-          actualUserType = 'store';
+      if (result.success) {
+        console.log('로그인 성공:', result.user);
+        
+        // 사용자 유형에 따른 리다이렉션
+        let redirectPath = '/mobile/user/dashboard'; // 기본값
+        
+        if (result.user.is_store_owner || result.user.role === 'STORE_OWNER') {
           redirectPath = '/mobile/store/dashboard';
-        } else if (tokenPayload.user_type === 'admin') {
-          actualUserType = 'admin';
+        } else if (result.user.role === 'ADMIN') {
           redirectPath = '/admin/dashboard';
-        } else {
-          actualUserType = 'user';
-          redirectPath = '/mobile/user/dashboard';
         }
+        
+        console.log(`리다이렉션: ${redirectPath}`);
+        navigate(redirectPath);
+      } else {
+        throw new Error(result.error?.detail || '로그인에 실패했습니다.');
       }
-      
-      // 사용자 정보 저장 (실제 토큰 내용 기반)
-      localStorage.setItem('user_type', actualUserType);
-      localStorage.setItem('user_data', JSON.stringify({
-        phone: formData.phone,
-        userType: actualUserType,
-        is_store_owner: tokenPayload?.is_store_owner || false,
-        user_type_from_token: tokenPayload?.user_type || 'unknown'
-      }));
-      
-      console.log(`실제 사용자 유형: ${actualUserType}, 리다이렉션: ${redirectPath}`);
-      
-      // 실제 사용자 유형에 따른 리다이렉션
-      navigate(redirectPath);
       
     } catch (err) {
       console.error('로그인 오류:', err);
