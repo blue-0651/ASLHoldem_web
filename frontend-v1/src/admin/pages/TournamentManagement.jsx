@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Row, Col, Card, Form, Button, Modal, Spinner, Alert, Table } from 'react-bootstrap';
+import { Row, Col, Card, Form, Button, Modal, Spinner, Alert, Table, Dropdown, Badge } from 'react-bootstrap';
 import { tournamentAPI, storeAPI, dashboardAPI } from '../../utils/api';
 
 // third party
 import DataTable from 'react-data-table-component';
+
+// 드롭다운 화살표 제거를 위한 스타일
+const dropdownToggleStyle = {
+  minHeight: '48px',
+  border: '1px solid #0d6efd',
+  borderRadius: '0.375rem',
+  backgroundColor: 'transparent',
+  color: '#0d6efd'
+};
 
 const TournamentManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -25,7 +34,7 @@ const TournamentManagement = () => {
   // 폼 상태
   const [formData, setFormData] = useState({
     name: '',
-    store: '',
+    stores: [], // 단일 store에서 복수 stores로 변경
     start_date: '',
     start_time: '',
     buy_in: '',
@@ -113,6 +122,37 @@ const TournamentManagement = () => {
       [name]: value
     });
   };
+
+  // 매장 멀티 셀렉트 핸들러
+  const handleStoreSelection = (storeId) => {
+    const currentStores = formData.stores || [];
+    const isSelected = currentStores.includes(storeId);
+    
+    if (isSelected) {
+      // 이미 선택된 매장이면 제거
+      setFormData({
+        ...formData,
+        stores: currentStores.filter(id => id !== storeId)
+      });
+    } else {
+      // 선택되지 않은 매장이면 추가
+      setFormData({
+        ...formData,
+        stores: [...currentStores, storeId]
+      });
+    }
+  };
+
+  // 모든 매장 선택/해제
+  const handleSelectAllStores = () => {
+    const allStoreIds = stores.map(store => store.id);
+    const isAllSelected = formData.stores.length === stores.length;
+    
+    setFormData({
+      ...formData,
+      stores: isAllSelected ? [] : allStoreIds
+    });
+  };
   
   // 토너먼트 필터 변경 핸들러
   const handleFilterTournamentChange = (e) => {
@@ -149,9 +189,9 @@ const TournamentManagement = () => {
       setError(null);
       
       // 필수 필드 검증
-      if (!formData.name || !formData.store || !formData.start_date || 
+      if (!formData.name || !formData.stores || formData.stores.length === 0 || !formData.start_date || 
           !formData.start_time || !formData.buy_in || !formData.ticket_quantity) {
-        setError('모든 필수 필드를 입력해주세요.');
+        setError('모든 필수 필드를 입력해주세요. 최소 하나 이상의 매장을 선택해야 합니다.');
         setLoading(false);
         return;
       }
@@ -159,10 +199,10 @@ const TournamentManagement = () => {
       // 날짜 & 시간 결합
       const startDateTime = `${formData.start_date}T${formData.start_time}:00`;
       
-      // 폼 데이터 준비
+      // 폼 데이터 준비 (현재 백엔드는 단일 매장만 지원하므로 첫 번째 매장 사용)
       const tournamentData = {
         name: formData.name,
-        store: formData.store, // 문자열로 보내고 백엔드에서 변환하도록
+        store: formData.stores[0], // 첫 번째 선택된 매장 ID 사용
         start_time: startDateTime,
         buy_in: formData.buy_in,
         ticket_quantity: formData.ticket_quantity,
@@ -177,7 +217,7 @@ const TournamentManagement = () => {
       // 폼 초기화
       setFormData({
         name: '',
-        store: '',
+        stores: [],
         start_date: '',
         start_time: '',
         buy_in: '',
@@ -555,63 +595,241 @@ const TournamentManagement = () => {
       </Card>
 
       {/* 토너먼트 생성 모달 */}
-      <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
+      <Modal 
+        show={showCreateModal} 
+        onHide={() => setShowCreateModal(false)} 
+        size="lg"
+        backdrop="static"
+        keyboard={false}
+      >
         <Modal.Header closeButton>
-          <Modal.Title>새 토너먼트 생성</Modal.Title>
+          <Modal.Title>
+            <i className="fas fa-trophy me-2"></i>
+            새 토너먼트 생성
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Form onSubmit={handleCreateTournament}>
+          {error && (
+            <Alert variant="danger" className="mb-3">
+              {error}
+            </Alert>
+          )}
+          
+                    <Form onSubmit={handleCreateTournament}>
+            {/* 토너먼트 이름 */}
             <Row>
-              <Col md={6}>
+              <Col md={12}>
                 <Form.Group className="mb-3">
-                  <Form.Label>토너먼트 이름 *</Form.Label>
+                  <Form.Label>
+                    토너먼트 이름 <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control 
                     type="text" 
-                    placeholder="이름 입력" 
+                    placeholder="예: 주말 스페셜 토너먼트" 
                     name="name"
                     value={formData.name}
                     onChange={handleFormChange}
                     required
+                    maxLength={100}
                   />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>매장 *</Form.Label>
-                  <Form.Select 
-                    name="store"
-                    value={formData.store}
-                    onChange={handleFormChange}
-                    required
-                  >
-                    <option value="">매장 선택</option>
-                    {loadingStores ? (
-                      <option disabled>로딩 중...</option>
-                    ) : (
-                      stores.map(store => (
-                        <option key={store.id} value={store.id}>{store.name}</option>
-                      ))
-                    )}
-                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    최대 100자까지 입력 가능합니다.
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
+
+            {/* 매장 선택 */}
+            <Row>
+              <Col md={12}>
+                <Form.Group className="mb-3">
+                  <Form.Label>
+                    매장 <span className="text-danger">*</span>
+                  </Form.Label>
+                  
+                  {loadingStores ? (
+                    <div className="text-center p-3 border rounded">
+                      <Spinner animation="border" size="sm" className="me-2" />
+                      매장 목록을 불러오는 중...
+                    </div>
+                  ) : stores.length === 0 ? (
+                    <div className="text-center p-3 border rounded text-muted">
+                      등록된 매장이 없습니다
+                    </div>
+                  ) : (
+                    <div>
+                      {/* 드롭다운 버튼 */}
+                      <Dropdown>
+                        <Dropdown.Toggle 
+                          as="div"
+                          id="store-dropdown"
+                          className="btn btn-outline-primary w-100 d-flex justify-content-between align-items-center"
+                          style={dropdownToggleStyle}
+                        >
+                          <div className="d-flex align-items-center">
+                            <i className="fas fa-store me-2"></i>
+                            {formData.stores.length === 0 ? (
+                              <span className="text-muted">매장을 선택해주세요</span>
+                            ) : (
+                              <span>
+                                선택된 매장 ({formData.stores.length}/{stores.length})
+                              </span>
+                            )}
+                          </div>
+                          <i className="fas fa-chevron-down"></i>
+                        </Dropdown.Toggle>
+
+                        <Dropdown.Menu className="w-100" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                          {/* 전체 선택/해제 옵션 */}
+                          <Dropdown.Item 
+                            as="div" 
+                            className="border-bottom mb-2 pb-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="d-flex justify-content-between align-items-center">
+                              <span className="fw-bold text-primary">
+                                <i className="fas fa-list me-2"></i>
+                                매장 관리
+                              </span>
+                              <Button 
+                                variant={formData.stores.length === stores.length ? "outline-danger" : "outline-primary"}
+                                size="sm"
+                                onClick={handleSelectAllStores}
+                              >
+                                {formData.stores.length === stores.length ? (
+                                  <>
+                                    <i className="fas fa-minus-square me-1"></i>
+                                    전체 해제
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="fas fa-check-square me-1"></i>
+                                    전체 선택
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </Dropdown.Item>
+
+                          {/* 매장 목록 */}
+                          {stores.map(store => {
+                            const isSelected = formData.stores.includes(store.id);
+                            return (
+                              <Dropdown.Item
+                                key={store.id}
+                                as="div"
+                                className={`d-flex align-items-center p-2 ${
+                                  isSelected ? 'bg-primary text-white' : ''
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStoreSelection(store.id);
+                                }}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <Form.Check
+                                  type="checkbox"
+                                  id={`dropdown-store-${store.id}`}
+                                  checked={isSelected}
+                                  onChange={() => handleStoreSelection(store.id)}
+                                  className="me-3"
+                                  style={{ pointerEvents: 'none' }}
+                                />
+                                <div className="flex-grow-1">
+                                  <div className="d-flex align-items-center">
+                                    <i className={`fas fa-store me-2 ${isSelected ? 'text-white' : 'text-primary'}`}></i>
+                                    <span className="fw-bold">{store.name}</span>
+                                  </div>
+                                  {store.address && (
+                                    <small className={`${isSelected ? 'text-white-50' : 'text-muted'}`}>
+                                      <i className="fas fa-map-marker-alt me-1"></i>
+                                      {store.address}
+                                    </small>
+                                  )}
+                                </div>
+                                {isSelected && (
+                                  <i className="fas fa-check-circle text-white"></i>
+                                )}
+                              </Dropdown.Item>
+                            );
+                          })}
+                        </Dropdown.Menu>
+                      </Dropdown>
+
+                      {/* 선택된 매장 표시 */}
+                      {formData.stores.length > 0 && (
+                        <div className="mt-3 p-3 bg-light rounded border">
+                          <div className="d-flex align-items-center mb-2">
+                            <i className="fas fa-check-circle text-success me-2"></i>
+                            <span className="fw-bold">선택된 매장 목록:</span>
+                          </div>
+                          <div className="d-flex flex-wrap gap-2">
+                            {stores
+                              .filter(store => formData.stores.includes(store.id))
+                              .map(store => (
+                                <Badge 
+                                  key={store.id}
+                                  bg="primary" 
+                                  className="d-flex align-items-center p-2"
+                                  style={{ fontSize: '0.9rem' }}
+                                >
+                                  <i className="fas fa-store me-2"></i>
+                                  {store.name}
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="text-white p-0 ms-2"
+                                    onClick={() => handleStoreSelection(store.id)}
+                                    style={{ fontSize: '0.8rem' }}
+                                  >
+                                    <i className="fas fa-times"></i>
+                                  </Button>
+                                </Badge>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <Form.Text className="text-muted">
+                    <i className="fas fa-info-circle me-1"></i>
+                    토너먼트를 진행할 매장을 선택해주세요. 여러 매장 선택 가능합니다.
+                    {formData.stores.length > 0 && (
+                      <div className="mt-1">
+                        <strong>현재 백엔드 제한:</strong> 첫 번째 선택된 매장({stores.find(s => s.id === formData.stores[0])?.name})만 적용됩니다.
+                      </div>
+                    )}
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
+            
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>시작 날짜 *</Form.Label>
+                  <Form.Label>
+                    시작 날짜 <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control 
                     type="date"
                     name="start_date"
                     value={formData.start_date}
                     onChange={handleFormChange}
                     required
+                    min={new Date().toISOString().split('T')[0]}
                   />
+                  <Form.Text className="text-muted">
+                    오늘 이후 날짜만 선택 가능합니다.
+                  </Form.Text>
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>시작 시간 *</Form.Label>
+                  <Form.Label>
+                    시작 시간 <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control 
                     type="time"
                     name="start_time"
@@ -622,61 +840,109 @@ const TournamentManagement = () => {
                 </Form.Group>
               </Col>
             </Row>
+            
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>바이인 금액 *</Form.Label>
-                  <Form.Control 
-                    type="number" 
-                    placeholder="금액 입력" 
-                    name="buy_in"
-                    value={formData.buy_in}
-                    onChange={handleFormChange}
-                    required
-                  />
+                  <Form.Label>
+                    바이인 금액 <span className="text-danger">*</span>
+                  </Form.Label>
+                  <div className="input-group">
+                    <Form.Control 
+                      type="number" 
+                      placeholder="10000" 
+                      name="buy_in"
+                      value={formData.buy_in}
+                      onChange={handleFormChange}
+                      required
+                      min="0"
+                      step="1000"
+                    />
+                    <span className="input-group-text">원</span>
+                  </div>
+                  <Form.Text className="text-muted">
+                    1,000원 단위로 입력해주세요.
+                  </Form.Text>
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>좌석권 수량 *</Form.Label>
-                  <Form.Control 
-                    type="number" 
-                    placeholder="좌석권 수량 입력" 
-                    name="ticket_quantity"
-                    value={formData.ticket_quantity}
-                    onChange={handleFormChange}
-                    required
-                  />
+                  <Form.Label>
+                    좌석권 수량 <span className="text-danger">*</span>
+                  </Form.Label>
+                  <div className="input-group">
+                    <Form.Control 
+                      type="number" 
+                      placeholder="100" 
+                      name="ticket_quantity"
+                      value={formData.ticket_quantity}
+                      onChange={handleFormChange}
+                      required
+                      min="1"
+                      max="1000"
+                    />
+                    <span className="input-group-text">매</span>
+                  </div>
+                  <Form.Text className="text-muted">
+                    1~1,000매까지 설정 가능합니다.
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
-            <Form.Group className="mb-3">
-              <Form.Label>설명</Form.Label>
+            
+            <Form.Group className="mb-4">
+              <Form.Label>토너먼트 설명</Form.Label>
               <Form.Control 
                 as="textarea" 
-                rows={3} 
-                placeholder="토너먼트 설명 입력" 
+                rows={4} 
+                placeholder="토너먼트에 대한 상세 설명을 입력해주세요. (선택사항)" 
                 name="description"
                 value={formData.description}
                 onChange={handleFormChange}
+                maxLength={500}
               />
+              <Form.Text className="text-muted">
+                최대 500자까지 입력 가능합니다. ({formData.description.length}/500)
+              </Form.Text>
             </Form.Group>
-            <div className="text-end mt-4">
-              <Button variant="secondary" onClick={() => setShowCreateModal(false)} className="me-2">
-                취소
-              </Button>
-              <Button 
-                variant="primary" 
-                type="submit"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Spinner as="span" animation="border" size="sm" className="me-2" />
-                    처리 중...
-                  </>
-                ) : '토너먼트 생성'}
-              </Button>
+            
+            <hr />
+            
+            <div className="d-flex justify-content-between align-items-center mt-4">
+              <div className="text-muted">
+                <small>
+                  <i className="fas fa-info-circle me-1"></i>
+                  <span className="text-danger">*</span> 표시된 항목은 필수 입력 사항입니다.
+                </small>
+              </div>
+              <div>
+                <Button 
+                  variant="outline-secondary" 
+                  onClick={() => setShowCreateModal(false)} 
+                  className="me-2"
+                  disabled={loading}
+                >
+                  <i className="fas fa-times me-1"></i>
+                  취소
+                </Button>
+                <Button 
+                  variant="primary" 
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" className="me-2" />
+                      생성 중...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-plus me-1"></i>
+                      토너먼트 생성
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </Form>
         </Modal.Body>
