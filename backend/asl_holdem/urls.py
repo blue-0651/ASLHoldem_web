@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/v1/accounts/', include('accounts.urls')),
     path('api/v1/tournaments/', include('tournaments.urls')),
     path('api/v1/stores/', include('stores.urls')),
+    path('api/v1/notices/', include('notices.urls')),  # 공지사항 API 경로 추가
     path('api/v1/', include(registrations_router.urls)),  # 등록 API 경로 추가
     path('api/v1/store/info/', StoreViewSet.as_view({'get': 'current_store', 'put': 'update_current_store'})),
     path('api/v1/store/generate-qr/', StoreViewSet.as_view({'post': 'generate_qr_code'})),

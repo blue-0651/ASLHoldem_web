@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'accounts',
     'tournaments',
     'stores',
+    'notices',
 ]
 
 MIDDLEWARE = [
