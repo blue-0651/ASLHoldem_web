@@ -100,6 +100,14 @@ class Notice(models.Model):
         help_text='공지 종료일 (설정하지 않으면 무기한 공개)'
     )
     
+    # 공지 대상 회원 (비어있으면 전체 회원)
+    target_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='target_notices',
+        help_text='공지 대상 회원(비어있으면 전체 회원)'
+    )
+    
     # 생성 시간
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -163,7 +171,12 @@ class Notice(models.Model):
         
         # 회원 전용 공지사항은 로그인한 사용자만 볼 수 있음
         if self.notice_type == 'MEMBER_ONLY':
-            return user.is_authenticated
+            if not user.is_authenticated:
+                return False
+            # target_users가 비어있으면 전체 회원, 아니면 포함된 회원만
+            if self.target_users.exists():
+                return self.target_users.filter(pk=user.pk).exists()
+            return True
         
         return False
 

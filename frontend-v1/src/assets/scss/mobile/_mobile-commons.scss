@@ -999,3 +999,21 @@ body {
     font-size: 14px;
   }
 }
+
+/* 공통 타이틀 스타일 - 전역에서 사용 가능 */
+.main-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: $asl-mobile-text-color; // 밝은 텍스트 색상 (#e4dfdf)
+  line-height: 1.3;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6); // 가독성을 위한 그림자 효과
+  
+  @media (max-width: 768px) {
+    font-size: 18px;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 16px;
+  }
+}

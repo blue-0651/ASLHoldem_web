@@ -31,9 +31,9 @@ const StoreDashboard = () => {
       <Container className="asl-mobile-content">
         <Row className="mb-4">
           <Col>
-            <div className="asl-welcome-card">
-              <h2>환영합니다, {getDisplayName(user, '매장 관리자')}님!</h2>
-              <p>매장과 토너먼트를 효율적으로 관리하세요.</p>
+            <div>
+              <h2 className="main-title">환영합니다, {getDisplayName(user, '매장 관리자')}님!</h2>
+              <p className="main-title">매장과 토너먼트를 효율적으로 관리하세요.</p>
             </div>
           </Col>
         </Row>
