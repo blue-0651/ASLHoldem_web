@@ -8,7 +8,7 @@ import logging
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from tournaments.models import TournamentRegistration, Tournament
+from tournaments.models import Tournament
 
 # API 로거 생성
 api_logger = logging.getLogger('api')
@@ -231,19 +231,7 @@ class TournamentBasicSerializer(serializers.ModelSerializer):
         model = Tournament
         fields = ['id', 'name', 'start_time', 'status', 'buy_in', 'store', 'store_name']
 
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    """
-    사용자의 토너먼트 등록 정보 시리얼라이저
-    """
-    tournament_name = serializers.CharField(source='tournament.name', read_only=True)
-    tournament_start_time = serializers.DateTimeField(source='tournament.start_time', read_only=True)
-    tournament_status = serializers.CharField(source='tournament.status', read_only=True)
-    store_name = serializers.CharField(source='tournament.store.name', read_only=True)
-    
-    class Meta:
-        model = TournamentRegistration
-        fields = ['id', 'tournament', 'tournament_name', 'tournament_start_time', 'tournament_status',
-                  'store_name', 'paid_amount', 'registered_at', 'checked_in', 'checked_in_at', 'has_ticket']
+
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -251,11 +239,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
     nickname = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     password = serializers.CharField(write_only=True, required=False)
-    tournament_registrations = UserRegistrationSerializer(source='tournament_registrations.all', many=True, read_only=True)
-    total_registrations = serializers.SerializerMethodField()
-    total_checked_in = serializers.SerializerMethodField()
-    last_activity = serializers.SerializerMethodField()
-    total_spent = serializers.SerializerMethodField()
+
     user_permissions_list = serializers.SerializerMethodField()
     groups_list = serializers.SerializerMethodField()
     phone = serializers.CharField(required=True)
@@ -268,28 +252,12 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'phone', 'nickname', 'email', 'first_name', 'last_name', 'password', 
             'is_active', 'is_staff', 'is_superuser', 'date_joined', 'last_login',
-            'tournament_registrations', 'total_registrations', 'total_checked_in',
-            'last_activity', 'total_spent', 'groups', 'groups_list',
-            'user_permissions', 'user_permissions_list', 'is_store_owner',
-            'birth_date', 'gender'
+            'groups', 'groups_list', 'user_permissions', 'user_permissions_list', 
+            'is_store_owner', 'birth_date', 'gender'
         ]
-        read_only_fields = ['id', 'date_joined', 'last_login', 'tournament_registrations',
-                           'total_registrations', 'total_checked_in', 'last_activity',
-                           'total_spent', 'user_permissions_list', 'groups_list']
+        read_only_fields = ['id', 'date_joined', 'last_login', 'user_permissions_list', 'groups_list']
     
-    def get_total_registrations(self, obj):
-        return obj.tournament_registrations.count()
-    
-    def get_total_checked_in(self, obj):
-        return obj.tournament_registrations.filter(checked_in=True).count()
-    
-    def get_last_activity(self, obj):
-        latest_reg = obj.tournament_registrations.all().order_by('-registered_at').first()
-        return latest_reg.registered_at if latest_reg else None
-    
-    def get_total_spent(self, obj):
-        total = sum(reg.paid_amount for reg in obj.tournament_registrations.all() if reg.paid_amount)
-        return float(total) if total else 0
+
     
     def get_user_permissions_list(self, obj):
         return [perm.codename for perm in obj.user_permissions.all()]

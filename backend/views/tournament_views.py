@@ -5,10 +5,10 @@ from django.db.models import Count, Sum
 import datetime
 from rest_framework.permissions import IsAdminUser
 
-from tournaments.models import Tournament, TournamentRegistration
+from tournaments.models import Tournament
 from stores.models import Store
 from tournaments.serializers import (
-    TournamentSerializer, TournamentRegistrationSerializer,
+    TournamentSerializer,
     TournamentParticipantsCountSerializer, TournamentParticipantsResponseSerializer
 )
 
@@ -70,70 +70,9 @@ class TournamentViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
     
-    @action(detail=False, methods=['post'])
-    def my_tournaments(self, request):
-        """
-        현재 로그인한 사용자가 참가한 토너먼트 목록을 반환합니다.
-        """
-        user = request.user
-        registrations = TournamentRegistration.objects.filter(user=user).select_related(
-            'tournament', 'tournament__store'
-        )
-        serializer = TournamentRegistrationSerializer(registrations, many=True)
-        return Response(serializer.data)
 
-    @action(detail=False, methods=['post'])
-    def participants_count(self, request):
-        """
-        특정 토너먼트에 참가한 사용자 수를 반환합니다.
-        """
-        serializer = TournamentParticipantsCountSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        tournament_name = serializer.validated_data['tournament_name']
-        
-        try:
-            # 특정 이름의 토너먼트 찾기
-            tournament = Tournament.objects.get(name=tournament_name)
-            
-            # 해당 토너먼트에 등록된 사용자 수 계산
-            participant_count = TournamentRegistration.objects.filter(tournament=tournament).count()
-            
-            # 토너먼트 정보 및 참가자 수 반환
-            result = {
-                'tournament_id': tournament.id,
-                'tournament_name': tournament.name,
-                'start_time': tournament.start_time,
-                'status': tournament.status,
-                'max_seats': tournament.max_seats,  # 내부 필드 이름 사용
-                'participant_count': participant_count,
-                'remaining_tickets': tournament.max_seats - participant_count if tournament.max_seats else None
-            }
-            
-            response_serializer = TournamentParticipantsResponseSerializer(result)
-            return Response(response_serializer.data)
-        except Tournament.DoesNotExist:
-            return Response({"error": "해당 이름의 토너먼트를 찾을 수 없습니다."}, 
-                           status=status.HTTP_404_NOT_FOUND)
-        except Tournament.MultipleObjectsReturned:
-            # 동일한 이름의 토너먼트가 여러 개 있을 경우
-            tournaments = Tournament.objects.filter(name=tournament_name)
-            results = []
-            
-            for tournament in tournaments:
-                participant_count = TournamentRegistration.objects.filter(tournament=tournament).count()
-                results.append({
-                    'tournament_id': tournament.id,
-                    'tournament_name': tournament.name,
-                    'start_time': tournament.start_time,
-                    'status': tournament.status,
-                    'max_seats': tournament.max_seats,  # 내부 필드 이름 사용
-                    'participant_count': participant_count,
-                    'remaining_tickets': tournament.max_seats - participant_count if tournament.max_seats else None
-                })
-            
-            return Response({"message": "동일한 이름의 토너먼트가 여러 개 있습니다.", "tournaments": results})
+
+
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def all_info(self, request):
@@ -180,24 +119,9 @@ class TournamentViewSet(viewsets.ModelViewSet):
             results = []
             
             for tournament in tournaments:
-                # 참가자 수 계산
-                participant_count = TournamentRegistration.objects.filter(tournament=tournament).count()
-                
-                # 등록 정보 조회
-                registrations = TournamentRegistration.objects.filter(tournament=tournament).select_related('user')
-                registration_info = [{
-                    'user': reg.user.phone,
-                    'nickname': reg.user.nickname,
-                    'has_ticket': True,
-                    'paid_amount': reg.paid_amount,
-                    'checked_in': reg.checked_in,
-                    'checked_in_at': reg.checked_in_at
-                } for reg in registrations]
-                
                 # 토너먼트 정보 구성
                 tournament_info = {
                     'id': tournament.id,
-                    'store_name': tournament.store.name,
                     'name': tournament.name,
                     'start_time': tournament.start_time,
                     'buy_in': tournament.buy_in,
@@ -206,9 +130,6 @@ class TournamentViewSet(viewsets.ModelViewSet):
                     'status': tournament.status,
                     'created_at': tournament.created_at,
                     'updated_at': tournament.updated_at,
-                    'participant_count': participant_count,
-                    'remaining_tickets': tournament.ticket_quantity - participant_count if tournament.ticket_quantity else None,
-                    'registrations': registration_info
                 }
                 
                 results.append(tournament_info)
@@ -227,27 +148,17 @@ class TournamentViewSet(viewsets.ModelViewSet):
         대시보드에 표시할 주요 통계 정보를 반환합니다.
         - 총 토너먼트 수
         - 활성 매장 수
-        - 등록 선수 수
-        - 좌석권 보유 수
         """
         try:
             # 총 토너먼트 수 계산
             tournament_count = Tournament.objects.count()
             
-            # 활성 매장 수 계산 (토너먼트 개최 매장 수)
-            active_store_count = Store.objects.filter(tournaments__isnull=False).distinct().count()
-            
-            # 등록 선수 수 계산 (중복 제거)
-            player_count = TournamentRegistration.objects.values('user').distinct().count()
-            
-            # 좌석권 보유 수 - has_ticket 필드 사용 제거
-            ticket_count = TournamentRegistration.objects.count()  # 모든 등록을 좌석권으로 간주
+            # 활성 매장 수 계산
+            active_store_count = Store.objects.count()
             
             result = {
                 'tournament_count': tournament_count,
                 'active_store_count': active_store_count,
-                'player_count': player_count,
-                'ticket_count': ticket_count
             }
             
             return Response(result)
@@ -261,7 +172,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny], url_path='dashboard/player_mapping')
     def dashboard_player_mapping(self, request):
         """
-        대시보드에 표시할 선수별 좌석권 정보를 반환합니다.
+        대시보드에 표시할 토너먼트 정보를 반환합니다.
         """
         try:
             # 토너먼트 ID 파라미터 처리
@@ -279,47 +190,10 @@ class TournamentViewSet(viewsets.ModelViewSet):
                 from rest_framework import status as rf_status
                 return Response({"error": "토너먼트를 찾을 수 없습니다."}, status=rf_status.HTTP_404_NOT_FOUND)
             
-            # 매장별 좌석권 현황 계산
-            store_ticket_status = []
-            stores = Store.objects.all()
-            
-            for store in stores:
-                # has_ticket 필드 사용 제거
-                registrations = TournamentRegistration.objects.filter(
-                    tournament=tournament
-                ).count()
-                
-                store_ticket_status.append({
-                    '매장명': store.name,
-                    '좌석권_수량': registrations,
-                })
-            
-            # 선수별 좌석권 현황 계산
-            player_ticket_status = []
-            registrations = TournamentRegistration.objects.filter(
-                tournament=tournament
-            ).select_related('user')
-            
-            for reg in registrations:
-                player_ticket_status.append({
-                    'user': reg.user.phone,
-                    'nickname': reg.user.nickname,
-                    '매장명': "미지정",
-                    '좌석권_보유': "있음",
-                })
-            
-            # 배포된 좌석권 수량 계산 - has_ticket 필드 사용 제거
-            distributed_tickets = TournamentRegistration.objects.filter(
-                tournament=tournament
-            ).count()  # 모든 등록을 배포된 좌석권으로 간주
-            
             result = {
                 '토너먼트명': tournament.name,
                 '토너먼트_시작시간': tournament.start_time,
                 '총_좌석권_수량': tournament.ticket_quantity,
-                '배포된_좌석권_수량': distributed_tickets,
-                '매장별_현황': store_ticket_status,
-                '선수별_현황': player_ticket_status
             }
             
             return Response(result)
@@ -393,14 +267,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAdminUser], url_path='registrations')
-    def registrations(self, request):
-        """
-        모든 토너먼트 등록 정보를 관리자만 조회할 수 있습니다.
-        """
-        registrations = TournamentRegistration.objects.select_related('user', 'tournament', 'tournament__store').all()
-        serializer = TournamentRegistrationSerializer(registrations, many=True)
-        return Response(serializer.data)
+
 
     @action(detail=False, methods=['post'], url_path='create')
     def create_tournament(self, request):
