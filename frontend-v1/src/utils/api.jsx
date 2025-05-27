@@ -9,7 +9,6 @@ const API = axios.create({
 // 요청 인터셉터 - 인증 토큰 추가
 API.interceptors.request.use(
   async (config) => {
-    // API 요청 로깅 (개발 환경에서만)
 
     // 토큰이 있으면 헤더에 추가
     const token = getToken();
@@ -17,9 +16,24 @@ API.interceptors.request.use(
       config.headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // 개발 환경에서만 요청 정보 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API REQUEST]', {
+        url: config.url,
+        method: config.method,
+        headers: config.headers,
+        data: config.data
+      });
+    }
+
+        
     return config;
   },
   (error) => {
+    // 개발 환경에서만 요청 에러 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API REQUEST ERROR]', error);
+    }
     return Promise.reject(error);
   }
 );
@@ -27,9 +41,21 @@ API.interceptors.request.use(
 // 응답 인터셉터 - 토큰 만료 시 갱신
 API.interceptors.response.use(
   (response) => {
+    // 개발 환경에서만 응답 정보 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API RESPONSE]', {
+        url: response.config.url,
+        status: response.status,
+        data: response.data
+      });
+    }
     return response;
   },
   async (error) => {
+    // 개발 환경에서만 응답 에러 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[API RESPONSE ERROR]', error);
+    }
     const originalRequest = error.config;
 
     // 토큰 만료 오류(401) 및 재시도 안된 요청인 경우
@@ -170,6 +196,76 @@ export const dashboardAPI = {
   // 대시보드 매장/선수 매핑 현황 데이터 조회
   getPlayerMapping: (tournamentId) =>
     API.get('/tournaments/dashboard/player_mapping/', { params: tournamentId ? { tournament_id: tournamentId } : {} })
+};
+
+// 사용자 정보 관련 API
+export const userAPI = {
+  // 현재 사용자 정보 조회
+  getCurrentUser: () => API.get('/accounts/me/'),
+};
+
+// 공지사항(Notice) 관련 API
+export const noticeAPI = {
+  //  모든 공지사항 조회 (일반 사용자용 - 활성화된 공지사항만)
+  getAllNotices: () => API.get('/notices/'),
+
+  // 관리자용 모든 공지사항 조회 (날짜 제한 없음)
+  getAllNoticesAdmin: () => API.get('/notices/admin/'),
+
+  // 공지사항 상세 조회
+  getNoticeById: (id) => API.get(`/notices/${id}/`),
+
+  // 공지사항 생성
+  createNotice: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      // 빈 문자열이나 null 값은 제외하고 전송 (날짜 필드 제외)
+      if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
+        formData.append(key, data[key]);
+      } else if (['start_date', 'end_date'].includes(key) && data[key] === '') {
+        // 날짜 필드가 빈 문자열인 경우 아예 전송하지 않음
+        return;
+      }
+    });
+    
+    // 디버깅을 위한 FormData 내용 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log('전송할 FormData:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+    }
+    
+    return API.post('/notices/create/', formData);
+  },
+
+  // 공지사항 수정
+  updateNotice: (id, data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      // 빈 문자열이나 null 값은 제외하고 전송 (날짜 필드 제외)
+      if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
+        formData.append(key, data[key]);
+      } else if (['start_date', 'end_date'].includes(key) && data[key] === '') {
+        // 날짜 필드가 빈 문자열인 경우 아예 전송하지 않음
+        return;
+      }
+    });
+    
+    // 디버깅을 위한 FormData 내용 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log('수정할 FormData:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value);
+      }
+    }
+    
+    // PATCH 메서드 사용 (부분 업데이트에 더 적합)
+    return API.patch(`/notices/${id}/update/`, formData);
+  },
+
+  // 공지사항 삭제
+  deleteNotice: (id) => API.delete(`/notices/${id}/delete/`)
 };
 
 // API 모듈을 변수에 할당 후 내보내기

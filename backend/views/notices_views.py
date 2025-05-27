@@ -10,6 +10,7 @@ from notices.serializers import (
     NoticeListSerializer, 
     NoticeDetailSerializer, 
     NoticeCreateUpdateSerializer,
+    NoticeAdminListSerializer,
     NoticeReadStatusSerializer
 )
 from notices.filters import NoticeFilter
@@ -47,6 +48,28 @@ class NoticeListView(generics.ListAPIView):
         else:
             # 비로그인 사용자는 전체 공지사항만 조회 가능
             return queryset.filter(notice_type='GENERAL')
+
+
+class NoticeAdminListView(generics.ListAPIView):
+    """
+    관리자용 공지사항 목록 조회 API
+    - 관리자만 접근 가능
+    - 모든 공지사항 조회 (활성화 여부, 날짜 제한 무관)
+    """
+    serializer_class = NoticeAdminListSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = NoticeFilter
+    search_fields = ['title', 'content']
+    ordering_fields = ['created_at', 'view_count', 'priority']
+    ordering = ['-is_pinned', '-priority', '-created_at']
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get_queryset(self):
+        """관리자용 - 모든 공지사항 조회 (날짜 제한 없음)"""
+        # 모든 공지사항 조회 (is_published=True인 것만)
+        queryset = Notice.objects.select_related('author').filter(is_published=True)
+        
+        return queryset
 
 
 class NoticeDetailView(generics.RetrieveAPIView):
@@ -100,6 +123,24 @@ class NoticeCreateView(generics.CreateAPIView):
     """
     serializer_class = NoticeCreateUpdateSerializer
     permission_classes = [permissions.IsAdminUser]
+    
+    def create(self, request, *args, **kwargs):
+        """공지사항 생성"""
+        # 권한 확인
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {'error': '관리자 권한이 필요합니다.'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = self.get_serializer(data=request.data)
+        
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def perform_create(self, serializer):
         """공지사항 생성 시 작성자 자동 설정"""

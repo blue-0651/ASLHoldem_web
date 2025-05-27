@@ -7,6 +7,9 @@ urlpatterns = [
     # 공지사항 목록 조회
     path('', notices_views.NoticeListView.as_view(), name='notice-list'),
     
+    # 관리자용 공지사항 목록 조회 (모든 공지사항)
+    path('admin/', notices_views.NoticeAdminListView.as_view(), name='notice-admin-list'),
+    
     # 공지사항 상세 조회
     path('<int:pk>/', notices_views.NoticeDetailView.as_view(), name='notice-detail'),
     

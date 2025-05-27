@@ -5,6 +5,7 @@ import { Row, Col, Card, Button, Modal } from 'react-bootstrap';
 
 // project import
 import MainCard from '../../components/Card/MainCard';
+import { noticeAPI } from '../../utils/api';
 
 // ==============================|| SAMPLE PAGE ||============================== //
 
@@ -15,6 +16,16 @@ const SamplePage = () => {  // 다이얼로그(모달) 상태 관리
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showStoreInfoModal, setShowStoreInfoModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+
+  const handleNoticeApiTest = async () => {
+    try {
+      const res = await noticeAPI.getAllNotices();
+      alert(JSON.stringify(res.data, null, 2));
+    } catch (e) {
+      alert('API 호출 실패');
+    }
+  };
+
   return (
     <React.Fragment>
       <Row className="mb-4">
@@ -26,6 +37,11 @@ const SamplePage = () => {  // 다이얼로그(모달) 상태 관리
               irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
               non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.&quot;
             </p>
+            <div className="d-flex justify-content-end">
+              <Button variant="outline-primary" onClick={handleNoticeApiTest}>
+                Notice Api Test
+              </Button>
+            </div>
           </MainCard>
         </Col>
       </Row>

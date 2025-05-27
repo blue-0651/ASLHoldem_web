@@ -23,7 +23,15 @@ const Dashboard = () => {
         // 대시보드 통계 데이터 가져오기
         const statsResponse = await dashboardAPI.getStats();
         console.log('대시보드 통계 응답:', statsResponse.data);
-        setStats(statsResponse.data);
+        
+        // API 응답 데이터를 안전하게 처리
+        const responseData = statsResponse.data || {};
+        setStats({
+          tournament_count: responseData.tournament_count || 0,
+          active_store_count: responseData.active_store_count || 0,
+          player_count: responseData.player_count || 0,
+          ticket_count: responseData.ticket_count || 0
+        });
 
         /*
         try {
@@ -80,7 +88,7 @@ const Dashboard = () => {
               title: '총 토너먼트 수',
               class: 'bg-c-blue',
               icon: 'feather icon-award',
-              primaryText: stats.tournament_count.toString(),
+              primaryText: (stats.tournament_count || 0).toString(),
               secondaryText: '전체 토너먼트',
               extraText: '개'
             }}
@@ -92,7 +100,7 @@ const Dashboard = () => {
               title: '토너먼트 개최 매장 수',
               class: 'bg-c-green',
               icon: 'feather icon-map-pin',
-              primaryText: stats.active_store_count.toString(),
+              primaryText: (stats.active_store_count || 0).toString(),
               secondaryText: '참여 매장',
               extraText: '개소'
             }}
@@ -104,7 +112,7 @@ const Dashboard = () => {
               title: '등록 선수 수',
               class: 'bg-c-yellow',
               icon: 'feather icon-users',
-              primaryText: stats.player_count.toString(),
+              primaryText: (stats.player_count || 0).toString(),
               secondaryText: '전체 선수',
               extraText: '명'
             }}
@@ -116,7 +124,7 @@ const Dashboard = () => {
               title: '좌석권 보유 수',
               class: 'bg-c-red',
               icon: 'feather icon-credit-card',
-              primaryText: stats.ticket_count.toString(),
+              primaryText: (stats.ticket_count || 0).toString(),
               secondaryText: '보유 좌석권',
               extraText: '매'
             }}

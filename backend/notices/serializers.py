@@ -115,14 +115,54 @@ class NoticeCreateUpdateSerializer(serializers.ModelSerializer):
                     'end_date': '종료일은 시작일보다 늦어야 합니다.'
                 })
         
-        # 과거 날짜 검증
+        # 과거 날짜 검증 (생성 시에만, 5분 여유시간 적용)
         now = timezone.now()
-        if start_date and start_date < now:
-            raise serializers.ValidationError({
-                'start_date': '시작일은 현재 시간보다 늦어야 합니다.'
-            })
+        
+        if start_date:
+            # 5분 여유시간 적용 (프론트엔드와 동일)
+            from datetime import timedelta
+            five_minutes_ago = now - timedelta(minutes=5)
+            
+            if start_date < five_minutes_ago:
+                raise serializers.ValidationError({
+                    'start_date': '시작일은 현재 시간보다 늦어야 합니다. (5분 여유시간 적용)'
+                })
         
         return data
+
+
+class NoticeAdminListSerializer(serializers.ModelSerializer):
+    """관리자용 공지사항 목록 시리얼라이저 (content 포함)"""
+    
+    author_name = serializers.CharField(source='author.username', read_only=True)
+    notice_type_display = serializers.CharField(source='get_notice_type_display', read_only=True)
+    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+    is_read = serializers.SerializerMethodField()
+    is_active = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Notice
+        fields = [
+            'id', 'title', 'content', 'notice_type', 'notice_type_display',
+            'priority', 'priority_display', 'author_name', 
+            'is_published', 'is_pinned', 'view_count',
+            'created_at', 'updated_at', 'start_date', 'end_date',
+            'is_read', 'is_active'
+        ]
+    
+    def get_is_read(self, obj):
+        """사용자가 이 공지사항을 읽었는지 확인"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return NoticeReadStatus.objects.filter(
+                user=request.user, 
+                notice=obj
+            ).exists()
+        return False
+    
+    def get_is_active(self, obj):
+        """공지사항이 현재 활성화되어 있는지 확인"""
+        return obj.is_active()
 
 
 class NoticeReadStatusSerializer(serializers.ModelSerializer):
