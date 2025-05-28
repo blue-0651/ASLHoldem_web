@@ -911,6 +911,71 @@
             "description": "새로운 매장을 생성합니다.\n\n필수 파라미터:\n- name: 매장명\n- owner: 매장 소유자(유저 ID)\n- address: 매장 주소\n- description: 매장 설명\n- image: 매장 이미지(파일)\n\n선택 파라미터:\n- status: 상태(기본값 ACTIVE)\n- latitude: 위도\n- longitude: 경도\n"
           },
           "response": []
+        },
+        {
+          "name": "매장 정보 업데이트",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "JWT 액세스 토큰 (매장 관리자 권한 필요)"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ASL Poker Store 업데이트\",\n  \"address\": \"서울시 강남구 테헤란로 456\",\n  \"description\": \"업데이트된 프리미엄 홀덤 매장\",\n  \"status\": \"ACTIVE\",\n  \"phone_number\": \"02-1234-5678\",\n  \"open_time\": \"09:00\",\n  \"close_time\": \"23:00\",\n  \"manager_name\": \"김매니저\",\n  \"manager_phone\": \"010-1234-5678\",\n  \"max_capacity\": 80\n}",
+              "description": "매장 정보 업데이트 데이터"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/store/info/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "store",
+                "info",
+                ""
+              ]
+            },
+            "description": "현재 로그인한 매장 관리자의 매장 정보를 업데이트합니다.\n\n요청 본문 (모든 필드 선택사항):\n- name: 매장명\n- address: 매장 주소\n- description: 매장 설명\n- status: 매장 상태 (ACTIVE, INACTIVE, CLOSED)\n- phone_number: 매장 전화번호\n- open_time: 오픈 시간 (HH:MM 형식)\n- close_time: 마감 시간 (HH:MM 형식)\n- manager_name: 매니저 이름\n- manager_phone: 매니저 연락처\n- max_capacity: 최대 수용 인원\n\n응답:\n- 200: 성공적으로 매장 정보 업데이트\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 404: 연결된 매장 정보가 없음\n- 500: 서버 내부 오류"
+          },
+          "response": []
+        },
+        {
+          "name": "매장 정보 조회",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "JWT 액세스 토큰 (매장 관리자 권한 필요)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/store/info/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "store",
+                "info",
+                ""
+              ]
+            },
+            "description": "현재 로그인한 매장 관리자의 매장 정보를 조회합니다.\n\n응답 필드:\n- id: 매장 ID\n- name: 매장명\n- address: 매장 주소\n- description: 매장 설명\n- status: 매장 상태\n- phone_number: 매장 전화번호\n- open_time: 오픈 시간\n- close_time: 마감 시간\n- manager_name: 매니저 이름\n- manager_phone: 매니저 연락처\n- max_capacity: 최대 수용 인원\n- created_at: 생성일시\n- updated_at: 수정일시\n- tournament_count: 토너먼트 수\n\n응답:\n- 200: 성공적으로 매장 정보 조회\n- 401: 인증되지 않은 요청\n- 404: 연결된 매장 정보가 없음\n- 500: 서버 내부 오류"
+          },
+          "response": []
         }
       ]
     },
