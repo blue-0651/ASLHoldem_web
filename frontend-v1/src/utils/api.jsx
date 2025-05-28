@@ -254,6 +254,22 @@ export const seatTicketAPI = {
 export const userAPI = {
   // 현재 사용자 정보 조회
   getCurrentUser: () => API.get('/accounts/me/'),
+  
+  // 모든 사용자 목록 조회 (role 필터링 가능)
+  getAllUsers: (role = null) => {
+    const params = role ? { role } : {};
+    return API.get('/accounts/users/', { params });
+  },
+  
+  // 전화번호로 사용자 조회
+  getUserByPhone: (phone) => {
+    const formData = new FormData();
+    formData.append('phone', phone);
+    return API.post('/accounts/users/get_user_by_phone/', formData);
+  },
+  
+  // 사용자 통계 조회
+  getUserStats: () => API.get('/accounts/users/get_user_stats/'),
 };
 
 // 공지사항(Notice) 관련 API
