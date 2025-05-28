@@ -11,12 +11,11 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'phone', 'nickname', 'email']
 
 class TournamentSerializer(serializers.ModelSerializer):
-    store_name = serializers.CharField(source='store.name', read_only=True)
     ticket_quantity = serializers.IntegerField(read_only=False)
     
     class Meta:
         model = Tournament
-        fields = ['id', 'store', 'store_name', 'name', 'start_time', 'buy_in', 
+        fields = ['id', 'name', 'start_time', 'buy_in', 
                   'ticket_quantity', 'description', 'status', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 

@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db.models import Count, Sum
+from django.db import connection
 import datetime
 from rest_framework.permissions import IsAdminUser
 
@@ -85,23 +86,18 @@ class TournamentViewSet(viewsets.ModelViewSet):
 
         파라미터:
         - status: 토너먼트 상태 (UPCOMING, ONGOING, COMPLETED, CANCELLED)
-        - store_id: 매장 ID
         - start_date: 시작 날짜 (YYYY-MM-DD)
         - end_date: 종료 날짜 (YYYY-MM-DD)
-        - sort: 정렬 기준 (start_time, participant_count, -start_time, -participant_count)
+        - sort: 정렬 기준 (start_time, -start_time)
         """
         try:
             # 기본 쿼리셋
-            tournaments = Tournament.objects.all().select_related('store')
+            tournaments = Tournament.objects.all()
             
             # 필터링 파라미터 처리
             status_param = request.query_params.get('status')
             if status_param:
                 tournaments = tournaments.filter(status=status_param)
-            
-            store_id = request.query_params.get('store_id')
-            if store_id:
-                tournaments = tournaments.filter(store_id=store_id)
             
             start_date = request.query_params.get('start_date')
             if start_date:
@@ -207,32 +203,96 @@ class TournamentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def store_tournaments(self, request):
         """
-        특정 매장의 토너먼트 목록을 반환합니다.
-        파라미터:
-        - store_id: 매장 ID
+        현재 로그인한 매장 관리자의 매장 토너먼트 목록을 반환합니다.
+        본사에서 좌석권이 배분된 모든 토너먼트를 반환합니다 (allocated_quantity가 0이어도 포함).
         """
         try:
-            # store_id 파라미터 처리
-            store_id = request.query_params.get('store_id')
-            if not store_id:
-                return Response({"error": "store_id 파라미터가 필요합니다."}, 
-                              status=status.HTTP_400_BAD_REQUEST)
+            from seats.models import TournamentTicketDistribution
             
-            # 매장 조회
-            try:
-                store = Store.objects.get(id=store_id)
-            except Store.DoesNotExist:
-                return Response({"error": "해당 매장을 찾을 수 없습니다."}, 
-                              status=status.HTTP_404_NOT_FOUND)
+            print("=== store_tournaments API 호출됨 ===")
+            print(f"요청 사용자: {request.user}")
+            print(f"인증 여부: {request.user.is_authenticated}")
             
-            # 매장에 속한 토너먼트 목록 조회
-            tournaments = Tournament.objects.filter(store=store).order_by('-start_time')
+            # 현재 로그인한 사용자 확인
+            user = request.user
+            if not user.is_authenticated:
+                print("인증되지 않은 사용자")
+                return Response({"error": "로그인이 필요합니다."}, 
+                              status=status.HTTP_401_UNAUTHORIZED)
             
-            # 토너먼트 목록 시리얼라이즈
-            serializer = self.get_serializer(tournaments, many=True)
+            # 매장 관리자 권한 확인
+            print(f"사용자 속성: {dir(user)}")
+            print(f"hasattr(user, 'stores'): {hasattr(user, 'stores')}")
+            print(f"user.is_store_owner: {getattr(user, 'is_store_owner', False)}")
             
-            return Response(serializer.data)
+            # 사용자의 매장 정보 가져오기
+            if hasattr(user, 'stores'):
+                store = user.stores.first()
+                print(f"user.stores.first(): {store}")
+            else:
+                store = None
+                print("user.stores 속성이 없음")
+            
+            if not store:
+                print("매장 관리자 권한 없음 - 매장이 없음")
+                return Response({"error": "매장 관리자 권한이 없습니다."}, 
+                              status=status.HTTP_403_FORBIDDEN)
+            
+            print(f"매장 정보: {store}")
+            
+            # Django ORM을 사용하여 토너먼트 목록 조회
+            tournaments = Tournament.objects.filter(
+                ticket_distributions__store=store
+            ).select_related().prefetch_related(
+                'ticket_distributions'
+            ).distinct().order_by('-start_time')
+            
+            print(f"조회된 토너먼트 수: {tournaments.count()}")
+            
+            # 응답 데이터 구성
+            response_data = []
+            for tournament in tournaments:
+                print(f"처리 중인 토너먼트: {tournament.name}")
+                
+                # 해당 매장의 배분 정보 조회
+                distribution = tournament.ticket_distributions.filter(store=store).first()
+                print(f"배분 정보: {distribution}")
+                
+                tournament_data = {
+                    'id': tournament.id,
+                    'name': tournament.name,
+                    'start_time': tournament.start_time,
+                    'buy_in': tournament.buy_in,
+                    'ticket_quantity': tournament.ticket_quantity,
+                    'description': tournament.description,
+                    'status': tournament.status,
+                    'created_at': tournament.created_at,
+                    'updated_at': tournament.updated_at,
+                }
+                
+                # 배분 정보 추가
+                if distribution:
+                    tournament_data.update({
+                        'allocated_quantity': distribution.allocated_quantity,
+                        'remaining_quantity': distribution.remaining_quantity,
+                        'distribution_created_at': distribution.created_at
+                    })
+                else:
+                    tournament_data.update({
+                        'allocated_quantity': 0,
+                        'remaining_quantity': 0,
+                        'distribution_created_at': None
+                    })
+                
+                response_data.append(tournament_data)
+            
+            print(f"최종 응답 데이터 수: {len(response_data)}")
+            return Response(response_data)
+            
         except Exception as e:
+            print(f"매장 토너먼트 목록 조회 오류: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'])
@@ -243,28 +303,50 @@ class TournamentViewSet(viewsets.ModelViewSet):
         try:
             # 토큰에서 사용자 정보 확인
             user = request.user
+            if not user.is_authenticated:
+                return Response({"error": "로그인이 필요합니다."}, 
+                               status=status.HTTP_401_UNAUTHORIZED)
             
-            # 매장 관리자 권한 확인
-            if not hasattr(user, 'is_store_owner') or not user.is_store_owner:
+            # 사용자의 매장 정보 가져오기
+            if hasattr(user, 'stores'):
+                store = user.stores.first()
+            else:
+                store = None
+            
+            if not store:
                 return Response({"error": "매장 관리자 권한이 없습니다."}, 
                                status=status.HTTP_403_FORBIDDEN)
             
             # 토너먼트 조회
             tournament = self.get_object()
             
-            # 매장 관리자가 해당 토너먼트의 매장을 관리하는지 확인
-            if tournament.store.owner != user:
+            # 해당 매장에 이 토너먼트의 좌석권이 배분되어 있는지 확인
+            from seats.models import TournamentTicketDistribution
+            distribution = TournamentTicketDistribution.objects.filter(
+                tournament=tournament,
+                store=store
+            ).first()
+            
+            if not distribution:
                 return Response({"error": "이 토너먼트를 관리할 권한이 없습니다."}, 
                                status=status.HTTP_403_FORBIDDEN)
+            
+            # 토너먼트 상태가 취소 가능한지 확인
+            if tournament.status != 'UPCOMING':
+                return Response({"error": "예정된 토너먼트만 취소할 수 있습니다."}, 
+                               status=status.HTTP_400_BAD_REQUEST)
             
             # 토너먼트 상태 변경
             tournament.status = 'CANCELLED'
             tournament.save()
             
-            # 참가자들에게 토너먼트 취소 알림 로직 추가 가능
+            print(f"토너먼트 '{tournament.name}' 취소됨 - 매장: {store.name}")
             
             return Response({"message": f"토너먼트 '{tournament.name}'이(가) 취소되었습니다."})
         except Exception as e:
+            print(f"토너먼트 취소 오류: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from views.store_views import StoreViewSet
+from views.store_views import StoreViewSet, search_user_by_phone, register_player_to_tournament, grant_seat_ticket, get_user_ticket_status
 from views.tournament_views import TournamentViewSet
 
 schema_view = get_schema_view(
@@ -30,7 +30,12 @@ urlpatterns = [
     path('api/v1/seats/', include('seats.urls')),  # 좌석권 API 경로 추가
 
     path('api/v1/store/info/', StoreViewSet.as_view({'get': 'current_store', 'put': 'update_current_store'})),
+    path('api/v1/store/debug/', StoreViewSet.as_view({'get': 'debug_user'})),
     path('api/v1/store/generate-qr/', StoreViewSet.as_view({'post': 'generate_qr_code'})),
+    path('api/v1/store/search-user/', search_user_by_phone, name='search_user_by_phone'),  # 휴대폰 번호로 사용자 검색
+    path('api/v1/store/register-player/', register_player_to_tournament, name='register_player_to_tournament'),  # 선수 등록
+    path('api/v1/store/grant-ticket/', grant_seat_ticket, name='grant_seat_ticket'),  # 좌석권 지급
+    path('api/v1/store/user-tickets/', get_user_ticket_status, name='get_user_ticket_status'),  # 사용자 좌석권 현황
     path('api/v1/store/tournaments/', TournamentViewSet.as_view({'get': 'store_tournaments'})),
     path('api/v1/store/tournaments/<int:pk>/cancel/', TournamentViewSet.as_view({'post': 'cancel_tournament'})),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),

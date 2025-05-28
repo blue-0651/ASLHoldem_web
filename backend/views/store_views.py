@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count, Q, Max, Sum
 
 from tournaments.models import Tournament
@@ -19,10 +20,23 @@ class StoreSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Store
-        fields = ['id', 'name', 'address', 'description', 'status', 'created_at', 'updated_at', 'tournament_count']
+        fields = [
+            'id', 'name', 'address', 'description', 'status', 
+            'phone_number', 'open_time', 'close_time', 
+            'manager_name', 'manager_phone', 'max_capacity',
+            'created_at', 'updated_at', 'tournament_count'
+        ]
     
     def get_tournament_count(self, obj):
-        return obj.tournaments.count()
+        # Tournament 모델에서 해당 매장과 관련된 토너먼트 수를 계산
+        # 현재는 Tournament와 Store 간의 직접적인 관계가 없으므로 0을 반환
+        # 추후 Tournament 모델에 store 필드가 추가되면 수정 필요
+        try:
+            from tournaments.models import Tournament
+            # 임시로 0을 반환 (추후 관계 설정 후 수정)
+            return 0
+        except:
+            return 0
 
 class StoreUserSerializer(serializers.ModelSerializer):
     """
@@ -81,37 +95,45 @@ class StoreViewSet(viewsets.ViewSet):
             # 토큰에서 사용자 정보 확인
             user = request.user
             
-            # 매장 관리자 권한 확인
-            if not hasattr(user, 'is_store_owner') or not user.is_store_owner:
-                return Response({"error": "매장 관리자 권한이 없습니다."}, 
-                               status=status.HTTP_403_FORBIDDEN)
+            print(f"=== current_store API 호출 ===")
+            print(f"사용자: {user}")
+            print(f"인증 여부: {user.is_authenticated}")
             
-            # 매장 관리자와 연결된 매장 조회 (manager -> owner로 변경)
+            if not user.is_authenticated:
+                return Response({"error": "로그인이 필요합니다."}, 
+                               status=status.HTTP_401_UNAUTHORIZED)
+            
+            # 사용자의 매장 정보 가져오기 - owner 필드로 연결된 매장 조회
             store = Store.objects.filter(owner=user).first()
+            print(f"사용자가 소유한 매장: {store}")
+            
             if not store:
+                print("연결된 매장 정보가 없음")
                 return Response({"error": "연결된 매장 정보가 없습니다."}, 
                                status=status.HTTP_404_NOT_FOUND)
             
-            # 프론트엔드에서 요청하는 추가 필드들을 포함한 응답 생성
-            store_data = {
-                'id': store.id,
-                'name': store.name,
-                'address': store.address,
-                'description': store.description,
-                'status': store.status,
-                'created_at': store.created_at,
-                'updated_at': store.updated_at,
-                # 프론트엔드에서 요청하는 추가 필드들 (임시 데이터)
-                'phone_number': '02-123-4567',  # Store 모델에 없는 필드 - 임시 데이터
-                'open_time': '10:00',           # Store 모델에 없는 필드 - 임시 데이터  
-                'close_time': '22:00',          # Store 모델에 없는 필드 - 임시 데이터
-                'manager_name': user.nickname or user.phone,  # Store 모델에 없는 필드 - 사용자 정보 활용
-                'manager_phone': user.phone,    # Store 모델에 없는 필드 - 사용자 정보 활용
-                'max_capacity': 50              # Store 모델에 없는 필드 - 임시 데이터
-            }
+            # 시리얼라이저를 사용하여 매장 정보 응답 생성
+            serializer = StoreSerializer(store)
+            store_data = serializer.data
             
+            # 매장에 기본값이 없는 경우 사용자 정보로 보완
+            if not store_data.get('manager_name'):
+                store_data['manager_name'] = user.nickname or user.phone
+            if not store_data.get('manager_phone'):
+                store_data['manager_phone'] = user.phone
+            if not store_data.get('phone_number'):
+                store_data['phone_number'] = '02-123-4567'
+            if not store_data.get('open_time'):
+                store_data['open_time'] = '10:00'
+            if not store_data.get('close_time'):
+                store_data['close_time'] = '22:00'
+            
+            print(f"응답 데이터: {store_data}")
             return Response(store_data)
         except Exception as e:
+            print(f"current_store 오류: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['put'])
@@ -123,44 +145,57 @@ class StoreViewSet(viewsets.ViewSet):
             # 토큰에서 사용자 정보 확인
             user = request.user
             
-            # 매장 관리자 권한 확인
-            if not hasattr(user, 'is_store_owner') or not user.is_store_owner:
-                return Response({"error": "매장 관리자 권한이 없습니다."}, 
-                               status=status.HTTP_403_FORBIDDEN)
+            print(f"=== update_current_store API 호출 ===")
+            print(f"사용자: {user}")
+            print(f"요청 데이터: {request.data}")
             
-            # 매장 관리자와 연결된 매장 조회 (manager -> owner로 변경)
+            if not user.is_authenticated:
+                return Response({"error": "로그인이 필요합니다."}, 
+                               status=status.HTTP_401_UNAUTHORIZED)
+            
+            # 사용자의 매장 정보 가져오기 - owner 필드로 연결된 매장 조회
             store = Store.objects.filter(owner=user).first()
+            print(f"사용자가 소유한 매장: {store}")
+            
             if not store:
+                print("연결된 매장 정보가 없음")
                 return Response({"error": "연결된 매장 정보가 없습니다."}, 
                                status=status.HTTP_404_NOT_FOUND)
             
             # Store 모델에 실제로 있는 필드만 업데이트
-            store_fields = ['name', 'address', 'description', 'status']
+            store_fields = [
+                'name', 'address', 'description', 'status',
+                'phone_number', 'open_time', 'close_time', 
+                'manager_name', 'manager_phone', 'max_capacity'
+            ]
             update_data = {}
             for field in store_fields:
                 if field in request.data:
                     update_data[field] = request.data[field]
             
+            print(f"업데이트할 데이터: {update_data}")
+            
             # 매장 정보 업데이트
-            serializer = StoreSerializer(store, data=update_data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                
-                # 업데이트된 데이터에 추가 필드들 포함하여 응답
-                response_data = serializer.data
-                response_data.update({
-                    'phone_number': request.data.get('phone_number', '02-123-4567'),
-                    'open_time': request.data.get('open_time', '10:00'),
-                    'close_time': request.data.get('close_time', '22:00'),
-                    'manager_name': request.data.get('manager_name', user.nickname or user.phone),
-                    'manager_phone': request.data.get('manager_phone', user.phone),
-                    'max_capacity': request.data.get('max_capacity', 50)
-                })
-                
-                return Response(response_data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            if update_data:  # 업데이트할 데이터가 있는 경우에만 시리얼라이저 사용
+                serializer = StoreSerializer(store, data=update_data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    print("매장 정보 업데이트 성공")
+                else:
+                    print(f"시리얼라이저 유효성 검사 실패: {serializer.errors}")
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 업데이트된 매장 정보 다시 조회하여 응답
+            store.refresh_from_db()
+            serializer = StoreSerializer(store)
+            response_data = serializer.data
+            
+            print(f"응답 데이터: {response_data}")
+            return Response(response_data)
         except Exception as e:
+            print(f"update_current_store 오류: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['post'])
@@ -223,4 +258,512 @@ class StoreViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['get'])
+    def debug_user(self, request):
+        """
+        현재 로그인한 사용자 정보를 디버그용으로 반환합니다.
+        """
+        try:
+            user = request.user
+            
+            print(f"=== debug_user API 호출 ===")
+            print(f"사용자: {user}")
+            print(f"인증 여부: {user.is_authenticated}")
+            print(f"사용자 ID: {user.id if user.is_authenticated else 'N/A'}")
+            print(f"전화번호: {user.phone if user.is_authenticated else 'N/A'}")
+            print(f"닉네임: {user.nickname if user.is_authenticated else 'N/A'}")
+            print(f"is_store_owner: {user.is_store_owner if user.is_authenticated else 'N/A'}")
+            print(f"role: {user.role if user.is_authenticated else 'N/A'}")
+            
+            if not user.is_authenticated:
+                return Response({"error": "로그인이 필요합니다."}, 
+                               status=status.HTTP_401_UNAUTHORIZED)
+            
+            # 사용자가 소유한 매장 조회
+            stores = Store.objects.filter(owner=user)
+            store_info = []
+            for store in stores:
+                store_info.append({
+                    'id': store.id,
+                    'name': store.name,
+                    'address': store.address
+                })
+            
+            user_data = {
+                'id': user.id,
+                'phone': user.phone,
+                'nickname': user.nickname,
+                'is_store_owner': user.is_store_owner,
+                'role': user.role,
+                'stores': store_info,
+                'store_count': len(store_info)
+            }
+            
+            print(f"응답 데이터: {user_data}")
+            return Response(user_data)
+        except Exception as e:
+            print(f"debug_user 오류: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 from django.db import models 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search_user_by_phone(request):
+    """
+    휴대폰 번호로 사용자 검색
+    """
+    try:
+        phone = request.GET.get('phone')
+        if not phone:
+            return Response({
+                'error': '휴대폰 번호가 필요합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 휴대폰 번호 정규화 (하이픈 제거)
+        normalized_phone = phone.replace('-', '').replace(' ', '')
+        
+        # 사용자 검색 (여러 형태의 휴대폰 번호 형식 고려)
+        user = None
+        phone_variations = [
+            normalized_phone,
+            phone,
+            f"{normalized_phone[:3]}-{normalized_phone[3:7]}-{normalized_phone[7:]}",
+        ]
+        
+        for phone_var in phone_variations:
+            try:
+                user = User.objects.get(phone=phone_var)
+                break
+            except User.DoesNotExist:
+                continue
+        
+        if user:
+            return Response({
+                'found': True,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'phone': user.phone,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                }
+            })
+        else:
+            return Response({
+                'found': False,
+                'message': '해당 휴대폰 번호로 등록된 사용자가 없습니다.'
+            })
+            
+    except Exception as e:
+        return Response({
+            'error': f'사용자 검색 중 오류가 발생했습니다: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def register_player_to_tournament(request):
+    """
+    선수를 토너먼트에 등록
+    """
+    try:
+        data = request.data
+        tournament_id = data.get('tournament_id')
+        user_id = data.get('user_id')
+        phone_number = data.get('phone_number')
+        
+        # 토너먼트 확인
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            return Response({
+                'error': '토너먼트를 찾을 수 없습니다.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # 사용자 확인 또는 생성
+        user = None
+        if user_id:
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({
+                    'error': '사용자를 찾을 수 없습니다.'
+                }, status=status.HTTP_404_NOT_FOUND)
+        elif phone_number:
+            # 휴대폰 번호로 사용자 검색
+            normalized_phone = phone_number.replace('-', '').replace(' ', '')
+            phone_variations = [
+                normalized_phone,
+                phone_number,
+                f"{normalized_phone[:3]}-{normalized_phone[3:7]}-{normalized_phone[7:]}",
+            ]
+            
+            for phone_var in phone_variations:
+                try:
+                    user = User.objects.get(phone_number=phone_var)
+                    break
+                except User.DoesNotExist:
+                    continue
+            
+            # 사용자가 없으면 새로 생성
+            if not user:
+                username = data.get('username', f'user_{normalized_phone}')
+                email = data.get('email', f'{normalized_phone}@temp.com')
+                
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    phone_number=phone_number,
+                    first_name=data.get('first_name', ''),
+                    last_name=data.get('last_name', ''),
+                    password='temp_password_123'  # 임시 비밀번호
+                )
+        else:
+            return Response({
+                'error': '사용자 ID 또는 휴대폰 번호가 필요합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 이미 등록된 선수인지 확인
+        from tournaments.models import TournamentPlayer
+        existing_registration = TournamentPlayer.objects.filter(
+            tournament=tournament,
+            user=user
+        ).first()
+        
+        if existing_registration:
+            return Response({
+                'error': '이미 해당 토너먼트에 등록된 선수입니다.',
+                'player': {
+                    'id': existing_registration.id,
+                    'user_id': user.id,
+                    'username': user.username,
+                    'phone_number': user.phone_number,
+                    'registered_at': existing_registration.created_at
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 사용자의 해당 토너먼트 좌석권 확인
+        from seats.models import SeatTicket, SeatTicketTransaction, UserSeatTicketSummary
+        from django.db import transaction as db_transaction
+        
+        # 사용 가능한 좌석권 조회
+        available_ticket = SeatTicket.objects.filter(
+            user=user,
+            tournament=tournament,
+            status='ACTIVE'
+        ).first()
+        
+        if not available_ticket:
+            return Response({
+                'error': f'해당 토너먼트({tournament.name})의 사용 가능한 좌석권이 없습니다. 좌석권을 먼저 구매해주세요.',
+                'tournament_name': tournament.name,
+                'user_phone': user.phone_number
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 좌석권이 유효한지 확인
+        if not available_ticket.is_valid():
+            return Response({
+                'error': '보유하신 좌석권이 만료되었거나 사용할 수 없는 상태입니다.',
+                'ticket_status': available_ticket.get_status_display()
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 트랜잭션으로 선수 등록과 좌석권 사용 처리
+        with db_transaction.atomic():
+            # 선수 등록
+            tournament_player = TournamentPlayer.objects.create(
+                tournament=tournament,
+                user=user,
+                nickname=data.get('nickname', user.username)
+            )
+            
+            # 좌석권 사용 처리
+            available_ticket.use_ticket()
+            
+            # 좌석권 거래 내역 생성
+            SeatTicketTransaction.objects.create(
+                seat_ticket=available_ticket,
+                transaction_type='USE',
+                quantity=1,
+                amount=0,
+                reason=f'토너먼트 참가: {tournament.name}',
+                processed_by=request.user if request.user.is_authenticated else None
+            )
+            
+            # 사용자 좌석권 요약 정보 업데이트
+            try:
+                summary = UserSeatTicketSummary.objects.get(
+                    user=user,
+                    tournament=tournament
+                )
+                summary.update_summary()
+            except UserSeatTicketSummary.DoesNotExist:
+                # 요약 정보가 없으면 새로 생성
+                summary = UserSeatTicketSummary.objects.create(
+                    user=user,
+                    tournament=tournament
+                )
+                summary.update_summary()
+        
+        return Response({
+            'success': True,
+            'message': '선수가 성공적으로 등록되었습니다. 좌석권 1개가 사용되었습니다.',
+            'player': {
+                'id': tournament_player.id,
+                'user_id': user.id,
+                'username': user.username,
+                'phone_number': user.phone_number,
+                'nickname': tournament_player.nickname,
+                'registered_at': tournament_player.created_at
+            },
+            'used_ticket': {
+                'ticket_id': str(available_ticket.ticket_id),
+                'used_at': available_ticket.used_at,
+                'tournament_name': tournament.name
+            }
+        })
+        
+    except Exception as e:
+        return Response({
+            'error': f'선수 등록 중 오류가 발생했습니다: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def grant_seat_ticket(request):
+    """
+    사용자에게 좌석권을 지급
+    """
+    try:
+        data = request.data
+        user_id = data.get('user_id')
+        phone_number = data.get('phone_number')
+        tournament_id = data.get('tournament_id')
+        quantity = data.get('quantity', 1)
+        source = data.get('source', 'ADMIN')
+        memo = data.get('memo', '')
+        
+        # 토너먼트 확인
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            return Response({
+                'error': '토너먼트를 찾을 수 없습니다.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # 사용자 확인
+        user = None
+        if user_id:
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({
+                    'error': '사용자를 찾을 수 없습니다.'
+                }, status=status.HTTP_404_NOT_FOUND)
+        elif phone_number:
+            # 휴대폰 번호로 사용자 검색
+            normalized_phone = phone_number.replace('-', '').replace(' ', '')
+            phone_variations = [
+                normalized_phone,
+                phone_number,
+                f"{normalized_phone[:3]}-{normalized_phone[3:7]}-{normalized_phone[7:]}",
+            ]
+            
+            for phone_var in phone_variations:
+                try:
+                    user = User.objects.get(phone_number=phone_var)
+                    break
+                except User.DoesNotExist:
+                    continue
+            
+            if not user:
+                return Response({
+                    'error': '해당 휴대폰 번호로 등록된 사용자를 찾을 수 없습니다.'
+                }, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({
+                'error': '사용자 ID 또는 휴대폰 번호가 필요합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 수량 검증
+        if quantity < 1 or quantity > 10:
+            return Response({
+                'error': '좌석권 수량은 1개에서 10개 사이여야 합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 좌석권 지급
+        from seats.models import SeatTicket, SeatTicketTransaction, UserSeatTicketSummary
+        from stores.models import Store
+        from django.db import transaction as db_transaction
+        
+        # 현재 로그인한 사용자의 매장 정보 가져오기
+        store = Store.objects.filter(owner=request.user).first()
+        if not store:
+            return Response({
+                'error': '매장 정보를 찾을 수 없습니다.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        created_tickets = []
+        
+        with db_transaction.atomic():
+            for i in range(quantity):
+                ticket = SeatTicket.objects.create(
+                    tournament=tournament,
+                    user=user,
+                    store=store,
+                    source=source,
+                    amount=0,
+                    memo=memo
+                )
+                created_tickets.append(ticket)
+                
+                # 거래 내역 생성
+                SeatTicketTransaction.objects.create(
+                    seat_ticket=ticket,
+                    transaction_type='GRANT',
+                    quantity=1,
+                    amount=0,
+                    reason=f"좌석권 지급: {memo}",
+                    processed_by=request.user
+                )
+            
+            # 요약 정보 업데이트
+            summary, created = UserSeatTicketSummary.objects.get_or_create(
+                user=user,
+                tournament=tournament
+            )
+            summary.update_summary()
+        
+        return Response({
+            'success': True,
+            'message': f'{quantity}개의 좌석권이 성공적으로 지급되었습니다.',
+            'user_phone': user.phone_number,
+            'tournament_name': tournament.name,
+            'granted_quantity': quantity,
+            'tickets': [
+                {
+                    'ticket_id': str(ticket.ticket_id),
+                    'status': ticket.status,
+                    'created_at': ticket.created_at
+                } for ticket in created_tickets
+            ]
+        })
+        
+    except Exception as e:
+        return Response({
+            'error': f'좌석권 지급 중 오류가 발생했습니다: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_ticket_status(request):
+    """
+    사용자의 좌석권 보유 현황 조회
+    """
+    try:
+        user_id = request.GET.get('user_id')
+        phone_number = request.GET.get('phone_number')
+        tournament_id = request.GET.get('tournament_id')
+        
+        # 사용자 확인
+        user = None
+        if user_id:
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({
+                    'error': '사용자를 찾을 수 없습니다.'
+                }, status=status.HTTP_404_NOT_FOUND)
+        elif phone_number:
+            # 휴대폰 번호로 사용자 검색
+            normalized_phone = phone_number.replace('-', '').replace(' ', '')
+            phone_variations = [
+                normalized_phone,
+                phone_number,
+                f"{normalized_phone[:3]}-{normalized_phone[3:7]}-{normalized_phone[7:]}",
+            ]
+            
+            for phone_var in phone_variations:
+                try:
+                    user = User.objects.get(phone_number=phone_var)
+                    break
+                except User.DoesNotExist:
+                    continue
+            
+            if not user:
+                return Response({
+                    'error': '해당 휴대폰 번호로 등록된 사용자를 찾을 수 없습니다.'
+                }, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({
+                'error': '사용자 ID 또는 휴대폰 번호가 필요합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        from seats.models import SeatTicket, UserSeatTicketSummary
+        
+        # 특정 토너먼트의 좌석권 현황
+        if tournament_id:
+            try:
+                tournament = Tournament.objects.get(id=tournament_id)
+            except Tournament.DoesNotExist:
+                return Response({
+                    'error': '토너먼트를 찾을 수 없습니다.'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # 해당 토너먼트의 좌석권 조회
+            tickets = SeatTicket.objects.filter(
+                user=user,
+                tournament=tournament
+            ).order_by('-created_at')
+            
+            active_tickets = tickets.filter(status='ACTIVE')
+            used_tickets = tickets.filter(status='USED')
+            
+            return Response({
+                'user_phone': user.phone_number,
+                'tournament_name': tournament.name,
+                'total_tickets': tickets.count(),
+                'active_tickets': active_tickets.count(),
+                'used_tickets': used_tickets.count(),
+                'tickets': [
+                    {
+                        'ticket_id': str(ticket.ticket_id),
+                        'status': ticket.status,
+                        'status_display': ticket.get_status_display(),
+                        'source': ticket.source,
+                        'source_display': ticket.get_source_display(),
+                        'created_at': ticket.created_at,
+                        'used_at': ticket.used_at,
+                        'memo': ticket.memo
+                    } for ticket in tickets
+                ]
+            })
+        
+        # 전체 토너먼트의 좌석권 요약
+        else:
+            summaries = UserSeatTicketSummary.objects.filter(
+                user=user
+            ).select_related('tournament').order_by('-last_updated')
+            
+            return Response({
+                'user_phone': user.phone_number,
+                'total_tournaments': summaries.count(),
+                'tournaments': [
+                    {
+                        'tournament_id': summary.tournament.id,
+                        'tournament_name': summary.tournament.name,
+                        'tournament_start_time': summary.tournament.start_time,
+                        'total_tickets': summary.total_tickets,
+                        'active_tickets': summary.active_tickets,
+                        'used_tickets': summary.used_tickets,
+                        'last_updated': summary.last_updated
+                    } for summary in summaries
+                ]
+            })
+        
+    except Exception as e:
+        return Response({
+            'error': f'좌석권 현황 조회 중 오류가 발생했습니다: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
