@@ -230,13 +230,13 @@ export const seatTicketAPI = {
   // 대량 좌석권 작업
   bulkOperation: (data) => API.post('/seats/tickets/bulk_operation/', data),
 
-  // 매장별 사용자 조회 (새로 추가)
+  // 매장별 사용자 조회 (수정된 버전)
   getUsersByStore: (tournamentId, storeId) => 
     API.get('/seats/tickets/', { 
       params: { 
-        tournament_id: tournamentId, 
+        tournament_id: tournamentId,
         store_id: storeId,
-        status: 'ACTIVE'  // 활성 좌석권만 조회
+        status: 'ACTIVE'  // 백엔드에서 store_id 필터링 지원
       } 
     }),
 

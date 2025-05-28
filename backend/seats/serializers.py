@@ -23,11 +23,10 @@ class SeatTicketSerializer(serializers.ModelSerializer):
         model = SeatTicket
         fields = [
             'id', 'ticket_id', 'tournament', 'tournament_name', 'user', 'user_name',
-            'store', 'store_name', 'seat_number', 'is_used', 'used_at', 'qr_code',
-            'status', 'status_display', 'source', 'source_display', 'amount', 'created_at',
-            'updated_at', 'memo', 'is_valid_ticket'
+            'store', 'store_name', 'status', 'status_display', 'source', 'source_display', 
+            'amount', 'created_at', 'updated_at', 'memo', 'is_valid_ticket'
         ]
-        read_only_fields = ['id', 'ticket_id', 'qr_code', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'ticket_id', 'created_at', 'updated_at']
     
     def get_is_valid_ticket(self, obj):
         """좌석권이 유효한지 반환"""

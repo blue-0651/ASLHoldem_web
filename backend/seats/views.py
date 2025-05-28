@@ -29,7 +29,7 @@ class SeatTicketViewSet(viewsets.ModelViewSet):
         """
         쿼리셋 필터링
         """
-        queryset = SeatTicket.objects.all().select_related('tournament', 'user')
+        queryset = SeatTicket.objects.all().select_related('tournament', 'user', 'store')
         
         # 토너먼트 ID로 필터링
         tournament_id = self.request.query_params.get('tournament_id')
@@ -40,6 +40,11 @@ class SeatTicketViewSet(viewsets.ModelViewSet):
         user_id = self.request.query_params.get('user_id')
         if user_id:
             queryset = queryset.filter(user_id=user_id)
+        
+        # 매장 ID로 필터링
+        store_id = self.request.query_params.get('store_id')
+        if store_id:
+            queryset = queryset.filter(store_id=store_id)
         
         # 좌석권 상태로 필터링
         status_param = self.request.query_params.get('status')

@@ -11,7 +11,7 @@ const TournamentManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [expandedRows, setExpandedRows] = useState(new Set()); // 확장된 행 상태 관리
+  const [expandedRowId, setExpandedRowId] = useState(null); // Set에서 단일 값으로 변경
   
   // 토너먼트별 상세 데이터 캐시
   const [tournamentDetailsCache, setTournamentDetailsCache] = useState(new Map());
@@ -136,15 +136,20 @@ const TournamentManagement = () => {
     }
   };
   
-  // 매장별 사용자 조회 함수 추가
+  // 매장별 사용자 조회 함수 수정
   const fetchStoreUsers = async (tournamentId, storeId, storeName) => {
     try {
+      console.log(`매장별 사용자 조회 시작:`, { tournamentId, storeId, storeName });
+      
+      // 백엔드에서 매장별 필터링된 좌석권 조회
       const response = await seatTicketAPI.getUsersByStore(tournamentId, storeId);
       
       // API 응답 구조 디버깅
-      console.log('매장별 사용자 조회 API 응답:', response);
+      console.log('매장별 좌석권 조회 API 응답:', response);
       console.log('response.data 타입:', typeof response.data);
       console.log('response.data 내용:', response.data);
+      console.log('response.status:', response.status);
+      console.log('response.headers:', response.headers);
       
       // 응답 데이터가 배열인지 확인
       let ticketsData = [];
@@ -163,7 +168,7 @@ const TournamentManagement = () => {
       
       console.log('처리할 티켓 데이터:', ticketsData);
       
-      // 사용자별로 그룹화하여 중복 제거
+      // 사용자별로 그룹화하여 중복 제거 (백엔드에서 이미 필터링됨)
       const userMap = new Map();
       ticketsData.forEach(ticket => {
         const userId = ticket.user;
@@ -187,6 +192,18 @@ const TournamentManagement = () => {
       const storeUsers = Array.from(userMap.values());
       console.log('최종 매장 사용자 목록:', storeUsers);
       
+      // 매장에 사용자가 없는 경우 안내 메시지
+      if (storeUsers.length === 0) {
+        console.log(`${storeName} 매장에 등록된 사용자가 없습니다.`);
+        // 빈 배열이지만 안내 메시지를 위한 더미 데이터 추가
+        storeUsers.push({
+          선수명: '등록된 선수가 없습니다',
+          좌석권_보유: 'N',
+          매장명: storeName,
+          좌석권_수량: 0
+        });
+      }
+      
       // 토너먼트 상세 정보 업데이트
       setTournamentDetailsCache(prev => {
         const newCache = new Map(prev);
@@ -206,7 +223,14 @@ const TournamentManagement = () => {
     } catch (err) {
       console.error('매장별 사용자 조회 오류:', err);
       console.error('오류 응답:', err.response);
-      setError(`매장별 사용자 정보를 불러오는 중 오류가 발생했습니다.`);
+      console.error('오류 상태 코드:', err.response?.status);
+      console.error('오류 상태 텍스트:', err.response?.statusText);
+      console.error('오류 데이터:', err.response?.data);
+      console.error('오류 헤더:', err.response?.headers);
+      console.error('요청 URL:', err.config?.url);
+      console.error('요청 파라미터:', err.config?.params);
+      
+      setError(`매장별 사용자 정보를 불러오는 중 오류가 발생했습니다: ${err.message}`);
     }
   };
 
@@ -358,8 +382,8 @@ const TournamentManagement = () => {
       sortable: true,
       center: true,
       style: (row) => ({
-        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
-        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
+        fontSize: expandedRowId === row.id ? '18px' : '14px',
+        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
         transition: 'all 0.3s ease'
       })
     },
@@ -369,8 +393,8 @@ const TournamentManagement = () => {
       sortable: true,
       center: true,
       style: (row) => ({
-        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
-        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
+        fontSize: expandedRowId === row.id ? '18px' : '14px',
+        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
         transition: 'all 0.3s ease'
       })
     },
@@ -383,8 +407,8 @@ const TournamentManagement = () => {
       sortable: true,
       center: true,
       style: (row) => ({
-        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
-        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
+        fontSize: expandedRowId === row.id ? '18px' : '14px',
+        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
         transition: 'all 0.3s ease'
       })
     },
@@ -397,24 +421,22 @@ const TournamentManagement = () => {
       sortable: true,
       center: true,
       style: (row) => ({
-        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
-        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
+        fontSize: expandedRowId === row.id ? '18px' : '14px',
+        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
         transition: 'all 0.3s ease'
       })
     }
-  ], [expandedRows, tournamentDetailsCache]);
+  ], [expandedRowId, tournamentDetailsCache]);
 
   // 행 확장/축소 핸들러
   const handleRowExpandToggled = (expanded, row) => {
-    const newExpandedRows = new Set(expandedRows);
     if (expanded) {
-      newExpandedRows.add(row.id);
+      setExpandedRowId(row.id);
       // 확장 시 상세 정보 가져오기
       fetchTournamentDetails(row.id);
     } else {
-      newExpandedRows.delete(row.id);
+      setExpandedRowId(null);
     }
-    setExpandedRows(newExpandedRows);
   };
 
   // 확장된 행에 표시될 실제 데이터 컴포넌트
@@ -532,9 +554,7 @@ const TournamentManagement = () => {
                         <td className="border border-secondary">{player.선수명}</td>
                         <td className="text-center border border-secondary">{player.좌석권_수량 || 0}</td>
                         <td className="border border-secondary">{player.매장명}</td>
-                        <td className="border border-secondary">
-                          <Button variant="outline-primary" size="sm">보기</Button>
-                        </td>
+                        <td className="text-center border border-secondary">0</td>
                       </tr>
                     ))
                   ) : (
@@ -660,11 +680,12 @@ const TournamentManagement = () => {
               paginationRowsPerPageOptions={[5, 10, 15, 20]}
               expandableRows
               expandableRowsComponent={ExpandedTournamentComponent}
+              expandableRowExpanded={row => row.id === expandedRowId}
               onRowExpandToggled={handleRowExpandToggled}
-              expandableRowsComponentProps={{ expandedRows }}
+              expandableRowsComponentProps={{ expandedRowId }}
               conditionalRowStyles={[
                 {
-                  when: row => expandedRows.has(row.id),
+                  when: row => expandedRowId === row.id,
                   style: {
                     backgroundColor: '#e3f2fd',
                     borderLeft: '4px solid #2196f3',
