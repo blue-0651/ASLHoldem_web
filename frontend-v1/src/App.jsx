@@ -21,6 +21,9 @@ import {
   UserDashboard
 } from './mobile/pages';
 
+// 토너먼트 상세 페이지 추가
+import TournamentDetail from './mobile/pages/store/TournamentDetail';
+
 // 모바일 레이아웃
 import NavigationLayout from './mobile/layouts/NavigationLayout';
 
@@ -99,6 +102,7 @@ function App() {
           <Route path="store" element={<ProtectedRoute userType="store" />}>
             <Route path="dashboard" element={<StoreDashboard />} />
             <Route path="tournament" element={<Tournament />} />
+            <Route path="tournament/:id" element={<TournamentDetail />} />
             <Route path="info" element={<StoreInfo />} />
             <Route path="player-registration" element={<PlayerRegistration />} />
           </Route>

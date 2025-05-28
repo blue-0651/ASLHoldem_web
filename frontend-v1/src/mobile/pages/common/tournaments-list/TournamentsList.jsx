@@ -52,7 +52,7 @@ const TournamentsList = () => {
   const fetchTournaments = async () => {
     try {
       setLoading(true);
-      const response = await API.get('/tournaments/', {
+      const response = await API.get('/store/tournaments/', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -61,7 +61,13 @@ const TournamentsList = () => {
       setError(null);
     } catch (err) {
       console.error('토너먼트 목록 가져오기 오류:', err);
-      setError('토너먼트 목록을 불러오는 중 오류가 발생했습니다.');
+      if (err.response?.status === 401) {
+        setError('로그인이 필요합니다.');
+      } else if (err.response?.status === 403) {
+        setError('매장 관리자 권한이 없습니다.');
+      } else {
+        setError('토너먼트 목록을 불러오는 중 오류가 발생했습니다.');
+      }
     } finally {
       setLoading(false);
     }
@@ -73,11 +79,11 @@ const TournamentsList = () => {
 
     // 상태 필터링
     if (filter === 'upcoming') {
-      filteredTournaments = filteredTournaments.filter((tournament) => new Date(tournament.start_date) > new Date());
+      filteredTournaments = filteredTournaments.filter((tournament) => new Date(tournament.start_time) > new Date());
     } else if (filter === 'ongoing') {
       const now = new Date();
       filteredTournaments = filteredTournaments.filter(
-        (tournament) => new Date(tournament.start_date) <= now && new Date(tournament.end_date) >= now
+        (tournament) => new Date(tournament.start_time) <= now && new Date(tournament.end_date) >= now
       );
     }
 
@@ -85,7 +91,7 @@ const TournamentsList = () => {
     if (searchTerm.trim() !== '') {
       const term = searchTerm.toLowerCase();
       filteredTournaments = filteredTournaments.filter(
-        (tournament) => tournament.title.toLowerCase().includes(term) || tournament.store.name.toLowerCase().includes(term)
+        (tournament) => tournament.name.toLowerCase().includes(term)
       );
     }
 
@@ -95,8 +101,9 @@ const TournamentsList = () => {
   // 토너먼트 상태 배지 색상 설정
   const getStatusBadge = (tournament) => {
     const now = new Date();
-    const startDate = new Date(tournament.start_date);
-    const endDate = new Date(tournament.end_date);
+    const startDate = new Date(tournament.start_time);
+    // 종료 시간은 start_time + 8시간으로 가정
+    const endDate = new Date(startDate.getTime() + (8 * 60 * 60 * 1000));
 
     if (startDate > now) {
       return <Badge bg="primary">예정됨</Badge>;
@@ -208,24 +215,40 @@ const TournamentsList = () => {
               <Card key={tournament.id} className="mobile-card" style={{ marginBottom: '15px' }}>
                 <Card.Body>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{tournament.title}</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{tournament.name}</div>
                     {getStatusBadge(tournament)}
                   </div>
 
                   <div style={{ color: '#555', fontSize: '14px', marginBottom: '5px' }}>
-                    <i className="fas fa-store" style={{ marginRight: '8px' }}></i>
-                    {tournament.store.name}
+                    <i className="fas fa-calendar-alt" style={{ marginRight: '8px' }}></i>
+                    {formatDate(tournament.start_time)}
                   </div>
 
                   <div style={{ color: '#555', fontSize: '14px', marginBottom: '5px' }}>
-                    <i className="fas fa-calendar-alt" style={{ marginRight: '8px' }}></i>
-                    {formatDate(tournament.start_date)}
+                    <i className="fas fa-ticket-alt" style={{ marginRight: '8px' }}></i>
+                    배분된 좌석: {tournament.allocated_quantity}석
+                  </div>
+
+                  <div style={{ color: '#555', fontSize: '14px', marginBottom: '5px' }}>
+                    <i className="fas fa-chair" style={{ marginRight: '8px' }}></i>
+                    남은 좌석: {tournament.remaining_quantity}석
                   </div>
 
                   <div style={{ color: '#555', fontSize: '14px', marginBottom: '10px' }}>
                     <i className="fas fa-users" style={{ marginRight: '8px' }}></i>
-                    참가비: {tournament.entry_fee.toLocaleString()}원 / 참가자: {tournament.participants_count}/
-                    {tournament.max_participants}명
+                    참가비: {tournament.buy_in.toLocaleString()}원
+                  </div>
+
+                  {tournament.description && (
+                    <div style={{ color: '#555', fontSize: '14px', marginBottom: '10px' }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: '8px' }}></i>
+                      {tournament.description}
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>
+                    <i className="fas fa-clock" style={{ marginRight: '8px' }}></i>
+                    좌석권 배분일: {formatDate(tournament.distribution_created_at)}
                   </div>
 
                   <Button

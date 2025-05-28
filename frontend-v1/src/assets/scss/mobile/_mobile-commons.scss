@@ -11,11 +11,12 @@ $asl-mobile-card-bg: #fff; // change for better readability
 .asl-mobile-container {
   max-width: 100%;
   min-height: 100vh;
-  padding: 15px 0px;
+  padding: 15px 10px;
   margin: 0 auto;
   background: radial-gradient(circle at center, $asl-mobile-body-bg-start, $asl-mobile-body-bg-end);
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .asl-mobile-header {
@@ -48,9 +49,11 @@ $asl-mobile-card-bg: #fff; // change for better readability
 .asl-mobile-card {
   background: $asl-mobile-card-bg;
   border-radius: 10px;
-  padding: 15px;
-  margin-bottom: 15px;
+  padding: 15px 12px;
+  margin: 0 5px 15px 5px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+  max-width: calc(100% - 10px);
 }
 
 .asl-mobile-empty-state {
@@ -58,11 +61,12 @@ $asl-mobile-card-bg: #fff; // change for better readability
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 40px 15px;
   background: whitesmoke;
   border-radius: 10px;
-  margin: 20px;
+  margin: 20px 10px;
   text-align: center;
+  box-sizing: border-box;
 }
 
 /* 로고 스타일 */
@@ -84,16 +88,18 @@ $asl-mobile-card-bg: #fff; // change for better readability
   flex-direction: column;
   justify-content: center;
   flex-grow: 1;
-  padding: 15px;
+  padding: 15px 10px;
 }
 
 .asl-mobile-login-card {
   background: white;
   border-radius: 15px;
-  padding: 25px 20px;
+  padding: 25px 15px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  margin-bottom: 30px;
+  margin: 0 5px 30px 5px;
   border: none;
+  box-sizing: border-box;
+  max-width: calc(100% - 10px);
   
   h2 {
     font-weight: 700;
@@ -210,7 +216,7 @@ $asl-mobile-card-bg: #fff; // change for better readability
 
 /* 대시보드 스타일 */
 .asl-mobile-dashboard {
-  padding: 15px;
+  padding: 15px 10px;
   background: linear-gradient(to bottom, $asl-mobile-body-bg, $asl-mobile-body-bg-end);
 }
 
@@ -251,8 +257,22 @@ $asl-mobile-card-bg: #fff; // change for better readability
 
 /* 반응형 조정 */
 @media (max-width: 480px) {
+  .asl-mobile-container {
+    padding: 15px 8px;
+  }
+  
+  .asl-mobile-card {
+    padding: 12px 10px;
+    margin: 0 3px 15px 3px;
+  }
+  
+  .asl-mobile-login-container {
+    padding: 15px 8px;
+  }
+  
   .asl-mobile-login-card {
-    padding: 20px;
+    padding: 20px 12px;
+    margin: 0 3px 30px 3px;
   }
 
   .asl-mobile-form-control {
@@ -261,6 +281,39 @@ $asl-mobile-card-bg: #fff; // change for better readability
 
   .asl-mobile-login-btn {
     font-size: 16px;
+  }
+  
+  .asl-mobile-dashboard {
+    padding: 15px 8px;
+  }
+  
+  .asl-mobile-content {
+    padding: 10px 3px;
+  }
+}
+
+/* 매우 작은 화면 (360px 이하)을 위한 추가 조정 */
+@media (max-width: 360px) {
+  .asl-mobile-container {
+    padding: 15px 5px;
+  }
+  
+  .asl-mobile-card {
+    padding: 10px 8px;
+    margin: 0 2px 15px 2px;
+  }
+  
+  .asl-mobile-login-card {
+    padding: 18px 10px;
+    margin: 0 2px 30px 2px;
+  }
+  
+  .asl-mobile-dashboard {
+    padding: 15px 5px;
+  }
+  
+  .asl-mobile-content {
+    padding: 10px 2px;
   }
 }
 
@@ -344,7 +397,8 @@ $asl-mobile-card-bg: #fff; // change for better readability
 
 /* 모바일 컨텐츠 스타일 */
 .asl-mobile-content {
-  padding: 10px 0;
+  padding: 10px 5px;
+  box-sizing: border-box;
 }
 
 .asl-mobile-page-title {

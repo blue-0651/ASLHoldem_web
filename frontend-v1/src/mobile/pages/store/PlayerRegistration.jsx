@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Form, Spinner, Alert, Table, Container, Row, Col } from 'react-bootstrap';
+import { Card, Button, Form, Spinner, Alert, Table, Container, Row, Col, Badge } from 'react-bootstrap';
 import axios from 'axios';
 import MobileHeader from '../../components/MobileHeader';
 
@@ -91,6 +91,13 @@ const PlayerRegistration = () => {
   const [playerMappingData, setPlayerMappingData] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
+  
+  // 새로 추가된 상태들
+  const [phoneSearchLoading, setPhoneSearchLoading] = useState(false);
+  const [foundUser, setFoundUser] = useState(null);
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [phoneSearched, setPhoneSearched] = useState(false);
+  
   const navigate = useNavigate();
 
   /**
@@ -103,7 +110,7 @@ const PlayerRegistration = () => {
 
   /**
    * 토너먼트 선택 시 매핑 정보 로드
-   * 토너먼트를 선택하면 해당 토너먼트의 선수 매핑 정보를 가져옵니다.
+   * 토너먼트를 선택하면 해당 토너먼트의 선수 매핑 정보를 dashboard/player_mapping API를 통해 조회합니다.
    */
   useEffect(() => {
     if (selectedTournament) {
@@ -152,11 +159,101 @@ const PlayerRegistration = () => {
   };
 
   /**
+   * 휴대폰 번호로 사용자 검색
+   * @param {string} phone - 검색할 휴대폰 번호
+   */
+  const searchUserByPhone = async (phone) => {
+    if (!phone || phone.length < 10) return;
+    
+    setPhoneSearchLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.get('/store/search-user/', {
+        params: { phone }
+      });
+      
+      if (response.data.found) {
+        setFoundUser(response.data.user);
+        setIsNewUser(false);
+        setPlayerData({
+          username: response.data.user.username,
+          email: response.data.user.email,
+          phone: response.data.user.phone,
+          nickname: ''
+        });
+        
+        // 선택된 토너먼트가 있으면 해당 토너먼트의 좌석권 현황도 조회
+        if (selectedTournament) {
+          try {
+            const ticketResponse = await api.get('/store/user-tickets/', {
+              params: { 
+                phone_number: phone,
+                tournament_id: selectedTournament
+              }
+            });
+            setFoundUser(prev => ({
+              ...prev,
+              ticketInfo: ticketResponse.data
+            }));
+          } catch (ticketErr) {
+            console.warn('좌석권 정보 조회 실패:', ticketErr);
+          }
+        }
+      } else {
+        setFoundUser(null);
+        setIsNewUser(true);
+        setPlayerData(prev => ({
+          ...prev,
+          username: '',
+          email: ''
+        }));
+      }
+      setPhoneSearched(true);
+    } catch (err) {
+      console.error('사용자 검색 오류:', err);
+      setError('사용자 검색 중 오류가 발생했습니다.');
+      setFoundUser(null);
+      setIsNewUser(false);
+      setPhoneSearched(false);
+    } finally {
+      setPhoneSearchLoading(false);
+    }
+  };
+
+  /**
+   * 휴대폰 번호 입력 핸들러 (디바운스 적용)
+   */
+  const handlePhoneChange = (e) => {
+    const phone = e.target.value;
+    setPlayerData(prev => ({ ...prev, phone }));
+    
+    // 기존 검색 결과 초기화
+    setFoundUser(null);
+    setIsNewUser(false);
+    setPhoneSearched(false);
+    
+    // 디바운스: 1초 후 검색 실행
+    clearTimeout(window.phoneSearchTimeout);
+    window.phoneSearchTimeout = setTimeout(() => {
+      if (phone.length >= 10) {
+        searchUserByPhone(phone);
+      }
+    }, 1000);
+  };
+
+  /**
    * 입력 필드 변경 핸들러
    * 사용자 입력에 따라 폼 데이터를 업데이트합니다.
    */
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    if (name === 'phone') {
+      handlePhoneChange(e);
+      return;
+    }
+    
     setPlayerData((prev) => ({
       ...prev,
       [name]: value
@@ -211,7 +308,6 @@ const PlayerRegistration = () => {
   /**
    * 폼 제출 핸들러
    * 선수 등록 폼을 제출할 때 호출됩니다.
-   * 현재는 백엔드 API가 완전히 구현되지 않아 가상의 성공 응답을 시뮬레이션합니다.
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -220,15 +316,47 @@ const PlayerRegistration = () => {
     setSuccess(false);
 
     try {
-      // 백엔드 API 연동 코드는 나중에 구현
-      console.log('선수 등록 데이터:', {
-        ...playerData,
-        tournament_id: selectedTournament,
-        scanned_user_id: scanResult?.userId
-      });
+      // 필수 필드 검증
+      if (!selectedTournament) {
+        setError('토너먼트를 선택해주세요.');
+        setLoading(false);
+        return;
+      }
+      
+      if (!playerData.phone) {
+        setError('휴대폰 번호를 입력해주세요.');
+        setLoading(false);
+        return;
+      }
+      
+      // 신규 사용자인 경우 추가 정보 검증
+      if (isNewUser && (!playerData.username || !playerData.email)) {
+        setError('신규 사용자는 이름과 이메일을 입력해주세요.');
+        setLoading(false);
+        return;
+      }
 
-      // 가상의 성공 응답
-      setTimeout(() => {
+      // API 요청 데이터 준비
+      const requestData = {
+        tournament_id: selectedTournament,
+        phone_number: playerData.phone,
+        nickname: playerData.nickname
+      };
+      
+      // 기존 사용자인 경우 user_id 추가
+      if (foundUser) {
+        requestData.user_id = foundUser.id;
+      } else {
+        // 신규 사용자인 경우 추가 정보 포함
+        requestData.username = playerData.username;
+        requestData.email = playerData.email;
+      }
+
+      console.log('선수 등록 요청 데이터:', requestData);
+
+      const response = await api.post('/store/register-player/', requestData);
+      
+      if (response.data.success) {
         setSuccess(true);
         setPlayerData({
           username: '',
@@ -236,14 +364,71 @@ const PlayerRegistration = () => {
           phone: '',
           nickname: ''
         });
+        setFoundUser(null);
+        setIsNewUser(false);
+        setPhoneSearched(false);
         setScanResult(null);
+        
         // 성공 후 다시 선수 매핑 정보 로드
-        fetchPlayerMapping(selectedTournament);
-        setLoading(false);
-      }, 1000);
+        if (selectedTournament) {
+          fetchPlayerMapping(selectedTournament);
+        }
+      }
     } catch (err) {
       console.error('선수 등록 오류:', err);
-      setError('선수 등록 중 오류가 발생했습니다. 다시 시도해주세요.');
+      if (err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('선수 등록 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * 좌석권 지급 핸들러
+   */
+  const handleGrantTicket = async (quantity = 1) => {
+    if (!foundUser || !selectedTournament) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.post('/store/grant-ticket/', {
+        user_id: foundUser.id,
+        tournament_id: selectedTournament,
+        quantity: quantity,
+        source: 'ADMIN',
+        memo: '매장에서 지급'
+      });
+      
+      if (response.data.success) {
+        // 좌석권 정보 다시 조회
+        const ticketResponse = await api.get('/store/user-tickets/', {
+          params: { 
+            phone_number: foundUser.phone,
+            tournament_id: selectedTournament
+          }
+        });
+        
+        setFoundUser(prev => ({
+          ...prev,
+          ticketInfo: ticketResponse.data
+        }));
+        
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error('좌석권 지급 오류:', err);
+      if (err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('좌석권 지급 중 오류가 발생했습니다.');
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -334,9 +519,107 @@ const PlayerRegistration = () => {
             )}
 
             <Form onSubmit={handleSubmit}>
+              {/* 휴대폰 번호 입력 필드 - 가장 먼저 배치 */}
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  휴대폰 번호 
+                  <span className="text-danger">*</span>
+                  {phoneSearchLoading && <Spinner animation="border" size="sm" className="ms-2" />}
+                </Form.Label>
+                <Form.Control
+                  type="tel"
+                  name="phone"
+                  value={playerData.phone}
+                  onChange={handleChange}
+                  placeholder="'-' 없이 입력하세요 (예: 01012345678)"
+                  required
+                />
+                <Form.Text className="text-muted">
+                  휴대폰 번호를 입력하면 자동으로 기존 회원 정보를 검색합니다.
+                </Form.Text>
+              </Form.Group>
+
+              {/* 사용자 검색 결과 표시 */}
+              {phoneSearched && foundUser && (
+                <Alert variant="success" className="mb-3">
+                  <div className="d-flex align-items-center">
+                    <i className="fas fa-user-check me-2"></i>
+                    <div className="flex-grow-1">
+                      <strong>기존 회원 발견!</strong>
+                      <div className="mt-1">
+                        <small>
+                          이름: {foundUser.username} | 이메일: {foundUser.email}
+                        </small>
+                      </div>
+                      {foundUser.ticketInfo && (
+                        <div className="mt-2 p-2 bg-light rounded">
+                          <div className="d-flex justify-content-between align-items-center">
+                            <small className="text-muted">
+                              <i className="fas fa-ticket-alt me-1"></i>
+                              좌석권 현황
+                            </small>
+                            <div className="d-flex gap-2">
+                              <Badge bg="success" className="d-flex align-items-center">
+                                <i className="fas fa-check-circle me-1" style={{fontSize: '10px'}}></i>
+                                사용가능: {foundUser.ticketInfo.active_tickets}개
+                              </Badge>
+                              <Badge bg="secondary" className="d-flex align-items-center">
+                                <i className="fas fa-times-circle me-1" style={{fontSize: '10px'}}></i>
+                                사용됨: {foundUser.ticketInfo.used_tickets}개
+                              </Badge>
+                            </div>
+                          </div>
+                          {foundUser.ticketInfo.active_tickets === 0 && (
+                            <div className="mt-1">
+                              <small className="text-danger">
+                                <i className="fas fa-exclamation-triangle me-1"></i>
+                                사용 가능한 좌석권이 없습니다. 좌석권을 먼저 지급해주세요.
+                              </small>
+                              <div className="mt-2">
+                                <Button 
+                                  variant="outline-primary" 
+                                  size="sm"
+                                  onClick={() => handleGrantTicket(1)}
+                                  disabled={loading}
+                                >
+                                  <i className="fas fa-plus me-1"></i>
+                                  좌석권 1개 지급
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          {foundUser.ticketInfo.active_tickets > 0 && (
+                            <div className="mt-1">
+                              <small className="text-success">
+                                <i className="fas fa-check me-1"></i>
+                                토너먼트 참가 가능합니다.
+                              </small>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Alert>
+              )}
+
+              {phoneSearched && isNewUser && (
+                <Alert variant="info" className="mb-3">
+                  <div className="d-flex align-items-center">
+                    <i className="fas fa-user-plus me-2"></i>
+                    <div>
+                      <strong>신규 회원</strong>
+                      <div className="mt-1">
+                        <small>해당 휴대폰 번호로 등록된 회원이 없습니다. 추가 정보를 입력해주세요.</small>
+                      </div>
+                    </div>
+                  </div>
+                </Alert>
+              )}
+
               {/* 토너먼트 선택 드롭다운 */}
               <Form.Group className="mb-3">
-                <Form.Label>토너먼트 선택</Form.Label>
+                <Form.Label>토너먼트 선택 <span className="text-danger">*</span></Form.Label>
                 <Form.Select name="tournament" value={selectedTournament} onChange={handleTournamentChange} required>
                   <option value="">토너먼트를 선택하세요</option>
                   {tournaments.map((tournament) => (
@@ -347,60 +630,93 @@ const PlayerRegistration = () => {
                 </Form.Select>
               </Form.Group>
 
-              {/* 선수 정보 입력 필드 */}
-              <Form.Group className="mb-3">
-                <Form.Label>이름</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="username"
-                  value={playerData.username}
-                  onChange={handleChange}
-                  placeholder="선수의 실명을 입력하세요"
-                  required
-                />
-              </Form.Group>
+              {/* 조건부 필드들 - 신규 사용자이거나 기존 사용자 정보 수정 시에만 표시 */}
+              {(isNewUser || foundUser) && (
+                <>
+                  <Form.Group className="mb-3">
+                    <Form.Label>
+                      이름 
+                      {isNewUser && <span className="text-danger">*</span>}
+                      {foundUser && <Badge bg="secondary" className="ms-2">기존 정보</Badge>}
+                    </Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="username"
+                      value={playerData.username}
+                      onChange={handleChange}
+                      placeholder="선수의 실명을 입력하세요"
+                      required={isNewUser}
+                      disabled={foundUser && !isNewUser}
+                    />
+                  </Form.Group>
 
-              <Form.Group className="mb-3">
-                <Form.Label>이메일</Form.Label>
-                <Form.Control
-                  type="email"
-                  name="email"
-                  value={playerData.email}
-                  onChange={handleChange}
-                  placeholder="이메일 주소를 입력하세요"
-                  required
-                />
-              </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label>
+                      이메일 
+                      {isNewUser && <span className="text-danger">*</span>}
+                      {foundUser && <Badge bg="secondary" className="ms-2">기존 정보</Badge>}
+                    </Form.Label>
+                    <Form.Control
+                      type="email"
+                      name="email"
+                      value={playerData.email}
+                      onChange={handleChange}
+                      placeholder="이메일 주소를 입력하세요"
+                      required={isNewUser}
+                      disabled={foundUser && !isNewUser}
+                    />
+                  </Form.Group>
+                </>
+              )}
 
-              <Form.Group className="mb-3">
-                <Form.Label>휴대폰 번호</Form.Label>
-                <Form.Control
-                  type="tel"
-                  name="phone"
-                  value={playerData.phone}
-                  onChange={handleChange}
-                  placeholder="'-' 없이 입력하세요"
-                  required
-                />
-              </Form.Group>
+              {/* 닉네임은 항상 표시 (선택사항) */}
+              {(phoneSearched || foundUser) && (
+                <Form.Group className="mb-3">
+                  <Form.Label>닉네임 (선택사항)</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="nickname"
+                    value={playerData.nickname}
+                    onChange={handleChange}
+                    placeholder="토너먼트에서 사용할 닉네임을 입력하세요"
+                  />
+                  <Form.Text className="text-muted">
+                    입력하지 않으면 이름이 닉네임으로 사용됩니다.
+                  </Form.Text>
+                </Form.Group>
+              )}
 
-              <Form.Group className="mb-3">
-                <Form.Label>닉네임</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="nickname"
-                  value={playerData.nickname}
-                  onChange={handleChange}
-                  placeholder="선수 닉네임을 입력하세요"
-                />
-              </Form.Group>
+              {/* 제출 버튼 - 휴대폰 번호 검색 후에만 표시 */}
+              {(phoneSearched || foundUser) && (
+                <div className="d-grid gap-2">
+                  <Button 
+                    variant="primary" 
+                    type="submit" 
+                    disabled={loading || phoneSearchLoading}
+                    size="lg"
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner animation="border" size="sm" className="me-2" />
+                        등록 중...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-user-plus me-2"></i>
+                        {foundUser ? '기존 회원 토너먼트 등록' : '신규 회원 등록 및 토너먼트 참가'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
 
-              {/* 제출 버튼 */}
-              <div className="d-grid gap-2">
-                <Button variant="primary" type="submit" disabled={loading}>
-                  {loading ? <Spinner animation="border" size="sm" /> : "선수회원 등록"}
-                </Button>
-              </div>
+              {/* 안내 메시지 */}
+              {!phoneSearched && !foundUser && playerData.phone.length > 0 && playerData.phone.length < 10 && (
+                <Alert variant="warning" className="mb-3">
+                  <i className="fas fa-info-circle me-2"></i>
+                  휴대폰 번호를 10자리 이상 입력해주세요.
+                </Alert>
+              )}
             </Form>
           </Card.Body>
         </Card>

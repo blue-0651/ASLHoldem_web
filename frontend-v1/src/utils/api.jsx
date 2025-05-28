@@ -3,15 +3,14 @@ import { getToken, refreshToken, logout } from './auth';
 
 // API 기본 설정 - content-type 기본값 제거
 const API = axios.create({
-  baseURL: 'http://localhost:8000/api/v1'
+  baseURL: 'http://localhost:8000/api/v1',
+  timeout: 10000
 });
 
 // 요청 인터셉터 - 인증 토큰 추가
 API.interceptors.request.use(
   async (config) => {
-
-    // 토큰이 있으면 헤더에 추가
-    const token = getToken();
+    const token = localStorage.getItem('asl_holdem_access_token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -26,7 +25,6 @@ API.interceptors.request.use(
       });
     }
 
-        
     return config;
   },
   (error) => {
@@ -58,32 +56,32 @@ API.interceptors.response.use(
     }
     const originalRequest = error.config;
 
-    // 토큰 만료 오류(401) 및 재시도 안된 요청인 경우
+    // 토큰이 만료되었고, 이전에 재시도하지 않았다면
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // 토큰 갱신 시도
-        const { success, access } = await refreshToken();
+        // 리프레시 토큰으로 새 액세스 토큰 발급
+        const refreshToken = localStorage.getItem('asl_holdem_refresh_token');
+        const response = await axios.post('/api/v1/accounts/token/refresh/', {
+          refresh: refreshToken
+        });
 
-        if (success && access) {
-          // 갱신된 토큰으로 헤더 업데이트
-          originalRequest.headers['Authorization'] = `Bearer ${access}`;
-          // 원래 요청 재시도
-          return API(originalRequest);
-        } else {
-          // 갱신 실패 시 로그아웃
-          logout();
-          // 로그인 페이지로 리다이렉트
-          window.location.href = '/login';
-          return Promise.reject(error);
-        }
+        // 새 토큰 저장
+        const { access } = response.data;
+        localStorage.setItem('asl_holdem_access_token', access);
+
+        // 원래 요청 재시도
+        originalRequest.headers['Authorization'] = `Bearer ${access}`;
+        return axios(originalRequest);
       } catch (refreshError) {
-        // 로그아웃 처리
+        // 리프레시 토큰도 만료된 경우 로그아웃
+        localStorage.removeItem('asl_holdem_access_token');
+        localStorage.removeItem('asl_holdem_refresh_token');
         logout();
         // 로그인 페이지로 리다이렉트
         window.location.href = '/login';
-        return Promise.reject(error);
+        return Promise.reject(refreshError);
       }
     }
 
