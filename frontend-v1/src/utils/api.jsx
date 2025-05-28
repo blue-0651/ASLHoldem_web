@@ -146,15 +146,16 @@ export const tournamentAPI = {
   }
 };
 
-// 스토어(매장) 관련 API
+// 스토어(매장) 관련 API - DEPRECATED
+// 매장 정보는 distributionAPI.getSummaryByTournament()에서 제공됩니다.
 export const storeAPI = {
-  // 모든 매장 조회
+  // 모든 매장 조회 - DEPRECATED
   getAllStores: () => API.get('/stores/'),
 
-  // 특정 매장 방문 사용자 목록
+  // 특정 매장 방문 사용자 목록 - DEPRECATED
   getStoreUsers: (storeId) => API.post(`/stores/${storeId}/users/`),
 
-  // 매장 이름과 사용자 이름으로 검색
+  // 매장 이름과 사용자 이름으로 검색 - DEPRECATED
   searchUserByStore: (data) => {
     const formData = new FormData();
     Object.keys(data).forEach((key) => {
@@ -163,7 +164,7 @@ export const storeAPI = {
     return API.post('/stores/search_user_by_store/', formData);
   },
 
-  // 매장별 토너먼트 좌석권 정보 조회
+  // 매장별 토너먼트 좌석권 정보 조회 - DEPRECATED
   getStoreTournamentTickets: (storeId) => API.get(`/stores/${storeId}/tournament_tickets/`)
 };
 
@@ -194,6 +195,59 @@ export const dashboardAPI = {
   // 대시보드 매장/선수 매핑 현황 데이터 조회
   getPlayerMapping: (tournamentId) =>
     API.get('/tournaments/dashboard/player_mapping/', { params: tournamentId ? { tournament_id: tournamentId } : {} })
+};
+
+// 토너먼트 좌석권 분배 관련 API
+export const distributionAPI = {
+  // 토너먼트별 분배 요약 조회
+  getSummaryByTournament: (tournamentId) => 
+    API.get('/seats/distributions/summary_by_tournament/', { params: { tournament_id: tournamentId } }),
+
+  // 매장별 분배 요약 조회
+  getSummaryByStore: (storeId) => 
+    API.get('/seats/distributions/summary_by_store/', { params: { store_id: storeId } }),
+
+  // 전체 분배 요약 조회
+  getOverallSummary: () => API.get('/seats/distributions/overall_summary/')
+};
+
+// 좌석권 관련 API
+export const seatTicketAPI = {
+  // 토너먼트 요약 조회
+  getTournamentSummary: (tournamentId) => 
+    API.get('/seats/tickets/tournament_summary/', { params: { tournament_id: tournamentId } }),
+
+  // 사용자 좌석권 통계 조회
+  getUserStats: (userId, tournamentId) => 
+    API.get('/seats/tickets/user_stats/', { params: { user_id: userId, tournament_id: tournamentId } }),
+
+  // 좌석권 지급
+  grantTickets: (data) => API.post('/seats/tickets/grant/', data),
+
+  // 좌석권 사용
+  useTicket: (data) => API.post('/seats/tickets/use/', data),
+
+  // 대량 좌석권 작업
+  bulkOperation: (data) => API.post('/seats/tickets/bulk_operation/', data),
+
+  // 매장별 사용자 조회 (새로 추가)
+  getUsersByStore: (tournamentId, storeId) => 
+    API.get('/seats/tickets/', { 
+      params: { 
+        tournament_id: tournamentId, 
+        store_id: storeId,
+        status: 'ACTIVE'  // 활성 좌석권만 조회
+      } 
+    }),
+
+  // 토너먼트별 전체 좌석권 조회
+  getTicketsByTournament: (tournamentId, filters = {}) => 
+    API.get('/seats/tickets/', { 
+      params: { 
+        tournament_id: tournamentId,
+        ...filters
+      } 
+    })
 };
 
 // 사용자 정보 관련 API

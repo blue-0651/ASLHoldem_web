@@ -1,25 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Row, Col, Card, Form, Button, Modal, Spinner, Alert, Table, Dropdown, Badge } from 'react-bootstrap';
-import { tournamentAPI, storeAPI, dashboardAPI } from '../../utils/api';
+import { Row, Col, Card, Form, Button, Modal, Spinner, Alert, Table } from 'react-bootstrap';
+import { tournamentAPI, dashboardAPI, distributionAPI, seatTicketAPI } from '../../utils/api';
 
 // third party
 import DataTable from 'react-data-table-component';
-
-// 드롭다운 화살표 제거를 위한 스타일
-const dropdownToggleStyle = {
-  minHeight: '48px',
-  border: '1px solid #0d6efd',
-  borderRadius: '0.375rem',
-  backgroundColor: 'transparent',
-  color: '#0d6efd'
-};
 
 const TournamentManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [stores, setStores] = useState([]);
-  const [loadingStores, setLoadingStores] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [expandedRows, setExpandedRows] = useState(new Set()); // 확장된 행 상태 관리
@@ -28,13 +17,15 @@ const TournamentManagement = () => {
   const [tournamentDetailsCache, setTournamentDetailsCache] = useState(new Map());
   const [loadingDetails, setLoadingDetails] = useState(new Set());
   
+  // 선택된 매장 상태 추가
+  const [selectedStoreByTournament, setSelectedStoreByTournament] = useState(new Map());
+  
   // API 호출 중복 방지를 위한 ref
   const hasFetchedData = useRef(false);
   
-  // 폼 상태
+  // 폼 상태 - 매장 관련 필드 제거
   const [formData, setFormData] = useState({
     name: '',
-    stores: [], // 단일 store에서 복수 stores로 변경
     start_date: '',
     start_time: '',
     buy_in: '',
@@ -54,7 +45,6 @@ const TournamentManagement = () => {
     if (!hasFetchedData.current) {
       hasFetchedData.current = true;
       fetchTournaments();
-      fetchStores();
     }
   }, []);
   
@@ -66,25 +56,21 @@ const TournamentManagement = () => {
       const response = await tournamentAPI.getAllTournamentInfo();
       setTournaments(response.data); // .results 제거 - 직접 배열 구조
       
+      // 각 토너먼트의 상세 정보를 미리 가져오기 (백그라운드에서)
+      if (Array.isArray(response.data)) {
+        response.data.forEach(tournament => {
+          // 비동기로 상세 정보 가져오기 (에러가 발생해도 전체 로딩에 영향 없음)
+          fetchTournamentDetails(tournament.id).catch(err => {
+            console.warn(`토너먼트 ${tournament.id} 상세 정보 로딩 실패:`, err);
+          });
+        });
+      }
+      
       setLoading(false);
       
     } catch (err) {
       setError('토너먼트 목록을 불러오는 중 오류가 발생했습니다.');
       setLoading(false);
-    }
-  };
-  
-  const fetchStores = async () => {
-    try {
-      setLoadingStores(true);
-      
-      // 실제 API 연동
-      const response = await storeAPI.getAllStores();
-      setStores(response.data);
-      setLoadingStores(false);
-      
-    } catch (err) {
-      setLoadingStores(false);
     }
   };
   
@@ -98,12 +84,48 @@ const TournamentManagement = () => {
     try {
       setLoadingDetails(prev => new Set([...prev, tournamentId]));
       
-      const response = await dashboardAPI.getPlayerMapping(tournamentId);
+      // 병렬로 여러 API 호출
+      const [playerMappingResponse, distributionResponse, seatTicketResponse] = await Promise.all([
+        dashboardAPI.getPlayerMapping(tournamentId),
+        distributionAPI.getSummaryByTournament(tournamentId),
+        seatTicketAPI.getTournamentSummary(tournamentId)
+      ]);
+      
+      // 데이터 통합
+      const combinedData = {
+        // 기존 플레이어 매핑 데이터
+        ...playerMappingResponse.data,
+        
+        // 매장별 현황 (distribution API에서)
+        매장별_현황: distributionResponse.data.store_distributions?.map(store => ({
+          매장명: store.store_name,
+          매장_ID: store.store_id,  // 매장 ID 추가
+          좌석권_수량: store.allocated_quantity || 0,
+          배포된_수량: store.distributed_quantity || 0,
+          보유_수량: store.remaining_quantity || 0
+        })) || [],
+        
+        // 선수별 현황 (seat ticket API에서)
+        선수별_현황: seatTicketResponse.data.user_summaries?.map(user => ({
+          선수명: user.user_nickname || user.user_phone,
+          좌석권_보유: user.active_tickets > 0 ? 'Y' : 'N',
+          매장명: '미지정', // 현재 API에서 매장 정보가 없음
+          좌석권_수량: user.active_tickets || 0
+        })) || [],
+        
+        // 통계 정보
+        총_좌석권_수량: distributionResponse.data.tournament?.ticket_quantity || 0,
+        배포된_좌석권_수량: distributionResponse.data.summary?.total_distributed || 0,
+        사용된_좌석권_수량: seatTicketResponse.data.ticket_stats?.used_tickets || 0,
+        매장_수량: distributionResponse.data.store_distributions?.length || 0,
+        선수_수량: seatTicketResponse.data.user_summaries?.length || 0
+      };
       
       // 캐시에 저장
-      setTournamentDetailsCache(prev => new Map([...prev, [tournamentId, response.data]]));
+      setTournamentDetailsCache(prev => new Map([...prev, [tournamentId, combinedData]]));
       
     } catch (err) {
+      console.error('토너먼트 상세 정보 API 오류:', err);
       setError(`토너먼트 상세 정보를 불러오는 중 오류가 발생했습니다.`);
     } finally {
       setLoadingDetails(prev => {
@@ -114,43 +136,91 @@ const TournamentManagement = () => {
     }
   };
   
+  // 매장별 사용자 조회 함수 추가
+  const fetchStoreUsers = async (tournamentId, storeId, storeName) => {
+    try {
+      const response = await seatTicketAPI.getUsersByStore(tournamentId, storeId);
+      
+      // API 응답 구조 디버깅
+      console.log('매장별 사용자 조회 API 응답:', response);
+      console.log('response.data 타입:', typeof response.data);
+      console.log('response.data 내용:', response.data);
+      
+      // 응답 데이터가 배열인지 확인
+      let ticketsData = [];
+      if (Array.isArray(response.data)) {
+        ticketsData = response.data;
+      } else if (response.data && Array.isArray(response.data.results)) {
+        // 페이지네이션된 응답인 경우
+        ticketsData = response.data.results;
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        // 중첩된 data 구조인 경우
+        ticketsData = response.data.data;
+      } else {
+        console.warn('예상하지 못한 API 응답 구조:', response.data);
+        ticketsData = [];
+      }
+      
+      console.log('처리할 티켓 데이터:', ticketsData);
+      
+      // 사용자별로 그룹화하여 중복 제거
+      const userMap = new Map();
+      ticketsData.forEach(ticket => {
+        const userId = ticket.user;
+        const userPhone = ticket.user_name || '미지정';
+        
+        if (!userMap.has(userId)) {
+          userMap.set(userId, {
+            선수명: userPhone,
+            좌석권_보유: 'Y',
+            매장명: storeName,
+            좌석권_수량: 0
+          });
+        }
+        
+        // 활성 좌석권 수량 증가
+        if (ticket.status === 'ACTIVE') {
+          userMap.get(userId).좌석권_수량 += 1;
+        }
+      });
+      
+      const storeUsers = Array.from(userMap.values());
+      console.log('최종 매장 사용자 목록:', storeUsers);
+      
+      // 토너먼트 상세 정보 업데이트
+      setTournamentDetailsCache(prev => {
+        const newCache = new Map(prev);
+        const tournamentDetails = newCache.get(tournamentId);
+        if (tournamentDetails) {
+          newCache.set(tournamentId, {
+            ...tournamentDetails,
+            선수별_현황: storeUsers
+          });
+        }
+        return newCache;
+      });
+      
+      // 선택된 매장 정보 저장
+      setSelectedStoreByTournament(prev => new Map([...prev, [tournamentId, { storeId, storeName }]]));
+      
+    } catch (err) {
+      console.error('매장별 사용자 조회 오류:', err);
+      console.error('오류 응답:', err.response);
+      setError(`매장별 사용자 정보를 불러오는 중 오류가 발생했습니다.`);
+    }
+  };
+
+  // 매장명 클릭 핸들러
+  const handleStoreClick = (tournamentId, storeId, storeName) => {
+    fetchStoreUsers(tournamentId, storeId, storeName);
+  };
+  
   // 폼 필드 변경 핸들러
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value
-    });
-  };
-
-  // 매장 멀티 셀렉트 핸들러
-  const handleStoreSelection = (storeId) => {
-    const currentStores = formData.stores || [];
-    const isSelected = currentStores.includes(storeId);
-    
-    if (isSelected) {
-      // 이미 선택된 매장이면 제거
-      setFormData({
-        ...formData,
-        stores: currentStores.filter(id => id !== storeId)
-      });
-    } else {
-      // 선택되지 않은 매장이면 추가
-      setFormData({
-        ...formData,
-        stores: [...currentStores, storeId]
-      });
-    }
-  };
-
-  // 모든 매장 선택/해제
-  const handleSelectAllStores = () => {
-    const allStoreIds = stores.map(store => store.id);
-    const isAllSelected = formData.stores.length === stores.length;
-    
-    setFormData({
-      ...formData,
-      stores: isAllSelected ? [] : allStoreIds
     });
   };
   
@@ -189,9 +259,8 @@ const TournamentManagement = () => {
       setError(null);
       
       // 필수 필드 검증
-      if (!formData.name || !formData.stores || formData.stores.length === 0 || !formData.start_date || 
-          !formData.start_time || !formData.buy_in || !formData.ticket_quantity) {
-        setError('모든 필수 필드를 입력해주세요. 최소 하나 이상의 매장을 선택해야 합니다.');
+      if (!formData.name || !formData.start_date || !formData.start_time || !formData.buy_in || !formData.ticket_quantity) {
+        setError('모든 필수 필드를 입력해주세요.');
         setLoading(false);
         return;
       }
@@ -202,7 +271,6 @@ const TournamentManagement = () => {
       // 폼 데이터 준비 (현재 백엔드는 단일 매장만 지원하므로 첫 번째 매장 사용)
       const tournamentData = {
         name: formData.name,
-        store: formData.stores[0], // 첫 번째 선택된 매장 ID 사용
         start_time: startDateTime,
         buy_in: formData.buy_in,
         ticket_quantity: formData.ticket_quantity,
@@ -217,7 +285,6 @@ const TournamentManagement = () => {
       // 폼 초기화
       setFormData({
         name: '',
-        stores: [],
         start_date: '',
         start_time: '',
         buy_in: '',
@@ -287,7 +354,7 @@ const TournamentManagement = () => {
   const tournamentColumns = useMemo(() => [
     {
       name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>대회명</span>,
-      selector: (row) => row.description || row.name,
+      selector: (row) => row.name,
       sortable: true,
       center: true,
       style: (row) => ({
@@ -309,7 +376,10 @@ const TournamentManagement = () => {
     },
     {
       name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>매장 수량</span>,
-      selector: (row) => row.remaining_tickets || 0,
+      selector: (row) => {
+        const details = tournamentDetailsCache.get(row.id);
+        return details?.매장_수량 || 0;
+      },
       sortable: true,
       center: true,
       style: (row) => ({
@@ -320,18 +390,10 @@ const TournamentManagement = () => {
     },
     {
       name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>선수 수량</span>,
-      selector: (row) => row.participant_count || 0,
-      sortable: true,
-      center: true,
-      style: (row) => ({
-        fontSize: expandedRows.has(row.id) ? '18px' : '14px',
-        fontWeight: expandedRows.has(row.id) ? 'bold' : 'normal',
-        transition: 'all 0.3s ease'
-      })
-    },
-    {
-      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>시작시간</span>,
-      selector: (row) => formatDate(row.start_time),
+      selector: (row) => {
+        const details = tournamentDetailsCache.get(row.id);
+        return details?.선수_수량 || 0;
+      },
       sortable: true,
       center: true,
       style: (row) => ({
@@ -340,7 +402,7 @@ const TournamentManagement = () => {
         transition: 'all 0.3s ease'
       })
     }
-  ], [expandedRows]);
+  ], [expandedRows, tournamentDetailsCache]);
 
   // 행 확장/축소 핸들러
   const handleRowExpandToggled = (expanded, row) => {
@@ -392,31 +454,45 @@ const TournamentManagement = () => {
                     <th className="border border-dark text-white">매장명</th>
                     <th className="border border-dark text-white">SEAT권 수량</th>
                     <th className="border border-dark text-white">SEAT권 배포 수량</th>
-                    <th className="border border-dark text-white">현재 보유 수량</th>
+                    <th className="border border-dark text-white">보유 수량</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tournamentDetails.매장별_현황?.length > 0 ? (
-                    tournamentDetails.매장별_현황.map((store, index) => (
-                      <tr key={index}>
-                        <td className="border border-secondary">{store.매장명}</td>
-                        <td className="text-center border border-secondary">{store.좌석권_수량 || 0}</td>
-                        <td className="text-center border border-secondary">{store.배포된_수량 || 0}</td>
-                        <td className="text-center border border-secondary">{(store.좌석권_수량 || 0) - (store.배포된_수량 || 0)}</td>
-                      </tr>
-                    ))
+                    tournamentDetails.매장별_현황.map((store, index) => {
+                      const selectedStore = selectedStoreByTournament.get(data.id);
+                      const isSelected = selectedStore && selectedStore.storeId === store.매장_ID;
+                      
+                      return (
+                        <tr 
+                          key={index}
+                          style={{ 
+                            backgroundColor: isSelected ? '#e3f2fd' : 'transparent',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => handleStoreClick(data.id, store.매장_ID, store.매장명)}
+                        >
+                          <td 
+                            className="border border-secondary"
+                            style={{ 
+                              fontWeight: isSelected ? 'bold' : 'normal',
+                              color: isSelected ? '#1976d2' : 'inherit'
+                            }}
+                          >
+                            {store.매장명}
+                            {isSelected && <span className="ms-2">👈 선택됨</span>}
+                          </td>
+                          <td className="text-center border border-secondary">{store.좌석권_수량 || 0}</td>
+                          <td className="text-center border border-secondary">{store.배포된_수량 || 0}</td>
+                          <td className="text-center border border-secondary">{store.보유_수량 || 0}</td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan="4" className="text-center border border-secondary">매장 데이터가 없습니다.</td>
                     </tr>
                   )}
-                  {/* 총계 행 */}
-                  <tr style={{ backgroundColor: '#ffc107', color: '#000' }}>
-                    <td className="border border-warning"><strong>총계</strong></td>
-                    <td className="text-center border border-warning"><strong>{tournamentDetails.총_좌석권_수량 || 0}</strong></td>
-                    <td className="text-center border border-warning"><strong>{tournamentDetails.배포된_좌석권_수량 || 0}</strong></td>
-                    <td className="text-center border border-warning"><strong>{(tournamentDetails.총_좌석권_수량 || 0) - (tournamentDetails.배포된_좌석권_수량 || 0)}</strong></td>
-                  </tr>
                 </tbody>
               </Table>
             </div>
@@ -425,7 +501,21 @@ const TournamentManagement = () => {
           {/* 선수별 현황 */}
           <div className="col-md-6">
             <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
-              <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>선수별 현황</h4>
+              <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>
+                선수별 현황
+                {(() => {
+                  const selectedStore = selectedStoreByTournament.get(data.id);
+                  return selectedStore ? (
+                    <small className="d-block mt-1" style={{ fontSize: '14px', fontWeight: 'normal' }}>
+                      📍 {selectedStore.storeName} 매장 선수 목록
+                    </small>
+                  ) : (
+                    <small className="d-block mt-1" style={{ fontSize: '14px', fontWeight: 'normal' }}>
+                      💡 매장명을 클릭하면 해당 매장 선수를 조회합니다
+                    </small>
+                  );
+                })()}
+              </h4>
               <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
                 <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
                   <tr>
@@ -440,7 +530,7 @@ const TournamentManagement = () => {
                     tournamentDetails.선수별_현황.map((player, index) => (
                       <tr key={index}>
                         <td className="border border-secondary">{player.선수명}</td>
-                        <td className="text-center border border-secondary">{player.좌석권_보유 === 'Y' ? '1' : '0'}</td>
+                        <td className="text-center border border-secondary">{player.좌석권_수량 || 0}</td>
                         <td className="border border-secondary">{player.매장명}</td>
                         <td className="border border-secondary">
                           <Button variant="outline-primary" size="sm">보기</Button>
@@ -477,7 +567,7 @@ const TournamentManagement = () => {
                 </div>
                 <div className="col-md-3">
                   <h6 className="text-white">참가 선수 수</h6>
-                  <h4 className="text-white">{tournamentDetails.선수별_현황?.length || 0}명</h4>
+                  <h4 className="text-white">{tournamentDetails.선수_수량 || 0}명</h4>
                 </div>
               </div>
             </div>
@@ -615,7 +705,7 @@ const TournamentManagement = () => {
             </Alert>
           )}
           
-                    <Form onSubmit={handleCreateTournament}>
+          <Form onSubmit={handleCreateTournament}>
             {/* 토너먼트 이름 */}
             <Row>
               <Col md={12}>
@@ -634,173 +724,6 @@ const TournamentManagement = () => {
                   />
                   <Form.Text className="text-muted">
                     최대 100자까지 입력 가능합니다.
-                  </Form.Text>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {/* 매장 선택 */}
-            <Row>
-              <Col md={12}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    매장 <span className="text-danger">*</span>
-                  </Form.Label>
-                  
-                  {loadingStores ? (
-                    <div className="text-center p-3 border rounded">
-                      <Spinner animation="border" size="sm" className="me-2" />
-                      매장 목록을 불러오는 중...
-                    </div>
-                  ) : stores.length === 0 ? (
-                    <div className="text-center p-3 border rounded text-muted">
-                      등록된 매장이 없습니다
-                    </div>
-                  ) : (
-                    <div>
-                      {/* 드롭다운 버튼 */}
-                      <Dropdown>
-                        <Dropdown.Toggle 
-                          as="div"
-                          id="store-dropdown"
-                          className="btn btn-outline-primary w-100 d-flex justify-content-between align-items-center"
-                          style={dropdownToggleStyle}
-                        >
-                          <div className="d-flex align-items-center">
-                            <i className="fas fa-store me-2"></i>
-                            {formData.stores.length === 0 ? (
-                              <span className="text-muted">매장을 선택해주세요</span>
-                            ) : (
-                              <span>
-                                선택된 매장 ({formData.stores.length}/{stores.length})
-                              </span>
-                            )}
-                          </div>
-                          <i className="fas fa-chevron-down"></i>
-                        </Dropdown.Toggle>
-
-                        <Dropdown.Menu className="w-100" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                          {/* 전체 선택/해제 옵션 */}
-                          <Dropdown.Item 
-                            as="div" 
-                            className="border-bottom mb-2 pb-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="d-flex justify-content-between align-items-center">
-                              <span className="fw-bold text-primary">
-                                <i className="fas fa-list me-2"></i>
-                                매장 관리
-                              </span>
-                              <Button 
-                                variant={formData.stores.length === stores.length ? "outline-danger" : "outline-primary"}
-                                size="sm"
-                                onClick={handleSelectAllStores}
-                              >
-                                {formData.stores.length === stores.length ? (
-                                  <>
-                                    <i className="fas fa-minus-square me-1"></i>
-                                    전체 해제
-                                  </>
-                                ) : (
-                                  <>
-                                    <i className="fas fa-check-square me-1"></i>
-                                    전체 선택
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </Dropdown.Item>
-
-                          {/* 매장 목록 */}
-                          {stores.map(store => {
-                            const isSelected = formData.stores.includes(store.id);
-                            return (
-                              <Dropdown.Item
-                                key={store.id}
-                                as="div"
-                                className={`d-flex align-items-center p-2 ${
-                                  isSelected ? 'bg-primary text-white' : ''
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStoreSelection(store.id);
-                                }}
-                                style={{ cursor: 'pointer' }}
-                              >
-                                <Form.Check
-                                  type="checkbox"
-                                  id={`dropdown-store-${store.id}`}
-                                  checked={isSelected}
-                                  onChange={() => handleStoreSelection(store.id)}
-                                  className="me-3"
-                                  style={{ pointerEvents: 'none' }}
-                                />
-                                <div className="flex-grow-1">
-                                  <div className="d-flex align-items-center">
-                                    <i className={`fas fa-store me-2 ${isSelected ? 'text-white' : 'text-primary'}`}></i>
-                                    <span className="fw-bold">{store.name}</span>
-                                  </div>
-                                  {store.address && (
-                                    <small className={`${isSelected ? 'text-white-50' : 'text-muted'}`}>
-                                      <i className="fas fa-map-marker-alt me-1"></i>
-                                      {store.address}
-                                    </small>
-                                  )}
-                                </div>
-                                {isSelected && (
-                                  <i className="fas fa-check-circle text-white"></i>
-                                )}
-                              </Dropdown.Item>
-                            );
-                          })}
-                        </Dropdown.Menu>
-                      </Dropdown>
-
-                      {/* 선택된 매장 표시 */}
-                      {formData.stores.length > 0 && (
-                        <div className="mt-3 p-3 bg-light rounded border">
-                          <div className="d-flex align-items-center mb-2">
-                            <i className="fas fa-check-circle text-success me-2"></i>
-                            <span className="fw-bold">선택된 매장 목록:</span>
-                          </div>
-                          <div className="d-flex flex-wrap gap-2">
-                            {stores
-                              .filter(store => formData.stores.includes(store.id))
-                              .map(store => (
-                                <Badge 
-                                  key={store.id}
-                                  bg="primary" 
-                                  className="d-flex align-items-center p-2"
-                                  style={{ fontSize: '0.9rem' }}
-                                >
-                                  <i className="fas fa-store me-2"></i>
-                                  {store.name}
-                                  <Button
-                                    variant="link"
-                                    size="sm"
-                                    className="text-white p-0 ms-2"
-                                    onClick={() => handleStoreSelection(store.id)}
-                                    style={{ fontSize: '0.8rem' }}
-                                  >
-                                    <i className="fas fa-times"></i>
-                                  </Button>
-                                </Badge>
-                              ))
-                            }
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <Form.Text className="text-muted">
-                    <i className="fas fa-info-circle me-1"></i>
-                    토너먼트를 진행할 매장을 선택해주세요. 여러 매장 선택 가능합니다.
-                    {formData.stores.length > 0 && (
-                      <div className="mt-1">
-                        <strong>현재 백엔드 제한:</strong> 첫 번째 선택된 매장({stores.find(s => s.id === formData.stores[0])?.name})만 적용됩니다.
-                      </div>
-                    )}
                   </Form.Text>
                 </Form.Group>
               </Col>
@@ -913,6 +836,8 @@ const TournamentManagement = () => {
                 <small>
                   <i className="fas fa-info-circle me-1"></i>
                   <span className="text-danger">*</span> 표시된 항목은 필수 입력 사항입니다.
+                  <br />
+                  매장 정보는 토너먼트 생성 후 좌석권 분배 시 자동으로 연결됩니다.
                 </small>
               </div>
               <div>
