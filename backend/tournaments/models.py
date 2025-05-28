@@ -50,4 +50,34 @@ class Tournament(models.Model):
         return self.name
 
 
+class TournamentPlayer(models.Model):
+    """
+    토너먼트 참가 선수 정보를 저장하는 모델
+    """
+    
+    # 토너먼트 (외래키)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, verbose_name='토너먼트')
+    
+    # 사용자 (외래키)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='사용자')
+    
+    # 닉네임 (토너먼트에서 사용할 이름)
+    nickname = models.CharField(max_length=50, verbose_name='닉네임')
+    
+    # 등록 시간
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='등록 시간')
+    
+    # 수정 시간
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='수정 시간')
+    
+    class Meta:
+        db_table = 'tournament_players'
+        verbose_name = '토너먼트 참가자'
+        verbose_name_plural = '토너먼트 참가자들'
+        unique_together = ('tournament', 'user')  # 같은 토너먼트에 같은 사용자는 한 번만 등록 가능
+        
+    def __str__(self):
+        return f"{self.tournament.name} - {self.nickname}"
+
+
  

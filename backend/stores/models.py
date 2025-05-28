@@ -27,7 +27,7 @@ class Store(models.Model):
     description = models.TextField(verbose_name='매장 설명')
     
     # 매장 이미지
-    image = models.ImageField(upload_to='store_images/', verbose_name='매장 이미지')
+    image = models.ImageField(upload_to='store_images/', verbose_name='매장 이미지', null=True, blank=True)
     
     # 매장 상태
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
@@ -37,6 +37,24 @@ class Store(models.Model):
     
     # 경도 - 지도 표시를 위한 위치 정보
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    
+    # 매장 전화번호
+    phone_number = models.CharField(max_length=20, verbose_name='매장 전화번호', null=True, blank=True)
+    
+    # 영업 시작 시간
+    open_time = models.TimeField(verbose_name='오픈 시간', null=True, blank=True)
+    
+    # 영업 종료 시간
+    close_time = models.TimeField(verbose_name='마감 시간', null=True, blank=True)
+    
+    # 매니저 이름
+    manager_name = models.CharField(max_length=50, verbose_name='매니저 이름', null=True, blank=True)
+    
+    # 매니저 연락처
+    manager_phone = models.CharField(max_length=20, verbose_name='매니저 연락처', null=True, blank=True)
+    
+    # 최대 수용 인원
+    max_capacity = models.PositiveIntegerField(verbose_name='최대 수용 인원', default=50)
     
     # 생성 시간
     created_at = models.DateTimeField(auto_now_add=True)
