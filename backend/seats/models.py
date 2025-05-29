@@ -38,7 +38,7 @@ class SeatTicket(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='seat_tickets')
     
     # 티켓을 준 매장
-    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='seat_tickets', verbose_name='매장')
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='seat_tickets', verbose_name='매장', null=True, blank=True)
     
     # 좌석권 상태
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')

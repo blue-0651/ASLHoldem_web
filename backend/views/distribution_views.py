@@ -260,6 +260,7 @@ class TournamentTicketDistributionViewSet(viewsets.ModelViewSet):
             store_id = dist.store.id
             if store_id not in store_summary:
                 store_summary[store_id] = {
+                    'store_id': store_id,
                     'store_name': dist.store.name,
                     'allocated': 0,
                     'remaining': 0,
