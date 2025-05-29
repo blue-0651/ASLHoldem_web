@@ -13,6 +13,7 @@ from .serializers import (
 )
 from tournaments.models import Tournament
 from django.contrib.auth import get_user_model
+from stores.models import Store
 
 User = get_user_model()
 
@@ -73,12 +74,16 @@ class SeatTicketViewSet(viewsets.ModelViewSet):
             
             data = serializer.validated_data
             
-            # 사용자와 토너먼트 존재 확인
+            # 사용자, 토너먼트, 매장 존재 확인
             try:
                 user = User.objects.get(id=data['user_id'])
                 tournament = Tournament.objects.get(id=data['tournament_id'])
+                store = Store.objects.get(id=data['store_id'])
             except (User.DoesNotExist, Tournament.DoesNotExist):
                 return Response({"error": "사용자 또는 토너먼트를 찾을 수 없습니다."}, 
+                              status=status.HTTP_404_NOT_FOUND)
+            except Store.DoesNotExist:
+                return Response({"error": "매장을 찾을 수 없습니다."}, 
                               status=status.HTTP_404_NOT_FOUND)
             
             # 좌석권 생성
@@ -88,6 +93,7 @@ class SeatTicketViewSet(viewsets.ModelViewSet):
                     ticket = SeatTicket.objects.create(
                         tournament=tournament,
                         user=user,
+                        store=store,
                         source=data['source'],
                         amount=data['amount'],
                         expires_at=data.get('expires_at'),
@@ -119,6 +125,7 @@ class SeatTicketViewSet(viewsets.ModelViewSet):
                 "message": f"{data['quantity']}개의 좌석권이 지급되었습니다.",
                 "user_phone": user.phone,
                 "tournament_name": tournament.name,
+                "store_name": store.name,
                 "granted_tickets": ticket_serializer.data
             })
         except Exception as e:
@@ -274,11 +281,18 @@ class SeatTicketViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 for user in users:
                     if data['operation'] == 'grant':
+                        # 기본 매장 가져오기 (첫 번째 매장 사용)
+                        default_store = Store.objects.first()
+                        if not default_store:
+                            return Response({"error": "매장이 존재하지 않습니다."}, 
+                                              status=status.HTTP_400_BAD_REQUEST)
+                        
                         # 좌석권 지급
                         for i in range(data['quantity']):
                             ticket = SeatTicket.objects.create(
                                 tournament=tournament,
                                 user=user,
+                                store=default_store,
                                 source='ADMIN',
                                 amount=0,
                                 memo=data.get('reason', '')

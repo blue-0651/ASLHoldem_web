@@ -79,6 +79,7 @@ const MobileHeader = ({ title, backButton = false, onBackClick, showMenuButton =
       return [
         { name: "매장정보", href: "/mobile/store/info", icon: "fas fa-store" },
         { name: "토너먼트 관리", href: "/mobile/store/tournament", icon: "fas fa-trophy" },
+        { name: "좌석권 발급", href: "/mobile/store/ticket-issue", icon: "fas fa-credit-card" },
         { name: "선수회원 참가", href: "/mobile/store/player-registration", icon: "fas fa-qrcode" },
         { name: "환경설정", href: "/mobile/common/settings", icon: "fas fa-cog" },
         { name: "로그아웃", href: "#", icon: "fas fa-sign-out-alt", onClick: handleLogout, isLogout: true }

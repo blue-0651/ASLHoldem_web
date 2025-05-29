@@ -6,6 +6,7 @@ import LoginPage from './admin/pages/LoginPage';
 import Dashboard from './admin/pages/Dashboard';
 import TournamentManagement from './admin/pages/TournamentManagement';
 import StoreManagement from './admin/pages/StoreManagement';
+import TicketIssuePage from './admin/pages/TicketIssuePage';
 import Layout from './admin/components/Layout';
 import ProtectedRoute from './admin/components/ProtectedRoute';
 import UserInfoPage from './admin/pages/UserInfoPage';
@@ -104,6 +105,7 @@ function App() {
             <Route path="tournament" element={<Tournament />} />
             <Route path="tournament/:id" element={<TournamentDetail />} />
             <Route path="info" element={<StoreInfo />} />
+            <Route path="ticket-issue" element={<TicketIssuePage />} />
             <Route path="player-registration" element={<PlayerRegistration />} />
           </Route>
           <Route path="user" element={<ProtectedRoute userType="user" />}>
@@ -150,6 +152,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/tournaments" element={<TournamentManagement />} />
               <Route path="/stores" element={<StoreManagement />} />
+              <Route path="/ticket-issue" element={<TicketIssuePage />} />
               <Route path="/users" element={<UserInfoPage />} />
               <Route path="/player-registration" element={<PlayerRegistrationPage />} />
               <Route path="/board" element={<BoardManagementPage />} />

@@ -23,11 +23,10 @@ class SeatTicketSerializer(serializers.ModelSerializer):
         model = SeatTicket
         fields = [
             'id', 'ticket_id', 'tournament', 'tournament_name', 'user', 'user_name',
-            'store', 'store_name', 'seat_number', 'is_used', 'used_at', 'qr_code',
-            'status', 'status_display', 'source', 'source_display', 'amount', 'created_at',
-            'updated_at', 'memo', 'is_valid_ticket'
+            'store', 'store_name', 'status', 'status_display', 'source', 'source_display', 
+            'amount', 'used_at', 'expires_at', 'created_at', 'updated_at', 'memo', 'is_valid_ticket'
         ]
-        read_only_fields = ['id', 'ticket_id', 'qr_code', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'ticket_id', 'created_at', 'updated_at']
     
     def get_is_valid_ticket(self, obj):
         """좌석권이 유효한지 반환"""
@@ -79,6 +78,7 @@ class SeatTicketGrantSerializer(serializers.Serializer):
     """
     user_id = serializers.IntegerField(help_text="좌석권을 받을 사용자 ID")
     tournament_id = serializers.IntegerField(help_text="토너먼트 ID")
+    store_id = serializers.IntegerField(help_text="매장 ID")
     quantity = serializers.IntegerField(min_value=1, max_value=100, default=1, help_text="지급할 좌석권 수량")
     source = serializers.ChoiceField(choices=SeatTicket.SOURCE_CHOICES, default='ADMIN', help_text="좌석권 획득 방법")
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="좌석권 금액")

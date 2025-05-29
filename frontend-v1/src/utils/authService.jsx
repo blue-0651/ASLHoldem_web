@@ -55,6 +55,7 @@ export const reqLogout = () => {
   localStorage.removeItem(USER_INFO_KEY);
   localStorage.removeItem(USER_TYPE_KEY);
   localStorage.removeItem(IS_STORE_OWNER_KEY);
+  localStorage.removeItem('userPhone');
 };
 
 
@@ -98,6 +99,7 @@ export const reqLoginWithPhone = async (phone, password, userType = 'user') => {
     localStorage.setItem(TOKEN_KEY, access);
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
     localStorage.setItem(USER_TYPE_KEY, userType);
+    localStorage.setItem('userPhone', phone);
 
     return {
       success: true,
