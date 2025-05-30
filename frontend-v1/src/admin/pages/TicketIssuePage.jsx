@@ -156,22 +156,21 @@ const TicketIssuePage = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      // 해당 매장에 배포된 토너먼트 조회
-      const response = await fetch(`http://localhost:8000/api/v1/seats/distributions/?store_id=${storeId}`, {
+      // 매장 관리자용 토너먼트 목록 API 사용 (선수참가 화면과 동일)
+      const response = await fetch('http://localhost:8000/api/v1/store/tournaments/', {
         headers: headers
       });
       
-      console.log('토너먼트 배포 응답 상태:', response.status);
+      console.log('토너먼트 응답 상태:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('토너먼트 배포 데이터:', data);
+        console.log('토너먼트 데이터:', data);
         
-        // 배포된 토너먼트 정보만 추출
-        const distributedTournaments = (data.results || data).map(distribution => distribution.tournament_details || distribution.tournament);
-        setTournaments(distributedTournaments);
+        // 배포된 토너먼트 목록 설정
+        setTournaments(data);
       } else {
-        console.error('토너먼트 배포 조회 실패:', response.status, response.statusText);
+        console.error('토너먼트 조회 실패:', response.status, response.statusText);
         // 실패 시 전체 토너먼트 조회
         fetchAllTournaments();
       }
@@ -276,26 +275,37 @@ const TicketIssuePage = () => {
     setSearchLoading(true);
     try {
       const token = localStorage.getItem('asl_holdem_access_token');
-      const response = await fetch(`http://localhost:8000/api/v1/accounts/users/?phone=${searchPhone}`, {
+      
+      // 전화번호 형식 정리
+      const cleanPhone = searchPhone.replace(/-/g, '');
+      const formattedPhone = `${cleanPhone.slice(0,3)}-${cleanPhone.slice(3,7)}-${cleanPhone.slice(7)}`;
+      
+      const response = await fetch(`http://localhost:8000/api/v1/accounts/users/get_user/`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          phone: formattedPhone
+        })
       });
       
       if (response.ok) {
-        const data = await response.json();
-        const userList = data.results || data;
+        const userData = await response.json();
+        console.log('사용자 검색 결과:', userData);
         
-        if (userList.length > 0) {
-          setSelectedUser(userList[0]);
+        if (userData && userData.id) {
+          setSelectedUser(userData);
           showAlert('success', '사용자를 찾았습니다.');
         } else {
           setSelectedUser(null);
           showAlert('warning', '해당 전화번호의 사용자를 찾을 수 없습니다.');
         }
       } else {
-        showAlert('danger', '사용자 검색에 실패했습니다.');
+        const errorData = await response.json().catch(() => ({}));
+        setSelectedUser(null);
+        showAlert('warning', errorData.error || '해당 전화번호의 사용자를 찾을 수 없습니다.');
       }
     } catch (error) {
       console.error('사용자 검색 실패:', error);
@@ -357,7 +367,7 @@ const TicketIssuePage = () => {
       
       if (response.ok) {
         const data = await response.json();
-        showAlert('success', data.message || '좌석권이 성공적으로 발급되었습니다.');
+        showAlert('success', `${selectedUser.nickname || selectedUser.username || '사용자'}님에게 좌석권이 성공적으로 발급되었습니다.`);
         
         // 폼 초기화
         setSelectedUser(null);
@@ -517,13 +527,13 @@ const TicketIssuePage = () => {
                       <div className="user-search-result">
                         <div className="user-info">
                           <div className="user-avatar">
-                            {(selectedUser.nickname || selectedUser.username).charAt(0).toUpperCase()}
+                            {((selectedUser.nickname || selectedUser.username || selectedUser.phone || 'U')).charAt(0).toUpperCase()}
                           </div>
                           <div className="user-details">
                             <div className="user-name">
-                              {selectedUser.nickname || selectedUser.username}
+                              {selectedUser.nickname || selectedUser.username || '이름 없음'}
                             </div>
-                            <div className="user-phone">{selectedUser.phone}</div>
+                            <div className="user-phone">{selectedUser.phone || '전화번호 없음'}</div>
                           </div>
                         </div>
                       </div>
@@ -675,7 +685,7 @@ const TicketIssuePage = () => {
           <ul>
             <li><strong>토너먼트:</strong> {tournaments.find(t => t.id == selectedTournament)?.name}</li>
             <li><strong>매장:</strong> {currentStore?.name}</li>
-            <li><strong>사용자:</strong> {selectedUser?.nickname || selectedUser?.username} ({selectedUser?.phone})</li>
+            <li><strong>사용자:</strong> {selectedUser?.nickname || selectedUser?.username || '이름 없음'} ({selectedUser?.phone})</li>
             <li><strong>수량:</strong> {quantity}개</li>
             <li><strong>발급방법:</strong> {source}</li>
             <li><strong>금액:</strong> {amount}원</li>

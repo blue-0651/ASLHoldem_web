@@ -30,11 +30,26 @@ const MobileLogin = () => {
 
   // 전화번호 형식 검증
   const validatePhone = (phone) => {
-    const phoneRegex = /^\d{3}-\d{4}-\d{4}$/;
-    return phoneRegex.test(phone);
+    // 하이픈 제거
+    const cleanPhone = phone.replace(/-/g, '');
+    
+    // 숫자만 있는지 확인
+    if (!/^\d+$/.test(cleanPhone)) {
+      return false;
+    }
+    
+    // 길이 확인 (하이픈 제외 11자리)
+    if (cleanPhone.length !== 11) {
+      return false;
+    }
+    
+    // 010으로 시작하는지 확인
+    if (!cleanPhone.startsWith('010')) {
+      return false;
+    }
+    
+    return true;
   };
-
-
 
   // 폼 제출 핸들러
   const handleSubmit = async (e) => {
@@ -44,7 +59,14 @@ const MobileLogin = () => {
 
     // 전화번호 형식 검증
     if (!validatePhone(formData.phone)) {
-      setError('전화번호는 010-1234-5678 형식으로 입력해주세요.');
+      setError('전화번호는 010으로 시작하는 11자리 숫자여야 합니다.');
+      setLoading(false);
+      return;
+    }
+
+    // 비밀번호 길이 검증
+    if (formData.password.length < 3) {
+      setError('비밀번호는 3자 이상이어야 합니다.');
       setLoading(false);
       return;
     }
@@ -75,10 +97,7 @@ const MobileLogin = () => {
       
     } catch (err) {
       console.error('로그인 오류:', err);
-      const errorMessage = err.response?.data?.detail || 
-                          err.response?.data?.non_field_errors?.[0] || 
-                          '로그인에 실패했습니다. 전화번호와 비밀번호를 확인해주세요.';
-      setError(errorMessage);
+      setError(err.message || '로그인에 실패했습니다. 전화번호와 비밀번호를 확인해주세요.');
     } finally {
       setLoading(false);
     }

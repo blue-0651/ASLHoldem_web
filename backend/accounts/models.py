@@ -75,6 +75,10 @@ class User(AbstractUser):
     # 닉네임(중복 가능, 선택 입력)
     nickname = models.CharField(max_length=150, unique=False, null=True, blank=True, help_text='닉네임(중복 가능, 선택 입력)')
     
+    # 커스텀 인증 필드 설정
+    USERNAME_FIELD = 'phone'  # phone을 인증 필드로 사용
+    REQUIRED_FIELDS = ['email']  # 필수 입력 필드 설정
+    
     class Meta:
         db_table = 'users'               # 데이터베이스 테이블 이름
         verbose_name = '사용자'           # 관리자 페이지에서 표시될 단수 이름
