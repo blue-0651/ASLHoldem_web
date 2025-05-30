@@ -28,6 +28,7 @@ const BoardManagementPage = () => {
     content: '',
     notice_type: 'GENERAL',
     priority: 'NORMAL',
+    z_order: 0,
     is_published: true,
     is_pinned: false,
     start_date: '',
@@ -107,6 +108,7 @@ const BoardManagementPage = () => {
         content: board.content,
         notice_type: board.notice_type,
         priority: board.priority,
+        z_order: board.z_order,
         is_published: board.is_published,
         is_pinned: board.is_pinned,
         start_date: board.start_date ? board.start_date.slice(0, 16) : '',
@@ -123,6 +125,7 @@ const BoardManagementPage = () => {
         content: '',
         notice_type: 'GENERAL',
         priority: 'NORMAL',
+        z_order: 0,
         is_published: true,
         is_pinned: false,
         start_date: defaultStartDate,
@@ -153,6 +156,7 @@ const BoardManagementPage = () => {
       content: '',
       notice_type: 'GENERAL',
       priority: 'NORMAL',
+      z_order: 0,
       is_published: true,
       is_pinned: false,
       start_date: defaultStartDate,
@@ -247,6 +251,7 @@ const BoardManagementPage = () => {
         content: formData.content,
         notice_type: formData.notice_type,
         priority: formData.priority,
+        z_order: formData.z_order,
         is_published: formData.is_published,
         is_pinned: formData.is_pinned,
         start_date: formData.start_date,
@@ -408,11 +413,13 @@ const BoardManagementPage = () => {
   const getNoticeTypeBadge = (noticeType) => {
     const variants = {
       GENERAL: 'info',
+      STORE_MANAGER: 'warning',
       MEMBER_ONLY: 'success'
     };
     const labels = {
       GENERAL: '전체 공지',
-      MEMBER_ONLY: '회원 전용'
+      STORE_MANAGER: '매장관리자',
+      MEMBER_ONLY: '일반회원'
     };
     return <Badge bg={variants[noticeType]}>{labels[noticeType]}</Badge>;
   };
@@ -488,11 +495,9 @@ const BoardManagementPage = () => {
                 <tr>
                   <th>제목</th>
                   <th width="100">공지 유형</th>
-                  <th width="100">우선순위</th>
-                  <th width="80">고정</th>
-                  <th width="80">공개</th>
-                  <th width="80">조회수</th>
-                  <th width="100">작성자</th>
+                  <th width="100">Z-ORDER</th>
+                  <th width="150">공지시작일</th>
+                  <th width="150">공지종료일</th>
                   <th width="150">작성일</th>
                   <th width="120">관리</th>
                 </tr>
@@ -521,22 +526,12 @@ const BoardManagementPage = () => {
                         </small>
                       </td>
                       <td>{getNoticeTypeBadge(board.notice_type || 'GENERAL')}</td>
-                      <td>{getPriorityBadge(board.priority || 'NORMAL')}</td>
+                      <td>{board.z_order || 0}</td>
                       <td>
-                        {board.is_pinned ? (
-                          <Badge bg="warning">고정</Badge>
-                        ) : (
-                          <span className="text-muted">-</span>
-                        )}
+                        <small>{board.start_date ? formatDate(board.start_date) : '-'}</small>
                       </td>
                       <td>
-                        <Badge bg={board.is_published ? 'success' : 'secondary'}>
-                          {board.is_published ? '공개' : '비공개'}
-                        </Badge>
-                      </td>
-                      <td>{board.view_count || 0}</td>
-                      <td>
-                        <small>{board.author_name || '관리자'}</small>
+                        <small>{board.end_date ? formatDate(board.end_date) : '-'}</small>
                       </td>
                       <td>
                         <small>{board.created_at ? formatDate(board.created_at) : '-'}</small>
@@ -562,7 +557,7 @@ const BoardManagementPage = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="text-center py-4">
+                    <td colSpan="7" className="text-center py-4">
                       {searchTerm ? '검색 결과가 없습니다.' : '등록된 공지사항이 없습니다.'}
                     </td>
                   </tr>
@@ -625,29 +620,28 @@ const BoardManagementPage = () => {
                       required
                     >
                       <option value="GENERAL">전체 공지사항</option>
-                      <option value="MEMBER_ONLY">회원 전용 공지사항</option>
+                      <option value="STORE_MANAGER">매장관리자 공지사항</option>
+                      <option value="MEMBER_ONLY">일반회원 공지사항</option>
                     </Form.Select>
                     <Form.Text className="text-muted">
-                      전체: 모든 사용자, 회원 전용: 로그인한 사용자만
+                      전체: 모든 사용자, 매장관리자: 매장관리자만, 일반회원: 일반회원만
                     </Form.Text>
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>우선순위 *</Form.Label>
-                    <Form.Select
-                      name="priority"
-                      value={formData.priority}
+                    <Form.Label>표시 순서 (Z-ORDER)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="z_order"
+                      value={formData.z_order}
                       onChange={handleInputChange}
-                      required
-                    >
-                      <option value="LOW">낮음</option>
-                      <option value="NORMAL">보통</option>
-                      <option value="HIGH">높음</option>
-                      <option value="URGENT">긴급</option>
-                    </Form.Select>
+                      placeholder="0"
+                      min="-999"
+                      max="999"
+                    />
                     <Form.Text className="text-muted">
-                      긴급/높음은 상단에 우선 표시됩니다
+                      숫자가 클수록 상단에 표시됩니다 (기본값: 0)
                     </Form.Text>
                   </Form.Group>
                 </Col>
@@ -715,34 +709,18 @@ const BoardManagementPage = () => {
               <h6 className="text-muted mb-3">추가 옵션</h6>
               <Row>
                 <Col md={12}>
-                  <div className="d-flex gap-4">
-                    <div>
-                      <Form.Check
-                        type="checkbox"
-                        id="is_published"
-                        name="is_published"
-                        label="즉시 공개"
-                        checked={formData.is_published}
-                        onChange={handleInputChange}
-                      />
-                      <Form.Text className="text-muted">
-                        체크 해제 시 임시저장 상태가 됩니다.
-                      </Form.Text>
-                    </div>
-                    
-                    <div>
-                      <Form.Check
-                        type="checkbox"
-                        id="is_pinned"
-                        name="is_pinned"
-                        label="상단 고정"
-                        checked={formData.is_pinned}
-                        onChange={handleInputChange}
-                      />
-                      <Form.Text className="text-muted">
-                        중요한 공지사항을 목록 상단에 고정합니다.
-                      </Form.Text>
-                    </div>
+                  <div>
+                    <Form.Check
+                      type="checkbox"
+                      id="is_pinned"
+                      name="is_pinned"
+                      label="상단 고정"
+                      checked={formData.is_pinned}
+                      onChange={handleInputChange}
+                    />
+                    <Form.Text className="text-muted">
+                      중요한 공지사항을 목록 상단에 고정합니다.
+                    </Form.Text>
                   </div>
                 </Col>
               </Row>
@@ -785,11 +763,8 @@ const BoardManagementPage = () => {
                 <div className="mb-2">
                   <strong>공지 유형:</strong> {deletingBoard.notice_type_display || '전체 공지사항'}
                 </div>
-                <div className="mb-2">
-                  <strong>작성일:</strong> {deletingBoard.created_at ? formatDate(deletingBoard.created_at) : '-'}
-                </div>
                 <div>
-                  <strong>조회수:</strong> {deletingBoard.view_count || 0}회
+                  <strong>작성일:</strong> {deletingBoard.created_at ? formatDate(deletingBoard.created_at) : '-'}
                 </div>
               </div>
               
@@ -827,22 +802,13 @@ const BoardManagementPage = () => {
                     <Badge bg="warning" className="me-2">📌 고정</Badge>
                   )}
                   {getNoticeTypeBadge(viewingBoard.notice_type || 'GENERAL')}
-                  <span className="ms-2">{getPriorityBadge(viewingBoard.priority || 'NORMAL')}</span>
                 </div>
                 <div className="text-muted small">
                   <span className="me-3">
                     <strong>작성자:</strong> {viewingBoard.author_name || '관리자'}
                   </span>
-                  <span className="me-3">
-                    <strong>작성일:</strong> {viewingBoard.created_at ? formatDate(viewingBoard.created_at) : '-'}
-                  </span>
-                  <span className="me-3">
-                    <strong>조회수:</strong> {viewingBoard.view_count || 0}회
-                  </span>
                   <span>
-                    <Badge bg={viewingBoard.is_published ? 'success' : 'secondary'}>
-                      {viewingBoard.is_published ? '공개' : '비공개'}
-                    </Badge>
+                    <strong>작성일:</strong> {viewingBoard.created_at ? formatDate(viewingBoard.created_at) : '-'}
                   </span>
                 </div>
               </div>
@@ -891,8 +857,8 @@ const BoardManagementPage = () => {
                 <div className="row">
                   <div className="col-md-4">
                     <div className="text-center p-2 bg-light rounded">
-                      <div className="h5 mb-1">{viewingBoard.view_count || 0}</div>
-                      <small className="text-muted">조회수</small>
+                      <div className="h5 mb-1">{viewingBoard.z_order || 0}</div>
+                      <small className="text-muted">Z-ORDER</small>
                     </div>
                   </div>
                   <div className="col-md-4">

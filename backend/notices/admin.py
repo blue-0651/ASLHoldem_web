@@ -13,6 +13,7 @@ class NoticeAdmin(admin.ModelAdmin):
         'title', 
         'notice_type_display', 
         'priority_display', 
+        'z_order',
         'author', 
         'is_published', 
         'is_pinned', 
@@ -23,6 +24,7 @@ class NoticeAdmin(admin.ModelAdmin):
     list_filter = [
         'notice_type', 
         'priority', 
+        'z_order',
         'is_published', 
         'is_pinned', 
         'created_at',
@@ -38,7 +40,7 @@ class NoticeAdmin(admin.ModelAdmin):
             'fields': ('title', 'content', 'author')
         }),
         ('공지사항 설정', {
-            'fields': ('notice_type', 'priority', 'is_published', 'is_pinned')
+            'fields': ('notice_type', 'priority', 'z_order', 'is_published', 'is_pinned')
         }),
         ('첨부파일', {
             'fields': ('attachment',),
@@ -62,8 +64,9 @@ class NoticeAdmin(admin.ModelAdmin):
     def notice_type_display(self, obj):
         """공지사항 타입을 색상과 함께 표시"""
         colors = {
-            'GENERAL': '#28a745',  # 초록색
-            'MEMBER_ONLY': '#007bff',  # 파란색
+            'GENERAL': '#28a745',      # 초록색 - 전체 공지사항
+            'STORE_MANAGER': '#fd7e14', # 주황색 - 매장관리자 공지사항
+            'MEMBER_ONLY': '#007bff',   # 파란색 - 일반회원 공지사항
         }
         color = colors.get(obj.notice_type, '#6c757d')
         return format_html(

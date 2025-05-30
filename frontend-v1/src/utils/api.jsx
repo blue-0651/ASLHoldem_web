@@ -284,9 +284,16 @@ export const noticeAPI = {
   getNoticeById: (id) => API.get(`/notices/${id}/`),
 
   // 공지사항 생성
+  // 지원 필드: title, content, notice_type, priority, z_order, is_published, is_pinned, attachment, start_date, end_date
   createNotice: (data) => {
     const formData = new FormData();
     Object.keys(data).forEach((key) => {
+      // z_order는 숫자형 필드이므로 0도 유효값으로 처리
+      if (key === 'z_order') {
+        formData.append(key, data[key] || 0);
+        return;
+      }
+      
       // 빈 문자열이나 null 값은 제외하고 전송 (날짜 필드 제외)
       if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
         formData.append(key, data[key]);
@@ -298,9 +305,9 @@ export const noticeAPI = {
     
     // 디버깅을 위한 FormData 내용 출력
     if (process.env.NODE_ENV === 'development') {
-      console.log('전송할 FormData:');
+      console.log('📤 공지사항 생성 - 전송할 FormData:');
       for (let [key, value] of formData.entries()) {
-        console.log(key, value);
+        console.log(`  ${key}:`, value);
       }
     }
     
@@ -308,9 +315,16 @@ export const noticeAPI = {
   },
 
   // 공지사항 수정
+  // 지원 필드: title, content, notice_type, priority, z_order, is_published, is_pinned, attachment, start_date, end_date
   updateNotice: (id, data) => {
     const formData = new FormData();
     Object.keys(data).forEach((key) => {
+      // z_order는 숫자형 필드이므로 0도 유효값으로 처리
+      if (key === 'z_order') {
+        formData.append(key, data[key] || 0);
+        return;
+      }
+      
       // 빈 문자열이나 null 값은 제외하고 전송 (날짜 필드 제외)
       if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
         formData.append(key, data[key]);
@@ -322,9 +336,9 @@ export const noticeAPI = {
     
     // 디버깅을 위한 FormData 내용 출력
     if (process.env.NODE_ENV === 'development') {
-      console.log('수정할 FormData:');
+      console.log(`📤 공지사항 수정 (ID: ${id}) - 전송할 FormData:`);
       for (let [key, value] of formData.entries()) {
-        console.log(key, value);
+        console.log(`  ${key}:`, value);
       }
     }
     

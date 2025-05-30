@@ -17,7 +17,7 @@ class NoticeListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'notice_type', 'notice_type_display',
             'priority', 'priority_display', 'author_name', 
-            'is_published', 'is_pinned', 'view_count',
+            'is_published', 'is_pinned', 'z_order', 'view_count',
             'created_at', 'updated_at', 'start_date', 'end_date',
             'is_read', 'is_active'
         ]
@@ -52,7 +52,7 @@ class NoticeDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'content', 'notice_type', 'notice_type_display',
             'priority', 'priority_display', 'author_name', 
-            'is_published', 'is_pinned', 'view_count',
+            'is_published', 'is_pinned', 'z_order', 'view_count',
             'attachment', 'attachment_url', 'start_date', 'end_date',
             'created_at', 'updated_at', 'is_read', 'is_active'
         ]
@@ -87,7 +87,7 @@ class NoticeCreateUpdateSerializer(serializers.ModelSerializer):
         model = Notice
         fields = [
             'title', 'content', 'notice_type', 'priority',
-            'is_published', 'is_pinned', 'attachment',
+            'is_published', 'is_pinned', 'z_order', 'attachment',
             'start_date', 'end_date'
         ]
     
@@ -145,7 +145,7 @@ class NoticeAdminListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'content', 'notice_type', 'notice_type_display',
             'priority', 'priority_display', 'author_name', 
-            'is_published', 'is_pinned', 'view_count',
+            'is_published', 'is_pinned', 'z_order', 'view_count',
             'created_at', 'updated_at', 'start_date', 'end_date',
             'is_read', 'is_active'
         ]

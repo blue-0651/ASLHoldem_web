@@ -6,13 +6,14 @@ from django.core.validators import MinLengthValidator
 class Notice(models.Model):
     """
     공지사항 모델
-    전체 공지사항과 개별 공지사항(일반회원/선수용)을 구분하여 관리합니다.
+    전체 공지사항, 매장관리자 공지사항, 일반회원 공지사항을 구분하여 관리합니다.
     """
     
     # 공지사항 타입 선택 옵션
     NOTICE_TYPE_CHOICES = (
-        ('GENERAL', '전체 공지사항'),      # 모든 사용자가 볼 수 있는 공지사항
-        ('MEMBER_ONLY', '회원 전용 공지사항'),  # 일반회원(선수 포함)만 볼 수 있는 공지사항
+        ('GENERAL', '전체 공지사항'),          # 모든 사용자가 볼 수 있는 공지사항
+        ('STORE_MANAGER', '매장관리자 공지사항'), # 매장관리자만 볼 수 있는 공지사항
+        ('MEMBER_ONLY', '일반회원 공지사항'),    # 일반회원만 볼 수 있는 공지사항
     )
     
     # 중요도 선택 옵션
@@ -72,6 +73,12 @@ class Notice(models.Model):
         help_text='상단 고정 여부'
     )
     
+    # 표시 우선순위 (Z-ORDER)
+    z_order = models.IntegerField(
+        default=0,
+        help_text='표시 우선순위 (숫자가 클수록 상단에 표시)'
+    )
+    
     # 조회수
     view_count = models.PositiveIntegerField(
         default=0,
@@ -124,8 +131,9 @@ class Notice(models.Model):
         db_table = 'notices'
         verbose_name = '공지사항'
         verbose_name_plural = '공지사항들'
-        ordering = ['-is_pinned', '-priority', '-created_at']  # 고정글 우선, 중요도 순, 최신순
+        ordering = ['-z_order', '-is_pinned', '-priority', '-created_at']  # Z-ORDER 우선, 고정글, 중요도 순, 최신순
         indexes = [
+            models.Index(fields=['z_order', 'is_pinned']),
             models.Index(fields=['notice_type', 'is_published']),
             models.Index(fields=['is_pinned', 'priority']),
             models.Index(fields=['created_at']),
@@ -169,11 +177,21 @@ class Notice(models.Model):
         if self.notice_type == 'GENERAL':
             return True
         
-        # 회원 전용 공지사항은 로그인한 사용자만 볼 수 있음
+        # 매장관리자 공지사항은 매장관리자만 볼 수 있음
+        if self.notice_type == 'STORE_MANAGER':
+            if not user.is_authenticated:
+                return False
+            # is_store_owner 필드 또는 role이 STORE_OWNER인 경우
+            return user.is_store_owner or (hasattr(user, 'role') and user.role == 'STORE_OWNER')
+        
+        # 일반회원 공지사항은 일반회원(매장관리자 제외)만 볼 수 있음
         if self.notice_type == 'MEMBER_ONLY':
             if not user.is_authenticated:
                 return False
-            # target_users가 비어있으면 전체 회원, 아니면 포함된 회원만
+            # 매장관리자는 제외하고 일반회원만
+            if user.is_store_owner or (hasattr(user, 'role') and user.role == 'STORE_OWNER'):
+                return False
+            # target_users가 비어있으면 전체 일반회원, 아니면 포함된 회원만
             if self.target_users.exists():
                 return self.target_users.filter(pk=user.pk).exists()
             return True
