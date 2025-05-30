@@ -23,22 +23,47 @@ class StoreManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
         phone = attrs.get('phone')
         password = attrs.get('password')
         
+        print(f"[STORE LOGIN] 매장관리자 로그인 시도 - 전화번호: {phone}")
+        
         if not phone or not password:
+            print(f"[STORE LOGIN] 전화번호 또는 비밀번호 누락")
             raise serializers.ValidationError("전화번호와 비밀번호가 필요합니다.")
         
+        # 전화번호 형식 정규화
+        # 하이픈 제거하고 숫자만 추출
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        print(f"[STORE LOGIN] 정규화된 전화번호: {clean_phone}")
+        
+        # 11자리 숫자인지 확인
+        if len(clean_phone) != 11 or not clean_phone.startswith('010'):
+            print(f"[STORE LOGIN] 전화번호 형식 오류 - 길이: {len(clean_phone)}, 시작: {clean_phone[:3]}")
+            raise serializers.ValidationError("올바른 전화번호 형식이 아닙니다.")
+        
+        # 하이픈 포함 형식으로 변환 (데이터베이스 저장 형식)
+        formatted_phone = f"{clean_phone[:3]}-{clean_phone[3:7]}-{clean_phone[7:]}"
+        print(f"[STORE LOGIN] 포맷된 전화번호: {formatted_phone}")
+        
         try:
-            user = User.objects.get(phone=phone)
+            user = User.objects.get(phone=formatted_phone)
+            print(f"[STORE LOGIN] 사용자 찾음 - ID: {user.id}, 닉네임: {user.nickname}")
+            print(f"[STORE LOGIN] 사용자 상태 - 활성: {user.is_active}, 매장관리자: {user.is_store_owner}")
         except User.DoesNotExist:
+            print(f"[STORE LOGIN] 사용자 없음 - {formatted_phone}")
             raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
         
         if not user.check_password(password):
+            print(f"[STORE LOGIN] 비밀번호 불일치")
             raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
         
         if not user.is_active:
+            print(f"[STORE LOGIN] 비활성화된 계정")
             raise serializers.ValidationError("비활성화된 계정입니다.")
         
         if not user.is_store_owner:
+            print(f"[STORE LOGIN] 매장관리자 권한 없음 - is_store_owner: {user.is_store_owner}")
             raise serializers.ValidationError("매장 관리자 권한이 없습니다.")
+        
+        print(f"[STORE LOGIN] 로그인 성공!")
         
         # 직접 토큰 생성 (super().validate() 호출 제거)
         refresh = self.get_token(user)
@@ -69,8 +94,19 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
         if not phone or not password:
             raise serializers.ValidationError("전화번호와 비밀번호가 필요합니다.")
         
+        # 전화번호 형식 정규화
+        # 하이픈 제거하고 숫자만 추출
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        
+        # 11자리 숫자인지 확인
+        if len(clean_phone) != 11 or not clean_phone.startswith('010'):
+            raise serializers.ValidationError("올바른 전화번호 형식이 아닙니다.")
+        
+        # 하이픈 포함 형식으로 변환 (데이터베이스 저장 형식)
+        formatted_phone = f"{clean_phone[:3]}-{clean_phone[3:7]}-{clean_phone[7:]}"
+        
         try:
-            user = User.objects.get(phone=phone)
+            user = User.objects.get(phone=formatted_phone)
         except User.DoesNotExist:
             raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
         
@@ -116,8 +152,19 @@ class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
         if not phone or not password:
             raise serializers.ValidationError("전화번호와 비밀번호가 필요합니다.")
         
+        # 전화번호 형식 정규화
+        # 하이픈 제거하고 숫자만 추출
+        clean_phone = ''.join(filter(str.isdigit, phone))
+        
+        # 11자리 숫자인지 확인
+        if len(clean_phone) != 11 or not clean_phone.startswith('010'):
+            raise serializers.ValidationError("올바른 전화번호 형식이 아닙니다.")
+        
+        # 하이픈 포함 형식으로 변환 (데이터베이스 저장 형식)
+        formatted_phone = f"{clean_phone[:3]}-{clean_phone[3:7]}-{clean_phone[7:]}"
+        
         try:
-            user = User.objects.get(phone=phone)
+            user = User.objects.get(phone=formatted_phone)
         except User.DoesNotExist:
             raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
         

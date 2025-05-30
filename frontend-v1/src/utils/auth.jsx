@@ -31,15 +31,18 @@ export const login = async (phone, password, userType = 'store') => {
       endpoint = '/accounts/token/user/';
     }
 
+    // 전화번호 형식 정리 (하이픈 제거)
+    const cleanPhone = phone.replace(/-/g, '');
+
     console.log('Login attempt:', {
-      phone,
+      phone: cleanPhone,
       passwordLength: password.length,
       userType,
       endpoint
     });
 
     const response = await axios.post(baseURL + endpoint, {
-      phone,
+      phone: cleanPhone,
       password
     });
 
@@ -57,69 +60,22 @@ export const login = async (phone, password, userType = 'store') => {
       const tokenParts = access.split('.');
       const tokenPayload = JSON.parse(atob(tokenParts[1]));
       
-      // 닉네임 추출 및 처리
-      let nickname = tokenPayload.nickname || '';
-      
-      // 유니코드 이스케이프 처리
-      if (nickname && typeof nickname === 'string') {
-        try {
-          // 유니코드 이스케이프 시퀀스를 실제 문자로 변환
-          const decodedNickname = JSON.parse('"' + nickname + '"');
-          nickname = decodedNickname;
-        } catch (e) {
-          // 디코딩 실패 시 원본 사용
-        }
-      }
-      
-      // 닉네임이 정상적인 한글인지 확인
-      if (nickname && typeof nickname === 'string' && nickname.trim()) {
-        nickname = nickname.trim();
-      } else {
-        nickname = '';
-      }
-      
       userInfo = {
         id: tokenPayload.user_id,
         phone: tokenPayload.phone,
-        nickname: nickname,
+        nickname: tokenPayload.nickname || '',
         email: tokenPayload.email || '',
         is_store_owner: tokenPayload.is_store_owner || false,
         role: tokenPayload.role || (userType === 'store' ? 'STORE_OWNER' : 'USER')
       };
       
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
-      
     } catch (error) {
       console.error('JWT 토큰 파싱 오류:', error);
-      
-      // 서버에서 사용자 정보 직접 가져오기 시도
-      try {
-        const fallbackUserInfo = await getUserInfo(phone);
-        
-        userInfo = {
-          id: fallbackUserInfo.id || 0,
-          phone: fallbackUserInfo.phone || phone,
-          nickname: fallbackUserInfo.nickname || '',
-          email: fallbackUserInfo.email || '',
-          is_store_owner: fallbackUserInfo.is_store_owner || (userType === 'store'),
-          role: fallbackUserInfo.role || (userType === 'store' ? 'STORE_OWNER' : 'USER')
-        };
-        
-        localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
-      } catch (fallbackError) {
-        console.error('서버에서 사용자 정보 가져오기도 실패:', fallbackError);
-        
-        // 최종 폴백
-        userInfo = {
-          id: 0,
-          phone: phone,
-          nickname: '',
-          email: '',
-          is_store_owner: userType === 'store',
-          role: userType === 'store' ? 'STORE_OWNER' : 'USER'
-        };
-        localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
-      }
+      return {
+        success: false,
+        error: { detail: '사용자 정보 처리 중 오류가 발생했습니다.' }
+      };
     }
 
     return {
@@ -128,9 +84,27 @@ export const login = async (phone, password, userType = 'store') => {
     };
   } catch (error) {
     console.error('로그인 실패:', error);
+    
+    // 에러 메시지 처리
+    let errorMessage = '로그인에 실패했습니다.';
+    
+    if (error.response) {
+      if (error.response.data.non_field_errors) {
+        errorMessage = error.response.data.non_field_errors[0];
+      } else if (error.response.data.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response.status === 400) {
+        errorMessage = '전화번호 또는 비밀번호가 올바르지 않습니다.';
+      } else if (error.response.status === 401) {
+        errorMessage = '인증에 실패했습니다. 다시 로그인해주세요.';
+      } else if (error.response.status === 403) {
+        errorMessage = '접근 권한이 없습니다.';
+      }
+    }
+    
     return {
       success: false,
-      error: error.response?.data || { detail: '로그인에 실패했습니다.' }
+      error: { detail: errorMessage }
     };
   }
 };
