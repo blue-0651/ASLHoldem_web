@@ -39,7 +39,7 @@ const menuItems = {
           id: 'dashboard-tournament',
           title: '토너먼트 관리',
           type: 'item',
-          icon: 'feather icon-award',
+          icon: 'fas fa-trophy',
           url: '/tournaments'
         }
       ]

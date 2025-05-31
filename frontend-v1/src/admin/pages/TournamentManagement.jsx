@@ -597,11 +597,72 @@ const TournamentManagement = () => {
     );
   };
 
+  const handleShowModal = (board = null) => {
+    // 모달 에러 상태 초기화
+    setError(null);
+
+    if (board) {
+      setFormData({
+        title: board.title,
+        content: board.content,
+        notice_type: board.notice_type,
+        priority: board.priority,
+        z_order: board.z_order,
+        is_published: board.is_published,
+        is_pinned: board.is_pinned,
+        start_date: board.start_date ? board.start_date.slice(0, 16) : '',
+        end_date: board.end_date ? board.end_date.slice(0, 16) : ''
+      });
+    } else {
+      // 새 토너먼트 작성 시 현재 날짜와 시간 설정
+      const now = new Date();
+      const currentDate = now.toISOString().split('T')[0];
+      const currentTime = now.toTimeString().slice(0, 5); // HH:mm 형식
+      
+      setFormData({
+        title: '',
+        content: '',
+        notice_type: 'GENERAL',
+        priority: 'NORMAL',
+        z_order: 0,
+        is_published: true,
+        is_pinned: false,
+        start_date: currentDate,
+        start_time: currentTime,
+        buy_in: '',
+        ticket_quantity: '',
+        description: '',
+        status: 'UPCOMING'
+      });
+    }
+    setShowCreateModal(true);
+  };
+
+  // 토너먼트 생성 모달을 여는 함수
+  const openCreateModal = () => {
+    // 현재 날짜와 시간 설정
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5); // HH:mm 형식
+    
+    setFormData({
+      name: '',
+      start_date: currentDate,
+      start_time: currentTime,
+      buy_in: '',
+      ticket_quantity: '',
+      description: '',
+      status: 'UPCOMING'
+    });
+    
+    setShowCreateModal(true);
+  };
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>토너먼트 관리</h2>
-        <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+        <Button variant="primary" onClick={openCreateModal}>
           새 토너먼트 생성
         </Button>
       </div>
@@ -715,7 +776,6 @@ const TournamentManagement = () => {
       >
         <Modal.Header closeButton>
           <Modal.Title>
-            <i className="fas fa-trophy me-2"></i>
             새 토너먼트 생성
           </Modal.Title>
         </Modal.Header>
@@ -789,7 +849,7 @@ const TournamentManagement = () => {
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>
-                    바이인 금액 <span className="text-danger">*</span>
+                    바이인 <span className="text-danger">*</span>
                   </Form.Label>
                   <div className="input-group">
                     <Form.Control 
@@ -802,17 +862,14 @@ const TournamentManagement = () => {
                       min="0"
                       step="1000"
                     />
-                    <span className="input-group-text">원</span>
+                    <span className="input-group-text">매</span>
                   </div>
-                  <Form.Text className="text-muted">
-                    1,000원 단위로 입력해주세요.
-                  </Form.Text>
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>
-                    좌석권 수량 <span className="text-danger">*</span>
+                    SEAT 권 수량 <span className="text-danger">*</span>
                   </Form.Label>
                   <div className="input-group">
                     <Form.Control 
@@ -827,9 +884,6 @@ const TournamentManagement = () => {
                     />
                     <span className="input-group-text">매</span>
                   </div>
-                  <Form.Text className="text-muted">
-                    1~1,000매까지 설정 가능합니다.
-                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
@@ -858,7 +912,7 @@ const TournamentManagement = () => {
                   <i className="fas fa-info-circle me-1"></i>
                   <span className="text-danger">*</span> 표시된 항목은 필수 입력 사항입니다.
                   <br />
-                  매장 정보는 토너먼트 생성 후 좌석권 분배 시 자동으로 연결됩니다.
+                  매장 정보는 토너먼트 생성 후 SEAT 권 분배 시 자동으로 연결됩니다.
                 </small>
               </div>
               <div>
