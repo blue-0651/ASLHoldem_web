@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { reqLogout } from '../../utils/authService';
+import { reqLogout } from '../../utils/auth';
 
 const LogoutPage = () => {
   useEffect(() => {

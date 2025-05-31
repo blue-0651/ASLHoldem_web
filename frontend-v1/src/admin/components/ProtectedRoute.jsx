@@ -1,6 +1,6 @@
 import React from 'react';
+import { reqIsAuthenticated } from '../../utils/auth';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { reqIsAuthenticated } from '../../utils/authService';
 
 /**
  * 인증이 필요한 라우트를 보호하는 컴포넌트

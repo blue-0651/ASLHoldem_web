@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Button, InputGroup, Form, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-
 import FeatherIcon from 'feather-icons-react';
 import aslLogo from 'assets/images/asl-logo-120.png';
-import { reqGetLoginUserType, reqIsAuthenticated, reqLoginWithPhone } from '../../utils/authService';
+import { reqGetLoginUserType, reqIsAuthenticated, reqLoginWithPhone } from '../../utils/auth';
 
 // TODO(SJHAN): Login.js 과 동일한 동작을 하는 코드로 화면 스타일만 변경
 const LoginPage = () => {

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Button, InputGroup, Form, Spinner } from 'react-bootstrap';
+import { Container, Card, Form, Button, Alert, Row, Col, Modal } from 'react-bootstrap';
 import FeatherIcon from 'feather-icons-react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { reqSignUp } from '../../../utils/authService';
+import { reqSignUp } from '../../../utils/auth';
 import axios from 'axios';
 import '../../../assets/scss/mobile/_mobile-commons.scss';
 
