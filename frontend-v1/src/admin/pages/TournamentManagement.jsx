@@ -12,17 +12,17 @@ const TournamentManagement = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [expandedRowId, setExpandedRowId] = useState(null); // Set에서 단일 값으로 변경
-  
+
   // 토너먼트별 상세 데이터 캐시
   const [tournamentDetailsCache, setTournamentDetailsCache] = useState(new Map());
   const [loadingDetails, setLoadingDetails] = useState(new Set());
-  
+
   // 선택된 매장 상태 추가
   const [selectedStoreByTournament, setSelectedStoreByTournament] = useState(new Map());
-  
+
   // API 호출 중복 방지를 위한 ref
   const hasFetchedData = useRef(false);
-  
+
   // 폼 상태 - 매장 관련 필드 제거
   const [formData, setFormData] = useState({
     name: '',
@@ -33,13 +33,13 @@ const TournamentManagement = () => {
     description: '',
     status: 'UPCOMING'
   });
-  
+
   // 필터 상태
   const [filters, setFilters] = useState({
     tournament: 'all',
     status: 'all'
   });
-  
+
   // 페이지 로드 시 토너먼트 목록 가져오기
   useEffect(() => {
     if (!hasFetchedData.current) {
@@ -47,15 +47,15 @@ const TournamentManagement = () => {
       fetchTournaments();
     }
   }, []);
-  
+
   const fetchTournaments = async () => {
     try {
       setLoading(true);
-      
+
       // getAllTournamentInfo로 변경 - 더 풍부한 데이터 제공
       const response = await tournamentAPI.getAllTournamentInfo();
       setTournaments(response.data); // .results 제거 - 직접 배열 구조
-      
+
       // 각 토너먼트의 상세 정보를 미리 가져오기 (백그라운드에서)
       if (Array.isArray(response.data)) {
         response.data.forEach(tournament => {
@@ -65,15 +65,15 @@ const TournamentManagement = () => {
           });
         });
       }
-      
+
       setLoading(false);
-      
+
     } catch (err) {
       setError('토너먼트 목록을 불러오는 중 오류가 발생했습니다.');
       setLoading(false);
     }
   };
-  
+
   // 토너먼트 상세 정보 가져오기
   const fetchTournamentDetails = async (tournamentId) => {
     // 이미 로딩 중이거나 캐시에 있으면 스킵
@@ -83,19 +83,19 @@ const TournamentManagement = () => {
 
     try {
       setLoadingDetails(prev => new Set([...prev, tournamentId]));
-      
+
       // 병렬로 여러 API 호출
       const [playerMappingResponse, distributionResponse, seatTicketResponse] = await Promise.all([
         dashboardAPI.getPlayerMapping(tournamentId),
         distributionAPI.getSummaryByTournament(tournamentId),
         seatTicketAPI.getTournamentSummary(tournamentId)
       ]);
-      
+
       // 데이터 통합
       const combinedData = {
         // 기존 플레이어 매핑 데이터
         ...playerMappingResponse.data,
-        
+
         // 매장별 현황 (distribution API에서)
         매장별_현황: distributionResponse.data.store_distributions?.map(store => ({
           매장명: store.store_name,
@@ -104,7 +104,7 @@ const TournamentManagement = () => {
           배포된_수량: store.distributed_quantity || 0,
           보유_수량: store.remaining_quantity || 0
         })) || [],
-        
+
         // 선수별 현황 (seat ticket API에서)
         선수별_현황: seatTicketResponse.data.user_summaries?.map(user => ({
           선수명: user.user_nickname || user.user_phone,
@@ -112,7 +112,7 @@ const TournamentManagement = () => {
           매장명: '미지정', // 현재 API에서 매장 정보가 없음
           좌석권_수량: user.active_tickets || 0
         })) || [],
-        
+
         // 통계 정보
         총_좌석권_수량: distributionResponse.data.tournament?.ticket_quantity || 0,
         배포된_좌석권_수량: distributionResponse.data.summary?.total_distributed || 0,
@@ -120,10 +120,10 @@ const TournamentManagement = () => {
         매장_수량: distributionResponse.data.store_distributions?.length || 0,
         선수_수량: seatTicketResponse.data.user_summaries?.length || 0
       };
-      
+
       // 캐시에 저장
       setTournamentDetailsCache(prev => new Map([...prev, [tournamentId, combinedData]]));
-      
+
     } catch (err) {
       console.error('토너먼트 상세 정보 API 오류:', err);
       setError(`토너먼트 상세 정보를 불러오는 중 오류가 발생했습니다.`);
@@ -135,22 +135,22 @@ const TournamentManagement = () => {
       });
     }
   };
-  
+
   // 매장별 사용자 조회 함수 수정
   const fetchStoreUsers = async (tournamentId, storeId, storeName) => {
     try {
       console.log(`매장별 사용자 조회 시작:`, { tournamentId, storeId, storeName });
-      
+
       // 백엔드에서 매장별 필터링된 좌석권 조회
       const response = await seatTicketAPI.getUsersByStore(tournamentId, storeId);
-      
+
       // API 응답 구조 디버깅
       console.log('매장별 좌석권 조회 API 응답:', response);
       console.log('response.data 타입:', typeof response.data);
       console.log('response.data 내용:', response.data);
       console.log('response.status:', response.status);
       console.log('response.headers:', response.headers);
-      
+
       // 응답 데이터가 배열인지 확인
       let ticketsData = [];
       if (Array.isArray(response.data)) {
@@ -165,15 +165,15 @@ const TournamentManagement = () => {
         console.warn('예상하지 못한 API 응답 구조:', response.data);
         ticketsData = [];
       }
-      
+
       console.log('처리할 티켓 데이터:', ticketsData);
-      
+
       // 사용자별로 그룹화하여 중복 제거 (백엔드에서 이미 필터링됨)
       const userMap = new Map();
       ticketsData.forEach(ticket => {
         const userId = ticket.user;
         const userPhone = ticket.user_name || '미지정';
-        
+
         if (!userMap.has(userId)) {
           userMap.set(userId, {
             선수명: userPhone,
@@ -182,16 +182,16 @@ const TournamentManagement = () => {
             좌석권_수량: 0
           });
         }
-        
+
         // 활성 좌석권 수량 증가
         if (ticket.status === 'ACTIVE') {
           userMap.get(userId).좌석권_수량 += 1;
         }
       });
-      
+
       const storeUsers = Array.from(userMap.values());
       console.log('최종 매장 사용자 목록:', storeUsers);
-      
+
       // 매장에 사용자가 없는 경우 안내 메시지
       if (storeUsers.length === 0) {
         console.log(`${storeName} 매장에 등록된 사용자가 없습니다.`);
@@ -203,7 +203,7 @@ const TournamentManagement = () => {
           좌석권_수량: 0
         });
       }
-      
+
       // 토너먼트 상세 정보 업데이트
       setTournamentDetailsCache(prev => {
         const newCache = new Map(prev);
@@ -216,10 +216,10 @@ const TournamentManagement = () => {
         }
         return newCache;
       });
-      
+
       // 선택된 매장 정보 저장
       setSelectedStoreByTournament(prev => new Map([...prev, [tournamentId, { storeId, storeName }]]));
-      
+
     } catch (err) {
       console.error('매장별 사용자 조회 오류:', err);
       console.error('오류 응답:', err.response);
@@ -229,7 +229,7 @@ const TournamentManagement = () => {
       console.error('오류 헤더:', err.response?.headers);
       console.error('요청 URL:', err.config?.url);
       console.error('요청 파라미터:', err.config?.params);
-      
+
       setError(`매장별 사용자 정보를 불러오는 중 오류가 발생했습니다: ${err.message}`);
     }
   };
@@ -238,7 +238,7 @@ const TournamentManagement = () => {
   const handleStoreClick = (tournamentId, storeId, storeName) => {
     fetchStoreUsers(tournamentId, storeId, storeName);
   };
-  
+
   // 폼 필드 변경 핸들러
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -247,7 +247,7 @@ const TournamentManagement = () => {
       [name]: value
     });
   };
-  
+
   // 토너먼트 필터 변경 핸들러
   const handleFilterTournamentChange = (e) => {
     const { value } = e.target;
@@ -256,7 +256,7 @@ const TournamentManagement = () => {
       tournament: value
     });
   };
-  
+
   // 상태 필터 변경 핸들러
   const handleFilterStateChange = (e) => {
     const { value } = e.target;
@@ -265,7 +265,7 @@ const TournamentManagement = () => {
       status: value
     });
   };
-  
+
   // 필터 초기화
   const resetFilters = () => {
     setFilters({
@@ -273,25 +273,25 @@ const TournamentManagement = () => {
       status: 'all'
     });
   };
-  
+
   // 토너먼트 생성 제출 핸들러
   const handleCreateTournament = async (e) => {
     e.preventDefault();
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       // 필수 필드 검증
       if (!formData.name || !formData.start_date || !formData.start_time || !formData.buy_in || !formData.ticket_quantity) {
         setError('모든 필수 필드를 입력해주세요.');
         setLoading(false);
         return;
       }
-      
+
       // 날짜 & 시간 결합
       const startDateTime = `${formData.start_date}T${formData.start_time}:00`;
-      
+
       // 폼 데이터 준비 (현재 백엔드는 단일 매장만 지원하므로 첫 번째 매장 사용)
       const tournamentData = {
         name: formData.name,
@@ -301,10 +301,10 @@ const TournamentManagement = () => {
         description: formData.description || "",
         status: formData.status
       };
-      
+
       // 실제 API 연동
       await tournamentAPI.createTournament(tournamentData);
-      
+
       setSuccess('토너먼트가 성공적으로 생성되었습니다.');
       // 폼 초기화
       setFormData({
@@ -316,19 +316,19 @@ const TournamentManagement = () => {
         description: '',
         status: 'UPCOMING'
       });
-      
+
       // 토너먼트 목록 다시 불러오기
       fetchTournaments();
-      
+
       // 모달 닫기
       setShowCreateModal(false);
       setLoading(false);
-      
+
       // 3초 후 성공 메시지 제거
       setTimeout(() => {
         setSuccess(null);
       }, 3000);
-      
+
     } catch (err) {
       if (err.response && err.response.data) {
         // 백엔드 오류 메시지 표시
@@ -339,7 +339,7 @@ const TournamentManagement = () => {
       setLoading(false);
     }
   };
-  
+
   // 날짜 포맷 함수
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -352,7 +352,7 @@ const TournamentManagement = () => {
     if (!Array.isArray(tournaments)) {
       return [];
     }
-    
+
     const filtered = tournaments.filter(tournament => {
       // 토너먼트 필터 - "all"이 아닌 경우에만 필터링 적용
       if (filters.tournament !== 'all') {
@@ -360,21 +360,19 @@ const TournamentManagement = () => {
           return false;
         }
       }
-      
+
       // 상태 필터 - "all"이 아닌 경우에만 필터링 적용
       if (filters.status !== 'all') {
         if (tournament.status !== filters.status) {
           return false;
         }
       }
-      
+
       return true;
     });
-    
-    return filtered;
-  };
 
-  // 토너먼트 테이블 컬럼 정의
+    return filtered;
+  };  // 토너먼트 테이블 컬럼 정의
   const tournamentColumns = useMemo(() => [
     {
       name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>대회명</span>,
@@ -425,6 +423,41 @@ const TournamentManagement = () => {
         fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
         transition: 'all 0.3s ease'
       })
+    },
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>상태</span>,
+      selector: (row) => row.status,
+      sortable: true,
+      center: true,
+      style: (row) => ({
+        fontSize: expandedRowId === row.id ? '18px' : '14px',
+        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      }),
+      cell: (row) => {
+        const getStatusColor = (status) => {
+          switch (status) {
+            case 'UPCOMING': return '#17a2b8'; // 파란색
+            case 'ONGOING': return '#28a745'; // 초록색
+            case 'COMPLETED': return '#6c757d'; // 회색
+            case 'CANCELLED': return '#dc3545'; // 빨간색
+            default: return '#6c757d';
+          }
+        };
+        
+        return (
+          <span 
+            style={{ 
+              color: getStatusColor(row.status),
+              fontWeight: 'bold',
+              fontSize: expandedRowId === row.id ? '18px' : '14px',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            {row.status}
+          </span>
+        );
+      }
     }
   ], [expandedRowId, tournamentDetailsCache]);
 
@@ -484,19 +517,19 @@ const TournamentManagement = () => {
                     tournamentDetails.매장별_현황.map((store, index) => {
                       const selectedStore = selectedStoreByTournament.get(data.id);
                       const isSelected = selectedStore && selectedStore.storeId === store.매장_ID;
-                      
+
                       return (
-                        <tr 
+                        <tr
                           key={index}
-                          style={{ 
+                          style={{
                             backgroundColor: isSelected ? '#e3f2fd' : 'transparent',
                             cursor: 'pointer'
                           }}
                           onClick={() => handleStoreClick(data.id, store.매장_ID, store.매장명)}
                         >
-                          <td 
+                          <td
                             className="border border-secondary"
-                            style={{ 
+                            style={{
                               fontWeight: isSelected ? 'bold' : 'normal',
                               color: isSelected ? '#1976d2' : 'inherit'
                             }}
@@ -618,7 +651,7 @@ const TournamentManagement = () => {
       const now = new Date();
       const currentDate = now.toISOString().split('T')[0];
       const currentTime = now.toTimeString().slice(0, 5); // HH:mm 형식
-      
+
       setFormData({
         title: '',
         content: '',
@@ -644,7 +677,7 @@ const TournamentManagement = () => {
     const now = new Date();
     const currentDate = now.toISOString().split('T')[0];
     const currentTime = now.toTimeString().slice(0, 5); // HH:mm 형식
-    
+
     setFormData({
       name: '',
       start_date: currentDate,
@@ -654,7 +687,7 @@ const TournamentManagement = () => {
       description: '',
       status: 'UPCOMING'
     });
-    
+
     setShowCreateModal(true);
   };
 
@@ -666,13 +699,13 @@ const TournamentManagement = () => {
           새 토너먼트 생성
         </Button>
       </div>
-      
+
       {success && (
         <Alert variant="success" className="mb-4" onClose={() => setSuccess(null)} dismissible>
           {success}
         </Alert>
       )}
-      
+
       {error && (
         <Alert variant="danger" className="mb-4" onClose={() => setError(null)} dismissible>
           {error}
@@ -686,9 +719,9 @@ const TournamentManagement = () => {
             <Col md={6}>
               <Form.Group className="mb-3">
                 <Form.Label>토너먼트</Form.Label>
-                <Form.Select 
-                  name="tournament" 
-                  value={filters.tournament} 
+                <Form.Select
+                  name="tournament"
+                  value={filters.tournament}
                   onChange={handleFilterTournamentChange}
                 >
                   <option value="all">모든 토너먼트</option>
@@ -703,9 +736,9 @@ const TournamentManagement = () => {
             <Col md={6}>
               <Form.Group className="mb-3">
                 <Form.Label>상태</Form.Label>
-                <Form.Select 
-                  name="status" 
-                  value={filters.status} 
+                <Form.Select
+                  name="status"
+                  value={filters.status}
                   onChange={handleFilterStateChange}
                 >
                   <option value="all">모든 상태</option>
@@ -732,12 +765,11 @@ const TournamentManagement = () => {
               <Spinner animation="border" variant="primary" />
               <p className="mt-3">데이터를 불러오는 중입니다...</p>
             </div>
-          ) : (
-            <DataTable 
-              columns={tournamentColumns} 
-              data={getFilteredTournaments()} 
+          ) : (            <DataTable
+              columns={tournamentColumns}
+              data={getFilteredTournaments()}
               pagination
-              paginationPerPage={10}
+              paginationPerPage={20}
               paginationRowsPerPageOptions={[5, 10, 15, 20]}
               expandableRows
               expandableRowsComponent={ExpandedTournamentComponent}
@@ -767,9 +799,9 @@ const TournamentManagement = () => {
       </Card>
 
       {/* 토너먼트 생성 모달 */}
-      <Modal 
-        show={showCreateModal} 
-        onHide={() => setShowCreateModal(false)} 
+      <Modal
+        show={showCreateModal}
+        onHide={() => setShowCreateModal(false)}
         size="lg"
         backdrop="static"
         keyboard={false}
@@ -785,7 +817,7 @@ const TournamentManagement = () => {
               {error}
             </Alert>
           )}
-          
+
           <Form onSubmit={handleCreateTournament}>
             {/* 토너먼트 이름 */}
             <Row>
@@ -794,9 +826,9 @@ const TournamentManagement = () => {
                   <Form.Label>
                     토너먼트 이름 <span className="text-danger">*</span>
                   </Form.Label>
-                  <Form.Control 
-                    type="text" 
-                    placeholder="예: 주말 스페셜 토너먼트" 
+                  <Form.Control
+                    type="text"
+                    placeholder="예: 주말 스페셜 토너먼트"
                     name="name"
                     value={formData.name}
                     onChange={handleFormChange}
@@ -809,14 +841,14 @@ const TournamentManagement = () => {
                 </Form.Group>
               </Col>
             </Row>
-            
+
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>
                     시작 날짜 <span className="text-danger">*</span>
                   </Form.Label>
-                  <Form.Control 
+                  <Form.Control
                     type="date"
                     name="start_date"
                     value={formData.start_date}
@@ -834,7 +866,7 @@ const TournamentManagement = () => {
                   <Form.Label>
                     시작 시간 <span className="text-danger">*</span>
                   </Form.Label>
-                  <Form.Control 
+                  <Form.Control
                     type="time"
                     name="start_time"
                     value={formData.start_time}
@@ -844,7 +876,7 @@ const TournamentManagement = () => {
                 </Form.Group>
               </Col>
             </Row>
-            
+
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
@@ -852,15 +884,15 @@ const TournamentManagement = () => {
                     바이인 <span className="text-danger">*</span>
                   </Form.Label>
                   <div className="input-group">
-                    <Form.Control 
-                      type="number" 
-                      placeholder="10000" 
+                    <Form.Control
+                      type="number"
+                      placeholder="1"
                       name="buy_in"
                       value={formData.buy_in}
                       onChange={handleFormChange}
                       required
                       min="0"
-                      step="1000"
+                      step="1"
                     />
                     <span className="input-group-text">매</span>
                   </div>
@@ -872,9 +904,9 @@ const TournamentManagement = () => {
                     SEAT 권 수량 <span className="text-danger">*</span>
                   </Form.Label>
                   <div className="input-group">
-                    <Form.Control 
-                      type="number" 
-                      placeholder="100" 
+                    <Form.Control
+                      type="number"
+                      placeholder="100"
                       name="ticket_quantity"
                       value={formData.ticket_quantity}
                       onChange={handleFormChange}
@@ -887,13 +919,13 @@ const TournamentManagement = () => {
                 </Form.Group>
               </Col>
             </Row>
-            
+
             <Form.Group className="mb-4">
               <Form.Label>토너먼트 설명</Form.Label>
-              <Form.Control 
-                as="textarea" 
-                rows={4} 
-                placeholder="토너먼트에 대한 상세 설명을 입력해주세요. (선택사항)" 
+              <Form.Control
+                as="textarea"
+                rows={4}
+                placeholder="토너먼트에 대한 상세 설명을 입력해주세요. (선택사항)"
                 name="description"
                 value={formData.description}
                 onChange={handleFormChange}
@@ -903,9 +935,9 @@ const TournamentManagement = () => {
                 최대 500자까지 입력 가능합니다. ({formData.description.length}/500)
               </Form.Text>
             </Form.Group>
-            
+
             <hr />
-            
+
             <div className="d-flex justify-content-between align-items-center mt-4">
               <div className="text-muted">
                 <small>
@@ -916,17 +948,17 @@ const TournamentManagement = () => {
                 </small>
               </div>
               <div>
-                <Button 
-                  variant="outline-secondary" 
-                  onClick={() => setShowCreateModal(false)} 
+                <Button
+                  variant="outline-secondary"
+                  onClick={() => setShowCreateModal(false)}
                   className="me-2"
                   disabled={loading}
                 >
                   <i className="fas fa-times me-1"></i>
                   취소
                 </Button>
-                <Button 
-                  variant="primary" 
+                <Button
+                  variant="primary"
                   type="submit"
                   disabled={loading}
                 >
