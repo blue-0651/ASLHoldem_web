@@ -9,6 +9,7 @@ const BoardManagementPage = () => {
   const [error, setError] = useState(null);
   const [modalError, setModalError] = useState(null); // 모달 내 에러 상태 추가
   const [searchTerm, setSearchTerm] = useState('');
+  const [noticeTypeFilter, setNoticeTypeFilter] = useState(''); // 공지 유형 필터 상태 추가
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -376,10 +377,18 @@ const BoardManagementPage = () => {
     setViewingBoard(null);
   };
 
-  const filteredBoards = Array.isArray(boards) ? boards.filter(board =>
-    board.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    board.content?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
+  const filteredBoards = Array.isArray(boards) ? boards.filter(board => {
+    // 검색어 필터링
+    const matchesSearch = searchTerm === '' || 
+      board.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      board.content?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // 공지 유형 필터링
+    const matchesNoticeType = noticeTypeFilter === '' || 
+      board.notice_type === noticeTypeFilter;
+    
+    return matchesSearch && matchesNoticeType;
+  }) : [];
 
   const getPriorityBadge = (priority) => {
     const variants = {
@@ -465,6 +474,17 @@ const BoardManagementPage = () => {
                 />
                 <FiSearch className="position-absolute top-50 end-0 translate-middle-y me-3" />
               </div>
+            </Col>
+            <Col md={6}>
+              <Form.Select
+                value={noticeTypeFilter}
+                onChange={(e) => setNoticeTypeFilter(e.target.value)}
+              >
+                <option value="">모든 유형</option>
+                <option value="GENERAL">전체 공지</option>
+                <option value="STORE_MANAGER">매장관리자</option>
+                <option value="MEMBER_ONLY">일반회원</option>
+              </Form.Select>
             </Col>
           </Row>
         </Card.Body>
