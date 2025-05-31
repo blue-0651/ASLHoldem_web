@@ -116,9 +116,9 @@ class NoticeCreateUpdateSerializer(serializers.ModelSerializer):
                 })
         
         # 과거 날짜 검증 (생성 시에만, 5분 여유시간 적용)
-        now = timezone.now()
-        
-        if start_date:
+        # 수정 모드(self.instance가 존재)에서는 과거 날짜도 허용
+        if not self.instance and start_date:  # 생성 모드일 때만
+            now = timezone.now()
             # 5분 여유시간 적용 (프론트엔드와 동일)
             from datetime import timedelta
             five_minutes_ago = now - timedelta(minutes=5)

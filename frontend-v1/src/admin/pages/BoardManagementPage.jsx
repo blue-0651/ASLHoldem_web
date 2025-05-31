@@ -15,7 +15,7 @@ const BoardManagementPage = () => {
   const [deletingBoard, setDeletingBoard] = useState(null);
   const [editingBoard, setEditingBoard] = useState(null);
   const [viewingBoard, setViewingBoard] = useState(null);
-  
+
   // 기본 날짜 생성 헬퍼 함수
   const getDefaultDateTime = (minutesFromNow = 10) => {
     const now = new Date();
@@ -42,27 +42,27 @@ const BoardManagementPage = () => {
   const fetchBoards = async () => {
     try {
       setLoading(true);
-      
+
       // 개발 환경에서만 API 호출 로그 출력
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 fetchBoards 함수 호출됨');
       }
-      
+
       const response = await noticeAPI.getAllNoticesAdmin();
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('📋 API 응답:', response.data);
       }
-      
+
       // 페이지네이션 구조에서 results 배열 추출
       const boardsData = response.data?.results || [];
       setBoards(boardsData);
       setLoading(false);
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('✅ fetchBoards 완료, 항목 수:', boardsData.length);
       }
-      
+
       return boardsData;
     } catch (err) {
       console.error('❌ 공지사항 데이터 로드 오류:', err);
@@ -81,11 +81,11 @@ const BoardManagementPage = () => {
       }
       return;
     }
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.log('🚀 초기 데이터 로드 시작');
     }
-    
+
     hasFetched.current = true;
     fetchBoards();
 
@@ -100,7 +100,7 @@ const BoardManagementPage = () => {
   const handleShowModal = (board = null) => {
     // 모달 에러 상태 초기화
     setModalError(null);
-    
+
     if (board) {
       setEditingBoard(board);
       setFormData({
@@ -119,7 +119,7 @@ const BoardManagementPage = () => {
       // 새 공지사항 작성 시 기본 날짜 설정 (현재 시간 + 10분, + 1일)
       const defaultStartDate = getDefaultDateTime(10); // 10분 후
       const defaultEndDate = getDefaultDateTime(24 * 60 + 10); // 1일 10분 후
-      
+
       setFormData({
         title: '',
         content: '',
@@ -131,7 +131,7 @@ const BoardManagementPage = () => {
         start_date: defaultStartDate,
         end_date: defaultEndDate
       });
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('📅 새 공지사항 기본 날짜 설정:', {
           start_date: defaultStartDate,
@@ -146,11 +146,11 @@ const BoardManagementPage = () => {
     setShowModal(false);
     setEditingBoard(null);
     setModalError(null); // 모달 에러 상태 초기화
-    
+
     // 폼 데이터 초기화 (기본 날짜 포함)
     const defaultStartDate = getDefaultDateTime(10);
     const defaultEndDate = getDefaultDateTime(24 * 60 + 10);
-    
+
     setFormData({
       title: '',
       content: '',
@@ -166,12 +166,12 @@ const BoardManagementPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     // 입력 시 모달 에러 상태 초기화
     if (modalError) {
       setModalError(null);
     }
-    
+
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -183,10 +183,10 @@ const BoardManagementPage = () => {
     console.log('📝 이벤트 객체:', e);
     console.log('📋 현재 formData:', formData);
     console.log('✏️ 수정 모드 여부:', !!editingBoard);
-    
+
     e.preventDefault();
     console.log('✅ preventDefault 실행 완료');
-    
+
     // 프론트엔드 유효성 검사
     console.log('🔍 유효성 검사 시작...');
     if (!formData.title || formData.title.trim().length < 5) {
@@ -195,43 +195,43 @@ const BoardManagementPage = () => {
       return;
     }
     console.log('✅ 제목 유효성 검사 통과');
-    
+
     if (!formData.content || formData.content.trim().length < 10) {
       console.log('❌ 내용 유효성 검사 실패:', formData.content);
       setModalError('내용은 최소 10자 이상이어야 합니다.');
       return;
     }
     console.log('✅ 내용 유효성 검사 통과');
-    
+
     // 날짜 유효성 검사
     console.log('📅 날짜 유효성 검사 시작...');
     if (formData.start_date && formData.end_date) {
       const startDate = new Date(formData.start_date);
       const endDate = new Date(formData.end_date);
       console.log('📅 시작일:', startDate, '종료일:', endDate);
-      
+
       if (startDate >= endDate) {
         console.log('❌ 날짜 유효성 검사 실패: 종료일이 시작일보다 빠름');
         setModalError('종료일은 시작일보다 늦어야 합니다.');
         return;
       }
     }
-    
+
     // 시작일이 과거인지 확인 (수정 모드가 아닐 때만, 시작일이 있을 때만)
     if (!editingBoard && formData.start_date) {
       const startDate = new Date(formData.start_date);
       const now = new Date();
-      
+
       // 현재 시간보다 5분 이전이면 과거로 판단 (여유시간 제공)
       const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-      
+
       console.log('📅 시작일 과거 검사:', {
         startDate: startDate,
         now: now,
         fiveMinutesAgo: fiveMinutesAgo,
         isPast: startDate < fiveMinutesAgo
       });
-      
+
       if (startDate < fiveMinutesAgo) {
         console.log('❌ 날짜 유효성 검사 실패: 시작일이 과거 (5분 여유시간 적용)');
         setModalError('시작일은 현재 시간보다 늦어야 합니다. (최소 5분 후)');
@@ -239,11 +239,11 @@ const BoardManagementPage = () => {
       }
     }
     console.log('✅ 날짜 유효성 검사 통과');
-    
 
-    
+
+
     console.log('🎯 모든 유효성 검사 통과! API 호출 준비...');
-    
+
     try {
       console.log('📤 전송할 데이터:', formData);
       console.log('📋 formData 상세:', {
@@ -257,39 +257,26 @@ const BoardManagementPage = () => {
         start_date: formData.start_date,
         end_date: formData.end_date
       });
-      
-      // 인증 토큰 확인
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      console.log('현재 토큰:', token ? '토큰 있음' : '토큰 없음');
-      
-      // 현재 사용자 정보 확인
-      try {
-        const userResponse = await userAPI.getCurrentUser();
-        console.log('현재 사용자:', userResponse.data);
-        console.log('관리자 여부:', userResponse.data.is_staff || userResponse.data.is_superuser);
-      } catch (userErr) {
-        console.log('사용자 정보 조회 실패:', userErr);
-      }
-      
+
       if (editingBoard) {
         // 수정 로직
-              console.log('수정 모드 - editingBoard.id:', editingBoard.id);
-      console.log('수정할 데이터:', formData);
-      
-      // 날짜 필드 처리 (ISO 형식으로 변환)
-      const processedFormData = { ...formData };
-      if (processedFormData.start_date && processedFormData.start_date !== '') {
-        processedFormData.start_date = new Date(processedFormData.start_date).toISOString();
-      }
-      if (processedFormData.end_date && processedFormData.end_date !== '') {
-        processedFormData.end_date = new Date(processedFormData.end_date).toISOString();
-      }
-      
-      console.log('처리된 데이터:', processedFormData);
-      
-      const updateResponse = await noticeAPI.updateNotice(editingBoard.id, processedFormData);
+        console.log('수정 모드 - editingBoard.id:', editingBoard.id);
+        console.log('수정할 데이터:', formData);
+
+        // 날짜 필드 처리 (ISO 형식으로 변환)
+        const processedFormData = { ...formData };
+        if (processedFormData.start_date && processedFormData.start_date !== '') {
+          processedFormData.start_date = new Date(processedFormData.start_date).toISOString();
+        }
+        if (processedFormData.end_date && processedFormData.end_date !== '') {
+          processedFormData.end_date = new Date(processedFormData.end_date).toISOString();
+        }
+
+        console.log('처리된 데이터:', processedFormData);
+
+        const updateResponse = await noticeAPI.updateNotice(editingBoard.id, processedFormData);
         console.log('✅ 수정 응답:', updateResponse);
-        
+
         // 목록 새로고침 (최적화된 방식)
         console.log('🔄 수정 후 목록 새로고침 시작...');
         await fetchBoards();
@@ -297,7 +284,7 @@ const BoardManagementPage = () => {
       } else {
         // 생성 로직
         console.log('🆕 생성 모드 진입!');
-        
+
         // 날짜 필드 처리 (ISO 형식으로 변환)
         const processedFormData = { ...formData };
         console.log('🔄 날짜 처리 시작...');
@@ -309,19 +296,19 @@ const BoardManagementPage = () => {
           processedFormData.end_date = new Date(processedFormData.end_date).toISOString();
           console.log('📅 종료일 ISO 변환:', processedFormData.end_date);
         }
-        
+
         console.log('📋 생성할 처리된 데이터:', processedFormData);
         console.log('🚀 noticeAPI.createNotice 호출 시작...');
-        
+
         const createResponse = await noticeAPI.createNotice(processedFormData);
         console.log('✅ 생성 API 응답:', createResponse);
-        
+
         // 목록 새로고침 (최적화된 방식)
         console.log('🔄 생성 후 목록 새로고침 시작...');
         const boardsData = await fetchBoards();
         console.log('✅ 생성 후 목록 새로고침 완료, 항목 수:', boardsData.length);
       }
-      
+
       console.log('🎉 모든 작업 완료! 모달 닫기...');
       handleCloseModal();
       console.log('✅ handleSubmit 함수 완료!');
@@ -333,7 +320,7 @@ const BoardManagementPage = () => {
         data: err.response?.data,
         config: err.config
       });
-      
+
       // 백엔드 에러 메시지 표시
       console.log('🔍 백엔드 에러 응답:', err.response?.data);
       if (err.response?.data) {
@@ -354,17 +341,17 @@ const BoardManagementPage = () => {
 
   const handleDeleteConfirm = async () => {
     if (!deletingBoard) return;
-    
+
     try {
       console.log('🗑️ 공지사항 삭제 시작, ID:', deletingBoard.id);
       await noticeAPI.deleteNotice(deletingBoard.id);
       console.log('✅ 삭제 완료');
-      
+
       // 목록 새로고침 (최적화된 방식)
       console.log('🔄 삭제 후 목록 새로고침 시작...');
       await fetchBoards();
       console.log('✅ 삭제 후 목록 새로고침 완료');
-      
+
       // 모달 닫기
       setShowDeleteModal(false);
       setDeletingBoard(null);
@@ -508,8 +495,8 @@ const BoardManagementPage = () => {
                     <tr key={board.id}>
                       <td>
                         <div>
-                          <strong 
-                            className="text-primary" 
+                          <strong
+                            className="text-primary"
                             style={{ cursor: 'pointer', textDecoration: 'underline' }}
                             onClick={() => handleShowDetailModal(board)}
                           >
@@ -520,8 +507,8 @@ const BoardManagementPage = () => {
                           )}
                         </div>
                         <small className="text-muted">
-                          {(board.content || '').length > 50 
-                            ? `${(board.content || '').substring(0, 50)}...` 
+                          {(board.content || '').length > 50
+                            ? `${(board.content || '').substring(0, 50)}...`
                             : (board.content || '내용 없음')}
                         </small>
                       </td>
@@ -586,7 +573,7 @@ const BoardManagementPage = () => {
                 </div>
               </Alert>
             )}
-            
+
             {/* 기본 정보 섹션 */}
             <div className="mb-4">
               <Row>
@@ -608,7 +595,7 @@ const BoardManagementPage = () => {
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
@@ -754,7 +741,7 @@ const BoardManagementPage = () => {
                   <p className="text-muted mb-0">이 작업은 되돌릴 수 없습니다.</p>
                 </div>
               </div>
-              
+
               <div className="bg-light p-3 rounded">
                 <h6 className="mb-2">삭제할 공지사항 정보</h6>
                 <div className="mb-2">
@@ -767,7 +754,7 @@ const BoardManagementPage = () => {
                   <strong>작성일:</strong> {deletingBoard.created_at ? formatDate(deletingBoard.created_at) : '-'}
                 </div>
               </div>
-              
+
               <div className="mt-3">
                 <p className="text-danger mb-0">
                   <strong>주의:</strong> 삭제된 공지사항은 복구할 수 없으며, 관련된 모든 데이터가 영구적으로 제거됩니다.
@@ -816,10 +803,10 @@ const BoardManagementPage = () => {
               {/* 내용 섹션 */}
               <div className="mb-4">
                 <h6 className="text-muted mb-3">📄 공지사항 내용</h6>
-                <div 
+                <div
                   className="bg-light p-3 rounded"
-                  style={{ 
-                    minHeight: '150px', 
+                  style={{
+                    minHeight: '150px',
                     whiteSpace: 'pre-wrap',
                     lineHeight: '1.6'
                   }}
@@ -872,7 +859,7 @@ const BoardManagementPage = () => {
                   <div className="col-md-4">
                     <div className="text-center p-2 bg-light rounded">
                       <div className="h5 mb-1">
-                        {viewingBoard.updated_at ? 
+                        {viewingBoard.updated_at ?
                           new Date(viewingBoard.updated_at).toLocaleDateString('ko-KR') : '-'}
                       </div>
                       <small className="text-muted">최종 수정일</small>

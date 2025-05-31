@@ -15,13 +15,18 @@ API.interceptors.request.use(
       config.headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // FormData 전송 시 Content-Type 자동 설정을 위해 헤더 제거
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+
     // 개발 환경에서만 요청 정보 출력
     if (process.env.NODE_ENV === 'development') {
       console.log('[API REQUEST]', {
         url: config.url,
         method: config.method,
         headers: config.headers,
-        data: config.data
+        data: config.data instanceof FormData ? 'FormData' : config.data
       });
     }
 
@@ -315,24 +320,20 @@ export const noticeAPI = {
   },
 
   // 공지사항 수정
-  // 지원 필드: title, content, notice_type, priority, z_order, is_published, is_pinned, attachment, start_date, end_date
   updateNotice: (id, data) => {
     const formData = new FormData();
     Object.keys(data).forEach((key) => {
-      // z_order는 숫자형 필드이므로 0도 유효값으로 처리
       if (key === 'z_order') {
         formData.append(key, data[key] || 0);
         return;
       }
-      
-      // 빈 문자열이나 null 값은 제외하고 전송 (날짜 필드 제외)
       if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
         formData.append(key, data[key]);
       } else if (['start_date', 'end_date'].includes(key) && data[key] === '') {
-        // 날짜 필드가 빈 문자열인 경우 아예 전송하지 않음
         return;
       }
     });
+    formData.append('_method', 'PATCH');
     
     // 디버깅을 위한 FormData 내용 출력
     if (process.env.NODE_ENV === 'development') {
@@ -342,12 +343,24 @@ export const noticeAPI = {
       }
     }
     
-    // PATCH 메서드 사용 (부분 업데이트에 더 적합)
-    return API.patch(`/notices/${id}/update/`, formData);
+    return API.post(`/notices/${id}/update/`, formData);
   },
 
   // 공지사항 삭제
-  deleteNotice: (id) => API.delete(`/notices/${id}/delete/`)
+  deleteNotice: (id) => {
+    const formData = new FormData();
+    formData.append('_method', 'DELETE');
+    
+    // 디버깅을 위한 FormData 내용 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📤 공지사항 삭제 (ID: ${id}) - 전송할 FormData:`);
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+    }
+    
+    return API.post(`/notices/${id}/delete/`, formData);
+  }
 };
 
 // API 모듈을 변수에 할당 후 내보내기

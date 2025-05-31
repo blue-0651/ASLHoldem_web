@@ -157,6 +157,25 @@ class NoticeUpdateView(generics.UpdateAPIView):
     
     def get_queryset(self):
         return Notice.objects.all()
+    
+    def post(self, request, *args, **kwargs):
+        """POST 요청에서 _method 필드를 확인하여 적절한 메서드로 라우팅"""
+        # _method 필드 확인 (여러 위치에서 찾기)
+        method = (
+            request.data.get('_method') or 
+            request.POST.get('_method') or 
+            request.META.get('HTTP_X_HTTP_METHOD_OVERRIDE', '')
+        ).upper()
+        
+        if method == 'PATCH':
+            return self.patch(request, *args, **kwargs)
+        elif method == 'PUT':
+            return self.put(request, *args, **kwargs)
+        else:
+            return Response(
+                {'error': f'_method 필드가 PATCH 또는 PUT이어야 합니다. 현재값: {method}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class NoticeDeleteView(generics.DestroyAPIView):
@@ -168,6 +187,17 @@ class NoticeDeleteView(generics.DestroyAPIView):
     
     def get_queryset(self):
         return Notice.objects.all()
+    
+    def post(self, request, *args, **kwargs):
+        """POST 요청에서 _method 필드를 확인하여 DELETE 메서드로 라우팅"""
+        method = request.data.get('_method', '').upper()
+        if method == 'DELETE':
+            return self.delete(request, *args, **kwargs)
+        else:
+            return Response(
+                {'error': f'_method 필드가 DELETE여야 합니다. 현재값: {method}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 @api_view(['POST'])
