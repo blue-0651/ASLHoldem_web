@@ -213,7 +213,59 @@ export const distributionAPI = {
     API.get('/seats/distributions/summary_by_store/', { params: { store_id: storeId } }),
 
   // 전체 분배 요약 조회
-  getOverallSummary: () => API.get('/seats/distributions/overall_summary/')
+  getOverallSummary: () => API.get('/seats/distributions/overall_summary/'),
+
+  // 새로 추가: 토너먼트에 시트권 분배 생성
+  createDistribution: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      formData.append(key, data[key]);
+    });
+    return API.post('/seats/distributions/', formData);
+  },
+
+  // 새로 추가: 여러 매장에 한 번에 시트권 분배
+  createBulkDistribution: (tournamentId, distributions) => {
+    const formData = new FormData();
+    formData.append('tournament_id', tournamentId);
+    formData.append('distributions', JSON.stringify(distributions));
+    return API.post('/seats/distributions/bulk_create/', formData);
+  },
+
+  // 새로 추가: 분배 정보 수정
+  updateDistribution: (distributionId, data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      formData.append(key, data[key]);
+    });
+    return API.put(`/seats/distributions/${distributionId}/`, formData);
+  },
+
+  // 새로 추가: 분배 삭제
+  deleteDistribution: (distributionId) => 
+    API.delete(`/seats/distributions/${distributionId}/`),
+
+  // 새로 추가: 토너먼트에 할당 가능한 매장 목록 조회
+  getAvailableStores: (tournamentId) => 
+    API.get('/seats/distributions/available_stores/', { params: { tournament_id: tournamentId } }),
+
+  // 새로 추가: 토너먼트 시트권 자동 분배 (매장별 동일 수량)
+  autoDistributeEqual: (tournamentId, storeIds) => {
+    const formData = new FormData();
+    formData.append('tournament_id', tournamentId);
+    formData.append('store_ids', JSON.stringify(storeIds));
+    formData.append('distribution_type', 'equal');
+    return API.post('/seats/distributions/auto_distribute/', formData);
+  },
+
+  // 새로 추가: 토너먼트 시트권 자동 분배 (매장별 가중치 적용)
+  autoDistributeWeighted: (tournamentId, storeWeights) => {
+    const formData = new FormData();
+    formData.append('tournament_id', tournamentId);
+    formData.append('store_weights', JSON.stringify(storeWeights));
+    formData.append('distribution_type', 'weighted');
+    return API.post('/seats/distributions/auto_distribute/', formData);
+  }
 };
 
 // 좌석권 관련 API

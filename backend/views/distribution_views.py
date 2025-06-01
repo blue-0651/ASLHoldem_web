@@ -274,16 +274,258 @@ class TournamentTicketDistributionViewSet(viewsets.ModelViewSet):
             store_summary[store_id]['tournament_count'] += 1
         
         return Response({
-            'overall_summary': {
-                'total_allocated': summary['total_allocated'] or 0,
-                'total_remaining': summary['total_remaining'] or 0,
-                'total_distributed': summary['total_distributed'] or 0,
-                'distribution_rate': round(
-                    (summary['total_distributed'] / summary['total_allocated'] * 100)
-                    if summary['total_allocated'] and summary['total_allocated'] > 0 else 0, 2
-                ),
-                'total_distributions': distributions.count()
-            },
+            'overall_summary': summary,
             'tournament_summary': list(tournament_summary.values()),
             'store_summary': list(store_summary.values())
+        })
+
+    @action(detail=False, methods=['post'])
+    def bulk_create(self, request):
+        """여러 매장에 한 번에 시트권 분배"""
+        tournament_id = request.data.get('tournament_id')
+        distributions_data = request.data.get('distributions', [])
+        
+        if not tournament_id:
+            return Response({
+                'error': 'tournament_id가 필요합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            return Response({
+                'error': '토너먼트를 찾을 수 없습니다.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        if not distributions_data:
+            return Response({
+                'error': '분배 데이터가 필요합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        created_distributions = []
+        errors = []
+        
+        with transaction.atomic():
+            total_allocated = 0
+            
+            # 기존 분배 확인
+            existing_distributions = TournamentTicketDistribution.objects.filter(
+                tournament=tournament
+            ).aggregate(
+                total=Sum('allocated_quantity')
+            )['total'] or 0
+            
+            for dist_data in distributions_data:
+                try:
+                    store = Store.objects.get(id=dist_data['store_id'])
+                    allocated_quantity = int(dist_data['allocated_quantity'])
+                    
+                    # 중복 체크
+                    if TournamentTicketDistribution.objects.filter(
+                        tournament=tournament, store=store
+                    ).exists():
+                        errors.append(f"매장 '{store.name}'은 이미 분배 데이터가 존재합니다.")
+                        continue
+                    
+                    total_allocated += allocated_quantity
+                    
+                    # 토너먼트 전체 시트권 수량 초과 체크
+                    if existing_distributions + total_allocated > tournament.ticket_quantity:
+                        errors.append(f"전체 분배량이 토너먼트 시트권 수량({tournament.ticket_quantity})을 초과합니다.")
+                        break
+                    
+                    distribution = TournamentTicketDistribution.objects.create(
+                        tournament=tournament,
+                        store=store,
+                        allocated_quantity=allocated_quantity,
+                        remaining_quantity=allocated_quantity,  # 초기에는 전량 보유
+                        distributed_quantity=0,  # 초기에는 배포 안됨
+                        memo=dist_data.get('memo', f'대량 분배 - {store.name}')
+                    )
+                    created_distributions.append(distribution)
+                    
+                except Store.DoesNotExist:
+                    errors.append(f"매장 ID {dist_data['store_id']}를 찾을 수 없습니다.")
+                except (ValueError, KeyError) as e:
+                    errors.append(f"잘못된 데이터: {str(e)}")
+        
+        if errors:
+            return Response({
+                'success': False,
+                'errors': errors,
+                'created_count': len(created_distributions)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = TournamentTicketDistributionSerializer(created_distributions, many=True)
+        return Response({
+            'success': True,
+            'message': f"{len(created_distributions)}개 매장에 시트권이 분배되었습니다.",
+            'created_distributions': serializer.data
+        })
+
+    @action(detail=False, methods=['get'])
+    def available_stores(self, request):
+        """토너먼트에 할당 가능한 매장 목록 조회"""
+        tournament_id = request.query_params.get('tournament_id')
+        
+        if not tournament_id:
+            return Response({
+                'error': 'tournament_id 파라미터가 필요합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            return Response({
+                'error': '토너먼트를 찾을 수 없습니다.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # 이미 분배가 완료된 매장들
+        allocated_store_ids = TournamentTicketDistribution.objects.filter(
+            tournament=tournament
+        ).values_list('store_id', flat=True)
+        
+        # 할당 가능한 매장들 (활성 상태이고 아직 분배되지 않은 매장)
+        available_stores = Store.objects.filter(
+            status='ACTIVE'
+        ).exclude(
+            id__in=allocated_store_ids
+        ).order_by('name')
+        
+        # 이미 할당된 매장들
+        allocated_stores = Store.objects.filter(
+            id__in=allocated_store_ids
+        ).order_by('name')
+        
+        from stores.serializers import StoreSerializer
+        
+        return Response({
+            'tournament': {
+                'id': tournament.id,
+                'name': tournament.name,
+                'ticket_quantity': tournament.ticket_quantity
+            },
+            'available_stores': StoreSerializer(available_stores, many=True).data,
+            'allocated_stores': StoreSerializer(allocated_stores, many=True).data,
+            'available_count': available_stores.count(),
+            'allocated_count': allocated_stores.count()
+        })
+
+    @action(detail=False, methods=['post'])
+    def auto_distribute(self, request):
+        """토너먼트 시트권 자동 분배"""
+        tournament_id = request.data.get('tournament_id')
+        distribution_type = request.data.get('distribution_type', 'equal')  # 'equal' 또는 'weighted'
+        
+        if not tournament_id:
+            return Response({
+                'error': 'tournament_id가 필요합니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            return Response({
+                'error': '토너먼트를 찾을 수 없습니다.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # 기존 분배량 확인
+        existing_allocated = TournamentTicketDistribution.objects.filter(
+            tournament=tournament
+        ).aggregate(
+            total=Sum('allocated_quantity')
+        )['total'] or 0
+        
+        remaining_tickets = tournament.ticket_quantity - existing_allocated
+        
+        if remaining_tickets <= 0:
+            return Response({
+                'error': '분배할 시트권이 남아있지 않습니다.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        created_distributions = []
+        
+        with transaction.atomic():
+            if distribution_type == 'equal':
+                # 동일 수량 분배
+                store_ids = request.data.get('store_ids', [])
+                if not store_ids:
+                    return Response({
+                        'error': 'store_ids가 필요합니다.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                stores = Store.objects.filter(id__in=store_ids, status='ACTIVE')
+                if not stores.exists():
+                    return Response({
+                        'error': '유효한 매장이 없습니다.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # 동일하게 분배 (나머지는 첫 번째 매장에 추가)
+                per_store = remaining_tickets // stores.count()
+                remainder = remaining_tickets % stores.count()
+                
+                for i, store in enumerate(stores):
+                    allocated = per_store + (1 if i == 0 and remainder > 0 else 0)
+                    if allocated > 0:
+                        distribution = TournamentTicketDistribution.objects.create(
+                            tournament=tournament,
+                            store=store,
+                            allocated_quantity=allocated,
+                            remaining_quantity=allocated,
+                            distributed_quantity=0,
+                            memo=f'자동 분배 (동일 수량) - {allocated}개'
+                        )
+                        created_distributions.append(distribution)
+            
+            elif distribution_type == 'weighted':
+                # 가중치 분배
+                store_weights = request.data.get('store_weights', {})
+                if not store_weights:
+                    return Response({
+                        'error': 'store_weights가 필요합니다.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                total_weight = sum(store_weights.values())
+                if total_weight <= 0:
+                    return Response({
+                        'error': '가중치 합계가 0보다 커야 합니다.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                allocated_total = 0
+                for store_id, weight in store_weights.items():
+                    try:
+                        store = Store.objects.get(id=store_id, status='ACTIVE')
+                        allocated = int((remaining_tickets * weight) / total_weight)
+                        
+                        if allocated > 0:
+                            distribution = TournamentTicketDistribution.objects.create(
+                                tournament=tournament,
+                                store=store,
+                                allocated_quantity=allocated,
+                                remaining_quantity=allocated,
+                                distributed_quantity=0,
+                                memo=f'자동 분배 (가중치: {weight}) - {allocated}개'
+                            )
+                            created_distributions.append(distribution)
+                            allocated_total += allocated
+                    
+                    except Store.DoesNotExist:
+                        continue
+                
+                # 나머지 시트권이 있으면 첫 번째 매장에 추가
+                if allocated_total < remaining_tickets and created_distributions:
+                    first_dist = created_distributions[0]
+                    remainder = remaining_tickets - allocated_total
+                    first_dist.allocated_quantity += remainder
+                    first_dist.remaining_quantity += remainder
+                    first_dist.memo += f' (나머지 {remainder}개 추가)'
+                    first_dist.save()
+        
+        serializer = TournamentTicketDistributionSerializer(created_distributions, many=True)
+        return Response({
+            'success': True,
+            'message': f"{len(created_distributions)}개 매장에 자동 분배가 완료되었습니다.",
+            'distribution_type': distribution_type,
+            'total_distributed': sum(dist.allocated_quantity for dist in created_distributions),
+            'created_distributions': serializer.data
         }) 
