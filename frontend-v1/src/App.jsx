@@ -6,7 +6,8 @@ import LoginPage from './admin/pages/LoginPage';
 import Dashboard from './admin/pages/Dashboard';
 import TournamentManagement from './admin/pages/TournamentManagement';
 import StoreManagement from './admin/pages/StoreManagement';
-import TicketIssuePage from './admin/pages/TicketIssuePage';
+import TicketIssuePage from './admin/pages/TicketIssuePage'; // admin 에서는 미사용.
+import SeatManagementPage from './admin/pages/SeatManagementPage';
 import Layout from './admin/components/Layout';
 import ProtectedRoute from './admin/components/ProtectedRoute';
 import UserInfoPage from './admin/pages/UserInfoPage';
@@ -152,7 +153,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/tournaments" element={<TournamentManagement />} />
               <Route path="/stores" element={<StoreManagement />} />
-              <Route path="/ticket-issue" element={<TicketIssuePage />} />
+              <Route path="/ticket-issue" element={<SeatManagementPage />} />
               <Route path="/users" element={<UserInfoPage />} />
               <Route path="/player-registration" element={<PlayerRegistrationPage />} />
               <Route path="/board" element={<BoardManagementPage />} />

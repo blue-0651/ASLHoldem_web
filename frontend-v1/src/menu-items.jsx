@@ -41,6 +41,13 @@ const menuItems = {
           type: 'item',
           icon: 'fas fa-trophy',
           url: '/tournaments'
+        },
+        {
+          id: 'dashboard-ticket-issue',
+          title: 'SEAT권 전송',
+          type: 'item',
+          icon: 'feather icon-credit-card',
+          url: '/ticket-issue'
         }
       ]
     },
@@ -56,13 +63,6 @@ const menuItems = {
           type: 'item',
           icon: 'feather icon-map-pin',
           url: '/stores'
-        },
-        {
-          id: 'dashboard-ticket-issue',
-          title: '좌석권 발급',
-          type: 'item',
-          icon: 'feather icon-credit-card',
-          url: '/ticket-issue'
         }
       ]
     },    {
