@@ -302,7 +302,18 @@ class TournamentTicketDistributionViewSet(viewsets.ModelViewSet):
                 'error': '분배 데이터가 필요합니다.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
+        # distributions_data가 문자열인 경우 JSON 파싱
+        if isinstance(distributions_data, str):
+            try:
+                import json
+                distributions_data = json.loads(distributions_data)
+            except json.JSONDecodeError:
+                return Response({
+                    'error': '분배 데이터 형식이 올바르지 않습니다.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
         created_distributions = []
+        updated_distributions = []
         errors = []
         
         with transaction.atomic():
@@ -320,29 +331,52 @@ class TournamentTicketDistributionViewSet(viewsets.ModelViewSet):
                     store = Store.objects.get(id=dist_data['store_id'])
                     allocated_quantity = int(dist_data['allocated_quantity'])
                     
-                    # 중복 체크
-                    if TournamentTicketDistribution.objects.filter(
-                        tournament=tournament, store=store
-                    ).exists():
-                        errors.append(f"매장 '{store.name}'은 이미 분배 데이터가 존재합니다.")
+                    # 수량이 0인 경우 건너뛰기
+                    if allocated_quantity <= 0:
                         continue
                     
-                    total_allocated += allocated_quantity
+                    # 기존 분배가 있는지 확인
+                    existing_distribution = TournamentTicketDistribution.objects.filter(
+                        tournament=tournament, store=store
+                    ).first()
                     
-                    # 토너먼트 전체 시트권 수량 초과 체크
-                    if existing_distributions + total_allocated > tournament.ticket_quantity:
-                        errors.append(f"전체 분배량이 토너먼트 시트권 수량({tournament.ticket_quantity})을 초과합니다.")
-                        break
-                    
-                    distribution = TournamentTicketDistribution.objects.create(
-                        tournament=tournament,
-                        store=store,
-                        allocated_quantity=allocated_quantity,
-                        remaining_quantity=allocated_quantity,  # 초기에는 전량 보유
-                        distributed_quantity=0,  # 초기에는 배포 안됨
-                        memo=dist_data.get('memo', f'대량 분배 - {store.name}')
-                    )
-                    created_distributions.append(distribution)
+                    if existing_distribution:
+                        # 기존 분배 업데이트
+                        old_quantity = existing_distribution.allocated_quantity
+                        quantity_diff = allocated_quantity - old_quantity
+                        
+                        # 토너먼트 전체 시트권 수량 초과 체크 (기존 수량 제외하고 계산)
+                        if existing_distributions - old_quantity + total_allocated + allocated_quantity > tournament.ticket_quantity:
+                            errors.append(f"전체 분배량이 토너먼트 시트권 수량({tournament.ticket_quantity})을 초과합니다.")
+                            break
+                        
+                        existing_distribution.allocated_quantity = allocated_quantity
+                        # 남은 수량도 비례적으로 조정 (배포된 수량은 유지)
+                        remaining_adjustment = allocated_quantity - existing_distribution.distributed_quantity
+                        existing_distribution.remaining_quantity = max(0, remaining_adjustment)
+                        existing_distribution.memo = dist_data.get('memo', f'분배 업데이트 - {store.name} ({old_quantity} → {allocated_quantity})')
+                        existing_distribution.save()
+                        
+                        updated_distributions.append(existing_distribution)
+                        total_allocated += quantity_diff  # 차이만 추가
+                    else:
+                        # 새로운 분배 생성
+                        total_allocated += allocated_quantity
+                        
+                        # 토너먼트 전체 시트권 수량 초과 체크
+                        if existing_distributions + total_allocated > tournament.ticket_quantity:
+                            errors.append(f"전체 분배량이 토너먼트 시트권 수량({tournament.ticket_quantity})을 초과합니다.")
+                            break
+                        
+                        distribution = TournamentTicketDistribution.objects.create(
+                            tournament=tournament,
+                            store=store,
+                            allocated_quantity=allocated_quantity,
+                            remaining_quantity=allocated_quantity,  # 초기에는 전량 보유
+                            distributed_quantity=0,  # 초기에는 배포 안됨
+                            memo=dist_data.get('memo', f'새 분배 - {store.name}')
+                        )
+                        created_distributions.append(distribution)
                     
                 except Store.DoesNotExist:
                     errors.append(f"매장 ID {dist_data['store_id']}를 찾을 수 없습니다.")
@@ -353,13 +387,31 @@ class TournamentTicketDistributionViewSet(viewsets.ModelViewSet):
             return Response({
                 'success': False,
                 'errors': errors,
-                'created_count': len(created_distributions)
+                'processed_count': len(created_distributions) + len(updated_distributions)
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        serializer = TournamentTicketDistributionSerializer(created_distributions, many=True)
+        # 전체 결과 목록 생성
+        all_distributions = created_distributions + updated_distributions
+        
+        # 메시지 작성
+        new_count = len(created_distributions)
+        updated_count = len(updated_distributions)
+        
+        message_parts = []
+        if new_count > 0:
+            message_parts.append(f"{new_count}개 매장에 새로 분배")
+        if updated_count > 0:
+            message_parts.append(f"{updated_count}개 매장 분배량 업데이트")
+        
+        message = "시트권 분배가 완료되었습니다: " + ", ".join(message_parts) if message_parts else "처리된 분배가 없습니다."
+        
+        serializer = TournamentTicketDistributionSerializer(all_distributions, many=True)
         return Response({
             'success': True,
-            'message': f"{len(created_distributions)}개 매장에 시트권이 분배되었습니다.",
+            'message': message,
+            'total_distributions': len(all_distributions),
+            'new_distributions': new_count,
+            'updated_distributions': updated_count,
             'created_distributions': serializer.data
         })
 
@@ -454,6 +506,16 @@ class TournamentTicketDistributionViewSet(viewsets.ModelViewSet):
                         'error': 'store_ids가 필요합니다.'
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
+                # store_ids가 문자열인 경우 JSON 파싱
+                if isinstance(store_ids, str):
+                    try:
+                        import json
+                        store_ids = json.loads(store_ids)
+                    except json.JSONDecodeError:
+                        return Response({
+                            'error': 'store_ids 형식이 올바르지 않습니다.'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                
                 stores = Store.objects.filter(id__in=store_ids, status='ACTIVE')
                 if not stores.exists():
                     return Response({
@@ -484,6 +546,16 @@ class TournamentTicketDistributionViewSet(viewsets.ModelViewSet):
                     return Response({
                         'error': 'store_weights가 필요합니다.'
                     }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # store_weights가 문자열인 경우 JSON 파싱
+                if isinstance(store_weights, str):
+                    try:
+                        import json
+                        store_weights = json.loads(store_weights)
+                    except json.JSONDecodeError:
+                        return Response({
+                            'error': 'store_weights 형식이 올바르지 않습니다.'
+                        }, status=status.HTTP_400_BAD_REQUEST)
                 
                 total_weight = sum(store_weights.values())
                 if total_weight <= 0:

@@ -226,19 +226,15 @@ export const distributionAPI = {
 
   // 새로 추가: 여러 매장에 한 번에 시트권 분배
   createBulkDistribution: (tournamentId, distributions) => {
-    const formData = new FormData();
-    formData.append('tournament_id', tournamentId);
-    formData.append('distributions', JSON.stringify(distributions));
-    return API.post('/seats/distributions/bulk_create/', formData);
+    return API.post('/seats/distributions/bulk_create/', {
+      tournament_id: tournamentId,
+      distributions: distributions
+    });
   },
 
   // 새로 추가: 분배 정보 수정
   updateDistribution: (distributionId, data) => {
-    const formData = new FormData();
-    Object.keys(data).forEach((key) => {
-      formData.append(key, data[key]);
-    });
-    return API.put(`/seats/distributions/${distributionId}/`, formData);
+    return API.put(`/seats/distributions/${distributionId}/`, data);
   },
 
   // 새로 추가: 분배 삭제
@@ -251,20 +247,20 @@ export const distributionAPI = {
 
   // 새로 추가: 토너먼트 시트권 자동 분배 (매장별 동일 수량)
   autoDistributeEqual: (tournamentId, storeIds) => {
-    const formData = new FormData();
-    formData.append('tournament_id', tournamentId);
-    formData.append('store_ids', JSON.stringify(storeIds));
-    formData.append('distribution_type', 'equal');
-    return API.post('/seats/distributions/auto_distribute/', formData);
+    return API.post('/seats/distributions/auto_distribute/', {
+      tournament_id: tournamentId,
+      store_ids: storeIds,
+      distribution_type: 'equal'
+    });
   },
 
   // 새로 추가: 토너먼트 시트권 자동 분배 (매장별 가중치 적용)
   autoDistributeWeighted: (tournamentId, storeWeights) => {
-    const formData = new FormData();
-    formData.append('tournament_id', tournamentId);
-    formData.append('store_weights', JSON.stringify(storeWeights));
-    formData.append('distribution_type', 'weighted');
-    return API.post('/seats/distributions/auto_distribute/', formData);
+    return API.post('/seats/distributions/auto_distribute/', {
+      tournament_id: tournamentId,
+      store_weights: storeWeights,
+      distribution_type: 'weighted'
+    });
   }
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Row, Col, Card, Form, Button, Modal, Spinner, Alert, Table, Pagination } from 'react-bootstrap';
+import { Row, Col, Card, Form, Button, Modal, Spinner, Alert, Table } from 'react-bootstrap';
 import { tournamentAPI, dashboardAPI, distributionAPI, seatTicketAPI } from '../../utils/api';
 
 // third party
@@ -38,23 +38,6 @@ const TournamentManagement = () => {
   const [filters, setFilters] = useState({
     tournament: 'all',
     status: 'all'
-  });
-
-  // 시트권 추가 모달 관련 상태 추가
-  const [showAddTicketModal, setShowAddTicketModal] = useState(false);
-  const [selectedTournamentForTicket, setSelectedTournamentForTicket] = useState(null);
-  const [availableStores, setAvailableStores] = useState([]);
-  const [allocatedStores, setAllocatedStores] = useState([]);
-  const [allStoresForDistribution, setAllStoresForDistribution] = useState([]);
-  const [loadingStores, setLoadingStores] = useState(false);
-
-  // 페이지네이션 관련 상태 추가
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
-
-  // 시트권 추가 폼 데이터
-  const [ticketFormData, setTicketFormData] = useState({
-    storeQuantities: {}  // { store_id: quantity } 형태로 매장별 수량 저장
   });
 
   // 페이지 로드 시 토너먼트 목록 가져오기
@@ -254,147 +237,6 @@ const TournamentManagement = () => {
   // 매장명 클릭 핸들러
   const handleStoreClick = (tournamentId, storeId, storeName) => {
     fetchStoreUsers(tournamentId, storeId, storeName);
-  };
-
-  // 시트권 추가 버튼 클릭 핸들러 추가
-  const handleAddSeatTicket = async (tournamentId) => {
-    console.log('시트권 추가 버튼 클릭:', tournamentId);
-    
-    setSelectedTournamentForTicket(tournamentId);
-    setLoadingStores(true);
-    
-    // 페이지네이션 초기화
-    setCurrentPage(1);
-    
-    // 일단 모달부터 열기
-    setShowAddTicketModal(true);
-    
-    try {
-      // 할당 가능한 매장 목록과 이미 할당된 매장 목록을 함께 조회
-      const response = await distributionAPI.getAvailableStores(tournamentId);
-      console.log('매장 목록 조회 성공:', response.data);
-      
-      const availableStoresList = response.data.available_stores || [];
-      const allocatedStoresList = response.data.allocated_stores || [];
-      
-      setAvailableStores(availableStoresList);
-      setAllocatedStores(allocatedStoresList);
-      
-      // 전체 매장 목록 생성 (분배된 매장 + 미분배 매장)
-      const allStores = [...allocatedStoresList, ...availableStoresList];
-      setAllStoresForDistribution(allStores);
-      
-      // 기존 분배 정보 조회하여 초기값 설정
-      const distributionResponse = await distributionAPI.getSummaryByTournament(tournamentId);
-      const existingDistributions = distributionResponse.data.store_distributions || [];
-      
-      // 기존 분배량을 초기값으로 설정
-      const initialQuantities = {};
-      existingDistributions.forEach(dist => {
-        initialQuantities[dist.store_id] = dist.allocated_quantity || 0;
-      });
-      
-      // 아직 분배되지 않은 매장은 0으로 설정
-      availableStoresList.forEach(store => {
-        if (!initialQuantities[store.id]) {
-          initialQuantities[store.id] = 0;
-        }
-      });
-      
-      // 폼 데이터 초기화 (기존 분배량 반영)
-      setTicketFormData({
-        storeQuantities: initialQuantities
-      });
-      
-    } catch (err) {
-      console.error('매장 목록 조회 오류:', err);
-      console.error('오류 상세:', err.response);
-      
-      // API가 구현되지 않은 경우 임시로 빈 배열 설정
-      setAvailableStores([]);
-      setAllocatedStores([]);
-      setAllStoresForDistribution([]);
-      
-      // 폼 데이터 초기화
-      setTicketFormData({
-        storeQuantities: {}
-      });
-      
-      // 에러 메시지를 사용자에게 표시 (모달은 그대로 유지)
-      setError(`매장 목록을 불러오는 중 오류가 발생했습니다: ${err.message}. 백엔드 API 구현이 필요합니다.`);
-      
-      // 3초 후 에러 메시지 제거
-      setTimeout(() => {
-        setError(null);
-      }, 5000);
-      
-    } finally {
-      setLoadingStores(false);
-    }
-  };
-
-  // 매장별 분배 수량 변경
-  const updateStoreQuantity = (storeId, quantity) => {
-    setTicketFormData(prev => ({
-      ...prev,
-      storeQuantities: {
-        ...prev.storeQuantities,
-        [storeId]: parseInt(quantity) || 0
-      }
-    }));
-  };
-
-  // 페이지네이션 관련 함수들
-  const getTotalPages = () => {
-    return Math.ceil(allStoresForDistribution.length / itemsPerPage);
-  };
-
-  const getCurrentPageStores = () => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return allStoresForDistribution.slice(startIndex, endIndex);
-  };
-
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
-  const renderPaginationItems = () => {
-    const totalPages = getTotalPages();
-    const items = [];
-    
-    // 이전 버튼
-    items.push(
-      <Pagination.Prev 
-        key="prev" 
-        disabled={currentPage === 1}
-        onClick={() => handlePageChange(currentPage - 1)}
-      />
-    );
-
-    // 페이지 번호들
-    for (let number = 1; number <= totalPages; number++) {
-      items.push(
-        <Pagination.Item 
-          key={number} 
-          active={number === currentPage}
-          onClick={() => handlePageChange(number)}
-        >
-          {number}
-        </Pagination.Item>
-      );
-    }
-
-    // 다음 버튼
-    items.push(
-      <Pagination.Next 
-        key="next" 
-        disabled={currentPage === totalPages}
-        onClick={() => handlePageChange(currentPage + 1)}
-      />
-    );
-
-    return items;
   };
 
   // 폼 필드 변경 핸들러
@@ -662,22 +504,6 @@ const TournamentManagement = () => {
             <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
               <div className="d-flex justify-content-between align-items-center mb-3 bg-dark text-white p-3 rounded border border-light">
                 <h4 className="mb-0" style={{ fontWeight: 'bold', color: 'white' }}>매장별 현황</h4>
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() => handleAddSeatTicket(data.id)}
-                  className="ms-2"
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    padding: '4px 12px',
-                    borderRadius: '4px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                  }}
-                >
-                  <i className="fas fa-plus me-1"></i>
-                  시트권 추가
-                </Button>
               </div>
               <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
                 <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
@@ -865,62 +691,6 @@ const TournamentManagement = () => {
     });
 
     setShowCreateModal(true);
-  };
-
-  // 시트권 분배 실행
-  const handleSubmitTicketDistribution = async () => {
-    if (!selectedTournamentForTicket) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // 분배 수량이 0보다 큰 매장들만 필터링
-      const distributionsToCreate = Object.entries(ticketFormData.storeQuantities)
-        .filter(([storeId, quantity]) => quantity > 0)
-        .map(([storeId, quantity]) => ({
-          store_id: parseInt(storeId),
-          allocated_quantity: quantity,
-          memo: `매장별 시트권 분배 - ${quantity}개`
-        }));
-
-      if (distributionsToCreate.length === 0) {
-        setError('최소 1개 이상의 매장에 분배 수량을 입력해주세요.');
-        setLoading(false);
-        return;
-      }
-
-      const response = await distributionAPI.createBulkDistribution(
-        selectedTournamentForTicket,
-        distributionsToCreate
-      );
-
-      setSuccess('시트권 분배가 성공적으로 완료되었습니다.');
-      setShowAddTicketModal(false);
-      
-      // 토너먼트 목록 새로고침
-      fetchTournaments();
-      
-      // 해당 토너먼트 상세 정보 새로고침
-      setTournamentDetailsCache(prev => {
-        const newCache = new Map(prev);
-        newCache.delete(selectedTournamentForTicket);
-        return newCache;
-      });
-      
-      fetchTournamentDetails(selectedTournamentForTicket);
-
-      // 3초 후 성공 메시지 제거
-      setTimeout(() => {
-        setSuccess(null);
-      }, 3000);
-
-    } catch (err) {
-      console.error('시트권 분배 오류:', err);
-      setError(err.response?.data?.message || '시트권 분배 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -1210,137 +980,6 @@ const TournamentManagement = () => {
             </div>
           </Form>
         </Modal.Body>
-      </Modal>
-
-      {/* 시트권 추가 모달 */}
-      <Modal
-        show={showAddTicketModal}
-        onHide={() => setShowAddTicketModal(false)}
-        size="lg"
-        backdrop="static"
-        keyboard={false}
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            시트권 매장별 분배
-            {selectedTournamentForTicket && (
-              <small className="text-muted d-block mt-1">
-                대회명: {(() => {
-                  const tournament = tournaments.find(t => t.id === selectedTournamentForTicket);
-                  return tournament ? tournament.name : `토너먼트 ID: ${selectedTournamentForTicket}`;
-                })()}
-              </small>
-            )}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {error && (
-            <Alert variant="danger" className="mb-3">
-              {error}
-            </Alert>
-          )}
-
-          {loadingStores ? (
-            <div className="text-center p-4">
-              <Spinner animation="border" variant="primary" />
-              <p className="mt-3">매장 정보를 불러오는 중입니다...</p>
-            </div>
-          ) : (
-            <>
-              {/* 매장별 분배 설정 */}
-              <div className="mb-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h6 className="mb-0">매장별 시트권 분배</h6>
-                  <div className="text-muted">
-                    <small>
-                      {allStoresForDistribution.length > 0 ? (
-                        <>
-                          총 {allStoresForDistribution.length}개 매장 중 {currentPage * itemsPerPage - itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, allStoresForDistribution.length)}번째 매장
-                        </>
-                      ) : (
-                        '매장 없음'
-                      )}
-                    </small>
-                  </div>
-                </div>
-                
-                {allStoresForDistribution.length > 0 ? (
-                  <>
-                    <div className="border rounded p-3" style={{ minHeight: '400px', maxHeight: '400px', overflowY: 'auto' }}>
-                      {getCurrentPageStores().map(store => {
-                        const isAllocated = allocatedStores.some(allocatedStore => allocatedStore.id === store.id);
-                        return (
-                          <Row key={store.id} className="mb-3 align-items-center">
-                            <Col md={8}>
-                              <div>
-                                <strong>{store.name}</strong>
-                                {isAllocated && <span className="badge bg-success ms-2">분배완료</span>}
-                                <small className="text-muted d-block">{store.address || '주소 없음'}</small>
-                              </div>
-                            </Col>
-                            <Col md={4}>
-                              <Form.Group>
-                                <Form.Label className="small">SEAT권 수량</Form.Label>
-                                <Form.Control
-                                  type="number"
-                                  min="0"
-                                  value={ticketFormData.storeQuantities[store.id] || 0}
-                                  onChange={(e) => updateStoreQuantity(store.id, e.target.value)}
-                                  placeholder="0"
-                                />
-                              </Form.Group>
-                            </Col>
-                          </Row>
-                        );
-                      })}
-                    </div>
-
-                    {/* 페이지네이션 */}
-                    {getTotalPages() > 1 && (
-                      <div className="d-flex justify-content-center mt-3">
-                        <Pagination size="sm">
-                          {renderPaginationItems()}
-                        </Pagination>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center text-muted py-4" style={{ minHeight: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                    <i className="fas fa-store fa-2x mb-2"></i>
-                    <p>매장 정보가 없습니다.</p>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="outline-secondary"
-            onClick={() => setShowAddTicketModal(false)}
-            disabled={loading}
-          >
-            <i className="fas fa-times me-1"></i>
-            취소
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmitTicketDistribution}
-            disabled={loading || allStoresForDistribution.length === 0 || !Object.values(ticketFormData.storeQuantities).some(qty => qty > 0)}
-          >
-            {loading ? (
-              <>
-                <Spinner as="span" animation="border" size="sm" className="me-2" />
-                분배 중...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-check me-1"></i>
-                시트권 분배 실행
-              </>
-            )}
-          </Button>
-        </Modal.Footer>
       </Modal>
     </div>
   );
