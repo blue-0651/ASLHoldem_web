@@ -204,6 +204,9 @@ export const dashboardAPI = {
 
 // 토너먼트 좌석권 분배 관련 API
 export const distributionAPI = {
+  // 분배 목록 조회 추가
+  getDistributions: (params = {}) => API.get('/seats/distributions/', { params }),
+
   // 토너먼트별 분배 요약 조회
   getSummaryByTournament: (tournamentId) => 
     API.get('/seats/distributions/summary_by_tournament/', { params: { tournament_id: tournamentId } }),
