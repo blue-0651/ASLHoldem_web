@@ -23,6 +23,16 @@ const TournamentManagement = () => {
   // 매장별 현황 필터 상태 추가
   const [storeFilters, setStoreFilters] = useState(new Map());
 
+  // SEAT권 수정 모달 상태 추가
+  const [showSeatEditModal, setShowSeatEditModal] = useState(false);
+  const [seatEditModalLoading, setSeatEditModalLoading] = useState(false);
+  const [selectedStoreForSeatEdit, setSelectedStoreForSeatEdit] = useState(null);
+  const [seatEditFormData, setSeatEditFormData] = useState({
+    action: 'add', // 'add' 또는 'remove'
+    quantity: '',
+    reason: ''
+  });
+
   // 매장 정보 캐시 추가 (전역 캐시)
   const [allStoresCache, setAllStoresCache] = useState(null);
   const [storesLoading, setStoresLoading] = useState(false);
@@ -281,6 +291,141 @@ const TournamentManagement = () => {
   // 매장명 클릭 핸들러
   const handleStoreClick = (tournamentId, storeId, storeName) => {
     fetchStoreUsers(tournamentId, storeId, storeName);
+  };
+
+  // SEAT권 수정 모달 열기
+  const handleOpenSeatEditModal = (tournamentId, storeData) => {
+    setSelectedStoreForSeatEdit({
+      tournamentId,
+      storeId: storeData.storeId,
+      storeName: storeData.storeName,
+      currentQuantity: storeData.ticketQuantity || 0,
+      distributedQuantity: storeData.distributedQuantity || 0,
+      remainingQuantity: storeData.remainingQuantity || 0
+    });
+    setSeatEditFormData({
+      action: 'add',
+      quantity: '',
+      reason: ''
+    });
+    setError(null); // 이전 오류 메시지 초기화
+    setShowSeatEditModal(true);
+  };
+
+  // SEAT권 수정 모달 폼 데이터 변경 핸들러
+  const handleSeatEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setSeatEditFormData({
+      ...seatEditFormData,
+      [name]: value
+    });
+  };
+
+  // SEAT권 수량 수정 제출 핸들러 (API 연동)
+  const handleSeatQuantityEditSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      setSeatEditModalLoading(true);
+      setError(null);
+
+      const quantity = parseInt(seatEditFormData.quantity);
+      if (!quantity || quantity <= 0) {
+        setError('올바른 수량을 입력해주세요.');
+        setSeatEditModalLoading(false);
+        return;
+      }
+
+      if (!seatEditFormData.reason.trim()) {
+        setError('사유를 입력해주세요.');
+        setSeatEditModalLoading(false);
+        return;
+      }
+
+      if (seatEditFormData.action === 'remove') {
+        if (quantity > selectedStoreForSeatEdit.currentQuantity) {
+          setError(`삭제할 수 있는 최대 수량은 ${selectedStoreForSeatEdit.currentQuantity}매입니다.`);
+          setSeatEditModalLoading(false);
+          return;
+        }
+      }
+
+      const distributionsResponse = await distributionAPI.getSummaryByTournament(selectedStoreForSeatEdit.tournamentId);
+      const storeDistributions = distributionsResponse.data.store_distributions || [];
+      const currentDistribution = storeDistributions.find(dist => dist.store_id === selectedStoreForSeatEdit.storeId);
+
+      let distributionIdToUpdate = null;
+      if (currentDistribution && currentDistribution.id) {
+          distributionIdToUpdate = currentDistribution.id;
+      } else {
+          // 분배 ID가 없는 경우, store와 tournament로 다시 조회 시도
+          const distributionListResponse = await distributionAPI.getDistributions({
+              tournament: selectedStoreForSeatEdit.tournamentId,
+              store: selectedStoreForSeatEdit.storeId
+          });
+          if (distributionListResponse.data && distributionListResponse.data.results && distributionListResponse.data.results.length > 0) {
+              distributionIdToUpdate = distributionListResponse.data.results[0].id;
+          } else if (Array.isArray(distributionListResponse.data) && distributionListResponse.data.length > 0 && distributionListResponse.data[0].id) {
+            // API 응답이 results 키 없이 바로 배열로 오는 경우
+            distributionIdToUpdate = distributionListResponse.data[0].id;
+        }
+      }
+
+      const newAllocatedQuantity = seatEditFormData.action === 'add'
+        ? selectedStoreForSeatEdit.currentQuantity + quantity
+        : selectedStoreForSeatEdit.currentQuantity - quantity;
+
+      const commonPayload = {
+        tournament: selectedStoreForSeatEdit.tournamentId,
+        store: selectedStoreForSeatEdit.storeId,
+        allocated_quantity: newAllocatedQuantity,
+        // remaining_quantity와 distributed_quantity는 서버에서 계산하거나, 기존 값을 유지해야 할 수 있습니다.
+        // 여기서는 allocated_quantity 변경에 따른 remaining_quantity를 간단히 계산합니다.
+        remaining_quantity: newAllocatedQuantity - (selectedStoreForSeatEdit.distributedQuantity || 0),
+        distributed_quantity: selectedStoreForSeatEdit.distributedQuantity || 0,
+        memo: `${seatEditFormData.action === 'add' ? '추가' : '삭제'}: ${quantity}매 - ${seatEditFormData.reason.trim()}`
+      };
+
+      if (distributionIdToUpdate) {
+        console.log('SEAT권 분배 수정 요청:', commonPayload);
+        await distributionAPI.updateDistribution(distributionIdToUpdate, commonPayload);
+      } else {
+        console.log('SEAT권 분배 생성 요청:', commonPayload);
+        await distributionAPI.createDistribution(commonPayload);
+      }
+
+      setSuccess(`${selectedStoreForSeatEdit.storeName} 매장의 SEAT권 수량이 성공적으로 ${seatEditFormData.action === 'add' ? '추가' : '삭제'}되었습니다.`);
+
+      setTournamentDetailsCache(prev => {
+        const newCache = new Map(prev);
+        newCache.delete(selectedStoreForSeatEdit.tournamentId);
+        return newCache;
+      });
+      
+      setLoadingDetails(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(selectedStoreForSeatEdit.tournamentId);
+        return newSet;
+      });
+      
+      await fetchTournamentDetails(selectedStoreForSeatEdit.tournamentId);
+
+      setShowSeatEditModal(false);
+      setSeatEditModalLoading(false);
+
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+
+    } catch (err) {
+      console.error('SEAT권 수량 조정 오류:', err);
+      if (err.response && err.response.data) {
+        setError(`SEAT권 수량 조정 중 오류가 발생했습니다: ${JSON.stringify(err.response.data)}`);
+      } else {
+        setError('SEAT권 수량 조정 중 오류가 발생했습니다.');
+      }
+      setSeatEditModalLoading(false);
+    }
   };
 
   // 폼 필드 변경 핸들러
@@ -651,6 +796,7 @@ const TournamentManagement = () => {
                     <th className="border border-dark text-white">SEAT권 배포 수량</th>
                     <th className="border border-dark text-white">SEAT권 보유 수량</th>
                     <th className="border border-dark text-white">SEAT권 전체 수량</th>
+                    <th className="border border-dark text-white">SEAT권 수량변경</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -659,7 +805,6 @@ const TournamentManagement = () => {
                       const selectedStore = selectedStoreByTournament.get(data.id);
                       const isSelected = selectedStore && selectedStore.storeId === store.storeId;
                       
-                      // SEAT권 보유 여부에 따른 스타일링
                       const hasSeatTickets = (store.ticketQuantity || 0) > 0;
                       const rowStyle = {
                         backgroundColor: isSelected ? '#e3f2fd' : (hasSeatTickets ? 'transparent' : '#fff3cd'),
@@ -695,12 +840,25 @@ const TournamentManagement = () => {
                               </span>
                             </div>
                           </td>
+                          <td className="text-center border border-secondary">
+                            <Button 
+                              size="sm" 
+                              variant="info" 
+                              style={{ fontSize: '10px', padding: '2px 6px' }}
+                              onClick={(e) => {
+                                e.stopPropagation(); // 행 전체 클릭 이벤트 전파 방지
+                                handleOpenSeatEditModal(data.id, store);
+                              }}
+                            >
+                              변경
+                            </Button>
+                          </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td colSpan="4" className="text-center border border-secondary" style={{ color: '#6c757d', fontStyle: 'italic' }}>
+                      <td colSpan="5" className="text-center border border-secondary" style={{ color: '#6c757d', fontStyle: 'italic' }}>
                         {currentStoreFilter === 'with_seats' && '🎫 SEAT권을 보유한 매장이 없습니다.'}
                         {currentStoreFilter === 'without_seats' && '❌ SEAT권을 보유하지 않은 매장이 없습니다.'}
                         {currentStoreFilter === 'all' && '매장 데이터가 없습니다.'}
@@ -1111,6 +1269,217 @@ const TournamentManagement = () => {
               </div>
             </div>
           </Form>
+        </Modal.Body>
+      </Modal>
+
+      {/* SEAT권 수정 모달 */}
+      <Modal
+        show={showSeatEditModal}
+        onHide={() => setShowSeatEditModal(false)}
+        size="lg"
+        backdrop="static"
+        keyboard={false}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            SEAT권 수량 변경
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {error && (
+            <Alert variant="danger" className="mb-3" onClose={() => setError(null)} dismissible>
+              {error}
+            </Alert>
+          )}
+
+          {selectedStoreForSeatEdit && (
+            <>
+              <Card className="mb-4">
+                <Card.Header>
+                  <h5 className="mb-0">
+                    🏪 {selectedStoreForSeatEdit.storeName} 매장
+                  </h5>
+                </Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={4}>
+                      <div className="text-center p-3 border rounded bg-light">
+                        <h6 className="text-muted">현재 SEAT권 수량</h6>
+                        <h3 className="text-primary fw-bold">{selectedStoreForSeatEdit.currentQuantity}매</h3>
+                      </div>
+                    </Col>
+                    <Col md={4}>
+                      <div className="text-center p-3 border rounded bg-light">
+                        <h6 className="text-muted">배포된 수량</h6>
+                        <h3 className="text-success fw-bold">{selectedStoreForSeatEdit.distributedQuantity}매</h3>
+                      </div>
+                    </Col>
+                    <Col md={4}>
+                      <div className="text-center p-3 border rounded bg-light">
+                        <h6 className="text-muted">보유 수량 (배포 가능)</h6>
+                        <h3 className="text-warning fw-bold">{selectedStoreForSeatEdit.remainingQuantity}매</h3>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+
+              <Form onSubmit={handleSeatQuantityEditSubmit}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">작업 선택 <span className="text-danger">*</span></Form.Label>
+                  <Row>
+                    <Col md={6}>
+                      <Form.Check
+                        type="radio"
+                        name="action"
+                        id="edit-action-add"
+                        label="SEAT권 추가"
+                        value="add"
+                        checked={seatEditFormData.action === 'add'}
+                        onChange={handleSeatEditFormChange}
+                        className="fs-5"
+                      />
+                    </Col>
+                    <Col md={6}>
+                      <Form.Check
+                        type="radio"
+                        name="action"
+                        id="edit-action-remove"
+                        label="SEAT권 삭제"
+                        value="remove"
+                        checked={seatEditFormData.action === 'remove'}
+                        onChange={handleSeatEditFormChange}
+                        className="fs-5"
+                      />
+                    </Col>
+                  </Row>
+                </Form.Group>
+
+                <Row className="align-items-end">
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">
+                        {seatEditFormData.action === 'add' ? '추가할' : '삭제할'} 수량 <span className="text-danger">*</span>
+                      </Form.Label>
+                      <div className="input-group">
+                        <Form.Control
+                          type="number"
+                          placeholder="수량 입력"
+                          name="quantity"
+                          value={seatEditFormData.quantity}
+                          onChange={handleSeatEditFormChange}
+                          required
+                          min="1"
+                          max={seatEditFormData.action === 'remove' ? selectedStoreForSeatEdit.currentQuantity : "10000"} // 최대 추가량은 임의로 설정
+                          className="form-control-lg"
+                        />
+                        <span className="input-group-text fs-5">매</span>
+                      </div>
+                      {seatEditFormData.action === 'remove' && selectedStoreForSeatEdit.currentQuantity > 0 && (
+                        <Form.Text className="text-muted">
+                          최대 {selectedStoreForSeatEdit.currentQuantity}매까지 삭제 가능합니다.
+                        </Form.Text>
+                      )}
+                       {seatEditFormData.action === 'remove' && selectedStoreForSeatEdit.currentQuantity === 0 && (
+                        <Form.Text className="text-danger">
+                          삭제할 SEAT권이 없습니다.
+                        </Form.Text>
+                      )}
+                    </Form.Group>
+                  </Col>
+                  
+                  <Col md={6}>
+                    {seatEditFormData.quantity && parseInt(seatEditFormData.quantity) > 0 && selectedStoreForSeatEdit && (
+                      <div className="mb-3 p-3 border rounded bg-light">
+                        <h6 className="fw-bold text-center mb-2">변경 후 예상 수량</h6>
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <span className="text-muted">현재:</span>
+                          <strong className="fs-5">{selectedStoreForSeatEdit.currentQuantity}매</strong>
+                        </div>
+                        <div className={`d-flex justify-content-between align-items-center mb-1 ${seatEditFormData.action === 'add' ? 'text-success' : 'text-danger'}`}>
+                          <span>{seatEditFormData.action === 'add' ? '변경:' : '변경:'}</span>
+                          <strong className="fs-5">
+                            {seatEditFormData.action === 'add' ? '+' : '-'}{seatEditFormData.quantity}매
+                          </strong>
+                        </div>
+                        <hr className="my-1" />
+                        <div className="d-flex justify-content-between align-items-center text-primary">
+                          <span className="fw-bold">예상 최종 수량:</span>
+                          <strong className="fs-4 fw-bold">
+                            {seatEditFormData.action === 'add' 
+                              ? selectedStoreForSeatEdit.currentQuantity + parseInt(seatEditFormData.quantity)
+                              : selectedStoreForSeatEdit.currentQuantity - parseInt(seatEditFormData.quantity)
+                            }매
+                          </strong>
+                        </div>
+                      </div>
+                    )}
+                  </Col>
+                </Row>
+
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-bold">사유 <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    placeholder="SEAT권 수량 변경 사유를 입력해주세요 (예: 이벤트용 추가 지급, 운영자 착오로 인한 수정 등)"
+                    name="reason"
+                    value={seatEditFormData.reason}
+                    onChange={handleSeatEditFormChange}
+                    required
+                    maxLength={500}
+                    className="form-control-lg"
+                  />
+                  <Form.Text className="text-muted">
+                    최대 500자까지 입력 가능합니다. (현재: {seatEditFormData.reason.length}/500자)
+                  </Form.Text>
+                </Form.Group>
+
+                <hr className="my-4"/>
+
+                <div className="d-flex justify-content-between align-items-center mt-4">
+                  <div className="text-muted">
+                    <small>
+                      <i className="fas fa-info-circle me-1"></i>
+                      <span className="text-danger">*</span> 표시된 항목은 필수 입력 사항입니다.
+                      <br />
+                      <i className="fas fa-exclamation-triangle me-1"></i>
+                      SEAT권 수량 변경은 즉시 반영되며, 되돌릴 수 없으니 신중하게 작업해주세요.
+                    </small>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <Button
+                      variant="outline-secondary"
+                      onClick={() => setShowSeatEditModal(false)}
+                      disabled={seatEditModalLoading}
+                      size="lg"
+                    >
+                      <i className="fas fa-times me-1"></i>
+                      취소
+                    </Button>
+                    <Button
+                      variant={seatEditFormData.action === 'add' ? 'success' : 'danger'}
+                      type="submit"
+                      disabled={seatEditModalLoading || !seatEditFormData.quantity || parseInt(seatEditFormData.quantity) <= 0 || !seatEditFormData.reason.trim() || (seatEditFormData.action === 'remove' && parseInt(seatEditFormData.quantity) > selectedStoreForSeatEdit.currentQuantity)}
+                      size="lg"
+                    >
+                      {seatEditModalLoading ? (
+                        <>
+                          <Spinner as="span" animation="border" size="sm" className="me-2" />
+                          처리 중...
+                        </>
+                      ) : (
+                        <>
+                          <i className={`fas ${seatEditFormData.action === 'add' ? 'fa-plus-circle' : 'fa-minus-circle'} me-1`}></i>
+                          SEAT권 {seatEditFormData.action === 'add' ? '추가 적용' : '삭제 적용'}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </Form>
+            </>
+          )}
         </Modal.Body>
       </Modal>
     </div>
