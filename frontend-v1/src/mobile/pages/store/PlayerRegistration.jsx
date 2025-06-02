@@ -136,7 +136,7 @@ const PlayerRegistration = () => {
       
       // 전체 토너먼트 목록 가져오기
       try {
-        const allResponse = await api.get('/tournaments/');
+        const allResponse = await api.get('/tournaments/all_info/');
         setAllTournaments(allResponse.data);
       } catch (allErr) {
         console.warn('전체 토너먼트 목록 로드 실패:', allErr);
@@ -149,6 +149,10 @@ const PlayerRegistration = () => {
     } catch (err) {
       console.error('토너먼트 목록 로드 오류:', err);
       setError('토너먼트 목록을 불러오는데 실패했습니다.');
+      // 에러 발생 시 빈 배열로 초기화
+      setStoreTournaments([]);
+      setAllTournaments([]);
+      setTournaments([]);
     } finally {
       setLoading(false);
     }
@@ -163,39 +167,45 @@ const PlayerRegistration = () => {
     let filteredTournaments = [];
     const sourceStoreTournaments = storeData || storeTournaments;
     
-    switch (filterType) {
-      case 'store':
-        // 본사로부터 해당 매장으로 배포된 토너먼트 리스트
-        filteredTournaments = sourceStoreTournaments;
-        break;
-      case 'all':
-        // 전체 토너먼트 리스트
-        filteredTournaments = allTournaments;
-        break;
-      case 'today':
-        // 당일 매장에서 개최되는 토너먼트 리스트
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD 형식
-        
-        filteredTournaments = sourceStoreTournaments.filter(tournament => {
-          const tournamentDate = new Date(tournament.start_time).toISOString().split('T')[0];
-          return tournamentDate === todayStr;
-        });
-        break;
-      default:
-        filteredTournaments = sourceStoreTournaments;
-    }
-    
-    setTournaments(filteredTournaments);
-    
-    // 선택된 토너먼트가 필터된 목록에 없으면 초기화
-    if (selectedTournament && !filteredTournaments.find(t => t.id.toString() === selectedTournament.toString())) {
-      setSelectedTournament('');
-    }
-    
-    // 필터된 목록이 있고 선택된 토너먼트가 없으면 첫 번째 토너먼트 선택
-    if (filteredTournaments.length > 0 && !selectedTournament) {
-      setSelectedTournament(filteredTournaments[0].id);
+    try {
+      switch (filterType) {
+        case 'store':
+          // 본사로부터 해당 매장으로 배포된 토너먼트 리스트
+          filteredTournaments = sourceStoreTournaments;
+          break;
+        case 'all':
+          // 전체 토너먼트 리스트
+          filteredTournaments = allTournaments;
+          break;
+        case 'today':
+          // 당일 매장에서 개최되는 토너먼트 리스트
+          const today = new Date();
+          const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD 형식
+          
+          filteredTournaments = sourceStoreTournaments.filter(tournament => {
+            const tournamentDate = new Date(tournament.start_time).toISOString().split('T')[0];
+            return tournamentDate === todayStr;
+          });
+          break;
+        default:
+          filteredTournaments = sourceStoreTournaments;
+      }
+      
+      setTournaments(filteredTournaments);
+      
+      // 선택된 토너먼트가 필터된 목록에 없으면 초기화
+      if (selectedTournament && !filteredTournaments.find(t => t.id.toString() === selectedTournament.toString())) {
+        setSelectedTournament('');
+      }
+      
+      // 필터된 목록이 있고 선택된 토너먼트가 없으면 첫 번째 토너먼트 선택
+      if (filteredTournaments.length > 0 && !selectedTournament) {
+        setSelectedTournament(filteredTournaments[0].id);
+      }
+    } catch (err) {
+      console.error('토너먼트 필터링 오류:', err);
+      setError('토너먼트 목록 필터링 중 오류가 발생했습니다.');
+      setTournaments([]);
     }
   };
 
@@ -253,7 +263,7 @@ const PlayerRegistration = () => {
           nickname: ''
         });
         
-        // 선택된 토너먼트가 있으면 해당 토너먼트의 좌석권 현황도 조회
+        // 선택된 토너먼트가 있으면 해당 토너먼트의 SEAT권 현황도 조회
         if (selectedTournament) {
           try {
             const ticketResponse = await api.get('/store/user-tickets/', {
@@ -267,7 +277,7 @@ const PlayerRegistration = () => {
               ticketInfo: ticketResponse.data
             }));
           } catch (ticketErr) {
-            console.warn('좌석권 정보 조회 실패:', ticketErr);
+            console.warn('SEAT권 정보 조회 실패:', ticketErr);
           }
         }
       } else {
@@ -457,7 +467,7 @@ const PlayerRegistration = () => {
   };
 
   /**
-   * 좌석권 지급 핸들러
+   * SEAT권 지급 핸들러
    */
   const handleGrantTicket = async (quantity = 1) => {
     if (!foundUser || !selectedTournament) return;
@@ -475,7 +485,7 @@ const PlayerRegistration = () => {
       });
       
       if (response.data.success) {
-        // 좌석권 정보 다시 조회
+        // SEAT권 정보 다시 조회
         const ticketResponse = await api.get('/store/user-tickets/', {
           params: { 
             phone_number: foundUser.phone,
@@ -492,11 +502,11 @@ const PlayerRegistration = () => {
         setTimeout(() => setSuccess(false), 3000);
       }
     } catch (err) {
-      console.error('좌석권 지급 오류:', err);
+      console.error('SEAT권 지급 오류:', err);
       if (err.response?.data?.error) {
         setError(err.response.data.error);
       } else {
-        setError('좌석권 지급 중 오류가 발생했습니다.');
+        setError('SEAT권 지급 중 오류가 발생했습니다.');
       }
     } finally {
       setLoading(false);
@@ -626,7 +636,7 @@ const PlayerRegistration = () => {
                           <div className="d-flex justify-content-between align-items-center">
                             <small className="text-muted">
                               <i className="fas fa-ticket-alt me-1"></i>
-                              좌석권 현황
+                              SEAT권 현황
                             </small>
                             <div className="d-flex gap-2">
                               <Badge bg="success" className="d-flex align-items-center">
@@ -643,7 +653,7 @@ const PlayerRegistration = () => {
                             <div className="mt-1">
                               <small className="text-danger">
                                 <i className="fas fa-exclamation-triangle me-1"></i>
-                                사용 가능한 좌석권이 없습니다. 좌석권을 먼저 지급해주세요.
+                                사용 가능한 SEAT권이 없습니다. SEAT권을 먼저 지급해주세요.
                               </small>
                               <div className="mt-2">
                                 <Button 
@@ -653,7 +663,7 @@ const PlayerRegistration = () => {
                                   disabled={loading}
                                 >
                                   <i className="fas fa-plus me-1"></i>
-                                  좌석권 1개 지급
+                                  SEAT권 1개 지급
                                 </Button>
                               </div>
                             </div>
