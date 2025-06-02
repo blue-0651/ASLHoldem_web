@@ -367,7 +367,7 @@ const TicketIssuePage = () => {
       
       if (response.ok) {
         const data = await response.json();
-        showAlert('success', `${selectedUser.nickname || selectedUser.username || '사용자'}님에게 좌석권이 성공적으로 발급되었습니다.`);
+        showAlert('success', `${selectedUser.nickname || selectedUser.username || '사용자'}님에게 SEAT권이 성공적으로 발급되었습니다.`);
         
         // 폼 초기화
         setSelectedUser(null);
@@ -381,11 +381,11 @@ const TicketIssuePage = () => {
         fetchRecentTickets();
       } else {
         const errorData = await response.json();
-        showAlert('danger', errorData.error || '좌석권 발급에 실패했습니다.');
+        showAlert('danger', errorData.error || 'SEAT권 발급에 실패했습니다.');
       }
     } catch (error) {
-      console.error('좌석권 발급 실패:', error);
-      showAlert('danger', '좌석권 발급 중 오류가 발생했습니다.');
+      console.error('SEAT권 발급 실패:', error);
+      showAlert('danger', 'SEAT권 발급 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -428,7 +428,7 @@ const TicketIssuePage = () => {
             <CardHeader>
               <CardTitle tag="h4">
                 <Award className="me-2" size={24} />
-                좌석권 발급
+                SEAT권 발급
               </CardTitle>
             </CardHeader>
             <CardBody>
@@ -612,7 +612,7 @@ const TicketIssuePage = () => {
                     ) : (
                       <>
                         <Plus size={16} className="me-2" />
-                        좌석권 발급
+                        SEAT권 발급
                       </>
                     )}
                   </Button>
@@ -623,18 +623,18 @@ const TicketIssuePage = () => {
         </Col>
       </Row>
 
-      {/* 최근 발급된 좌석권 목록 */}
+      {/* 최근 발급된 SEAT권 목록 */}
       <Row>
         <Col md={12}>
           <Card className="form-section">
             <CardHeader>
-              <CardTitle tag="h5">최근 발급된 좌석권</CardTitle>
+              <CardTitle tag="h5">최근 발급된 SEAT권</CardTitle>
             </CardHeader>
             <CardBody>
               <Table responsive className="recent-tickets-table">
                 <thead>
                   <tr>
-                    <th>좌석권 ID</th>
+                    <th>SEAT권 ID</th>
                     <th>토너먼트</th>
                     <th>사용자</th>
                     <th>상태</th>
@@ -678,10 +678,10 @@ const TicketIssuePage = () => {
       {/* 확인 모달 */}
       <Modal isOpen={confirmModal} toggle={() => setConfirmModal(false)}>
         <ModalHeader toggle={() => setConfirmModal(false)}>
-          좌석권 발급 확인
+          SEAT권 발급 확인
         </ModalHeader>
         <ModalBody>
-          <p>다음 내용으로 좌석권을 발급하시겠습니까?</p>
+          <p>다음 내용으로 SEAT권을 발급하시겠습니까?</p>
           <ul>
             <li><strong>토너먼트:</strong> {tournaments.find(t => t.id == selectedTournament)?.name}</li>
             <li><strong>매장:</strong> {currentStore?.name}</li>

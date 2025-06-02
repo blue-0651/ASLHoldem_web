@@ -98,6 +98,11 @@ const PlayerRegistration = () => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [phoneSearched, setPhoneSearched] = useState(false);
   
+  // 토너먼트 필터 관련 상태 추가
+  const [tournamentFilter, setTournamentFilter] = useState('store'); // 'store', 'all', 'today'
+  const [allTournaments, setAllTournaments] = useState([]); // 전체 토너먼트 목록
+  const [storeTournaments, setStoreTournaments] = useState([]); // 매장 배포 토너먼트 목록
+  
   const navigate = useNavigate();
 
   /**
@@ -125,17 +130,82 @@ const PlayerRegistration = () => {
   const fetchTournaments = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/store/tournaments/');
-      setTournaments(response.data);
-      if (response.data.length > 0) {
-        setSelectedTournament(response.data[0].id);
+      // 매장 배포 토너먼트 목록 가져오기
+      const storeResponse = await api.get('/store/tournaments/');
+      setStoreTournaments(storeResponse.data);
+      
+      // 전체 토너먼트 목록 가져오기
+      try {
+        const allResponse = await api.get('/tournaments/');
+        setAllTournaments(allResponse.data);
+      } catch (allErr) {
+        console.warn('전체 토너먼트 목록 로드 실패:', allErr);
+        setAllTournaments(storeResponse.data); // 실패 시 매장 토너먼트로 대체
       }
+      
+      // 초기 필터에 따른 토너먼트 설정
+      updateTournamentsByFilter('store', storeResponse.data);
+      
     } catch (err) {
       console.error('토너먼트 목록 로드 오류:', err);
       setError('토너먼트 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * 필터에 따른 토너먼트 목록 업데이트
+   * @param {string} filterType - 필터 타입 ('store', 'all', 'today')
+   * @param {Array} storeData - 매장 토너먼트 데이터 (선택사항)
+   */
+  const updateTournamentsByFilter = (filterType, storeData = null) => {
+    let filteredTournaments = [];
+    const sourceStoreTournaments = storeData || storeTournaments;
+    
+    switch (filterType) {
+      case 'store':
+        // 본사로부터 해당 매장으로 배포된 토너먼트 리스트
+        filteredTournaments = sourceStoreTournaments;
+        break;
+      case 'all':
+        // 전체 토너먼트 리스트
+        filteredTournaments = allTournaments;
+        break;
+      case 'today':
+        // 당일 매장에서 개최되는 토너먼트 리스트
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD 형식
+        
+        filteredTournaments = sourceStoreTournaments.filter(tournament => {
+          const tournamentDate = new Date(tournament.start_time).toISOString().split('T')[0];
+          return tournamentDate === todayStr;
+        });
+        break;
+      default:
+        filteredTournaments = sourceStoreTournaments;
+    }
+    
+    setTournaments(filteredTournaments);
+    
+    // 선택된 토너먼트가 필터된 목록에 없으면 초기화
+    if (selectedTournament && !filteredTournaments.find(t => t.id.toString() === selectedTournament.toString())) {
+      setSelectedTournament('');
+    }
+    
+    // 필터된 목록이 있고 선택된 토너먼트가 없으면 첫 번째 토너먼트 선택
+    if (filteredTournaments.length > 0 && !selectedTournament) {
+      setSelectedTournament(filteredTournaments[0].id);
+    }
+  };
+
+  /**
+   * 토너먼트 필터 변경 핸들러
+   * @param {string} filterType - 필터 타입
+   */
+  const handleFilterChange = (filterType) => {
+    setTournamentFilter(filterType);
+    updateTournamentsByFilter(filterType);
   };
 
   /**
@@ -617,6 +687,67 @@ const PlayerRegistration = () => {
                 </Alert>
               )}
 
+              {/* 토너먼트 필터 선택 버튼 그룹 */}
+              <Form.Group className="mb-3">
+                <Form.Label>토너먼트 필터</Form.Label>
+                <div className="d-flex gap-2 mb-2">
+                  <Button
+                    variant={tournamentFilter === 'store' ? 'primary' : 'outline-primary'}
+                    size="sm"
+                    onClick={() => handleFilterChange('store')}
+                    className="flex-fill"
+                  >
+                    <i className="fas fa-store me-1"></i>
+                    매장 배포
+                    {storeTournaments.length > 0 && (
+                      <Badge bg="light" text="dark" className="ms-1">
+                        {storeTournaments.length}
+                      </Badge>
+                    )}
+                  </Button>
+                  <Button
+                    variant={tournamentFilter === 'all' ? 'primary' : 'outline-primary'}
+                    size="sm"
+                    onClick={() => handleFilterChange('all')}
+                    className="flex-fill"
+                  >
+                    <i className="fas fa-globe me-1"></i>
+                    전체
+                    {allTournaments.length > 0 && (
+                      <Badge bg="light" text="dark" className="ms-1">
+                        {allTournaments.length}
+                      </Badge>
+                    )}
+                  </Button>
+                  <Button
+                    variant={tournamentFilter === 'today' ? 'primary' : 'outline-primary'}
+                    size="sm"
+                    onClick={() => handleFilterChange('today')}
+                    className="flex-fill"
+                  >
+                    <i className="fas fa-calendar-day me-1"></i>
+                    당일
+                    {(() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      const todayCount = storeTournaments.filter(tournament => {
+                        const tournamentDate = new Date(tournament.start_time).toISOString().split('T')[0];
+                        return tournamentDate === today;
+                      }).length;
+                      return todayCount > 0 && (
+                        <Badge bg="light" text="dark" className="ms-1">
+                          {todayCount}
+                        </Badge>
+                      );
+                    })()}
+                  </Button>
+                </div>
+                <Form.Text className="text-muted">
+                  {tournamentFilter === 'store' && '본사로부터 이 매장에 배포된 토너먼트 목록입니다.'}
+                  {tournamentFilter === 'all' && '시스템의 모든 토너먼트 목록입니다.'}
+                  {tournamentFilter === 'today' && '오늘 이 매장에서 개최되는 토너먼트 목록입니다.'}
+                </Form.Text>
+              </Form.Group>
+
               {/* 토너먼트 선택 드롭다운 */}
               <Form.Group className="mb-3">
                 <Form.Label>토너먼트 선택 <span className="text-danger">*</span></Form.Label>
@@ -628,6 +759,12 @@ const PlayerRegistration = () => {
                     </option>
                   ))}
                 </Form.Select>
+                {tournaments.length === 0 && (
+                  <Form.Text className="text-warning">
+                    <i className="fas fa-exclamation-triangle me-1"></i>
+                    선택한 필터에 해당하는 토너먼트가 없습니다.
+                  </Form.Text>
+                )}
               </Form.Group>
 
               {/* 조건부 필드들 - 신규 사용자이거나 기존 사용자 정보 수정 시에만 표시 */}
