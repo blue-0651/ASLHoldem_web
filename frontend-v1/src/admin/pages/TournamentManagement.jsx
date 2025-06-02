@@ -98,8 +98,27 @@ const TournamentManagement = () => {
       const response = await tournamentAPI.getAllTournamentInfo();
       setTournaments(response.data); // .results 제거 - 직접 배열 구조
 
-      // 백그라운드 상세 정보 로딩 제거 - 필요할 때만 로딩하도록 변경
       console.log(`토너먼트 목록 로딩 완료: ${response.data?.length || 0}개`);
+
+      // 초기 로딩 시 모든 토너먼트의 상세 정보를 백그라운드에서 병렬 로딩
+      // 이렇게 하면 선수 수량 등이 테이블에 즉시 표시됩니다.
+      if (response.data && Array.isArray(response.data)) {
+        console.log('백그라운드에서 모든 토너먼트 상세 정보 로딩 시작...');
+        
+        // 매장 정보를 먼저 로딩 (모든 토너먼트에서 공통으로 사용)
+        await fetchAllStores();
+        
+        // 모든 토너먼트의 상세 정보를 병렬로 로딩
+        const detailsPromises = response.data.map(tournament => 
+          fetchTournamentDetails(tournament.id).catch(err => {
+            console.warn(`토너먼트 ${tournament.id} 상세 정보 로딩 실패:`, err);
+            return null; // 개별 실패는 무시하고 계속 진행
+          })
+        );
+        
+        await Promise.all(detailsPromises);
+        console.log('백그라운드 상세 정보 로딩 완료');
+      }
 
       setLoading(false);
 
@@ -611,7 +630,36 @@ const TournamentManagement = () => {
         fontSize: expandedRowId === row.id ? '18px' : '14px',
         fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
         transition: 'all 0.3s ease'
-      })
+      }),
+      cell: (row) => (
+        <span style={{ 
+          fontSize: expandedRowId === row.id ? '18px' : '14px',
+          fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+          transition: 'all 0.3s ease'
+        }}>
+          {row.name}
+        </span>
+      )
+    },
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>바이인</span>,
+      selector: (row) => row.buy_in,
+      sortable: true,
+      center: true,
+      style: (row) => ({
+        fontSize: expandedRowId === row.id ? '18px' : '14px',
+        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      }),
+      cell: (row) => (
+        <span style={{ 
+          fontSize: expandedRowId === row.id ? '18px' : '14px',
+          fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+          transition: 'all 0.3s ease'
+        }}>
+          {row.buy_in || 0}매
+        </span>
+      )
     },
     {
       name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>SEAT권 총 수량</span>,
@@ -622,13 +670,26 @@ const TournamentManagement = () => {
         fontSize: expandedRowId === row.id ? '18px' : '14px',
         fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
         transition: 'all 0.3s ease'
-      })
+      }),
+      cell: (row) => (
+        <span style={{ 
+          fontSize: expandedRowId === row.id ? '18px' : '14px',
+          fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+          transition: 'all 0.3s ease'
+        }}>
+          {row.ticket_quantity}
+        </span>
+      )
     },
     {
-      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>매장 수량</span>,
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>매장 수량 SEAT권</span>,
       selector: (row) => {
         const details = tournamentDetailsCache.get(row.id);
-        return details?.storeCount || 0;
+        if (!details?.storeDetails) {
+          return 0;
+        }
+        // 매장에 할당된 총 SEAT권 수량 계산
+        return details.storeDetails.reduce((sum, store) => sum + (store.ticketQuantity || 0), 0);
       },
       sortable: true,
       center: true,
@@ -636,21 +697,23 @@ const TournamentManagement = () => {
         fontSize: expandedRowId === row.id ? '18px' : '14px',
         fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
         transition: 'all 0.3s ease'
-      })
-    },
-    {
-      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>선수 수량</span>,
-      selector: (row) => {
+      }),
+      cell: (row) => {
         const details = tournamentDetailsCache.get(row.id);
-        return details?.playerCount || 0;
-      },
-      sortable: true,
-      center: true,
-      style: (row) => ({
-        fontSize: expandedRowId === row.id ? '18px' : '14px',
-        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
-        transition: 'all 0.3s ease'
-      })
+        const totalAllocated = details?.storeDetails 
+          ? details.storeDetails.reduce((sum, store) => sum + (store.ticketQuantity || 0), 0)
+          : 0;
+        
+        return (
+          <span style={{ 
+            fontSize: expandedRowId === row.id ? '18px' : '14px',
+            fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+            transition: 'all 0.3s ease'
+          }}>
+            {totalAllocated}
+          </span>
+        );
+      }
     },
     {
       name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>상태</span>,
@@ -686,6 +749,46 @@ const TournamentManagement = () => {
           </span>
         );
       }
+    },
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>작업</span>,
+      button: true,
+      cell: (row) => (
+        <div className="d-flex justify-content-center">
+          <Button
+            variant="outline-info"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation(); // 행 확장 방지
+              console.log('토너먼트 수정:', row.id);
+              // TODO: 토너먼트 수정 기능 구현 예정
+            }}
+            className="me-2 py-1 px-2"
+            style={{ fontSize: '12px' }}
+            title="수정"
+          >
+            <i className="fas fa-edit"></i>
+          </Button>
+          <Button
+            variant="outline-danger"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation(); // 행 확장 방지
+              console.log('토너먼트 삭제:', row.id);
+              // TODO: 토너먼트 삭제 기능 구현 예정
+            }}
+            className="py-1 px-2"
+            style={{ fontSize: '12px' }}
+            title="삭제"
+          >
+            <i className="fas fa-trash"></i>
+          </Button>
+        </div>
+      ),
+      center: true,
+      ignoreRowClick: true,
+      allowOverflow: true,
+      minWidth: '120px'
     }
   ], [expandedRowId, tournamentDetailsCache]);
 
@@ -987,11 +1090,11 @@ const TournamentManagement = () => {
             <div className="text-white p-3 rounded border border-light" style={{ backgroundColor: '#721c24' }}>
               <div className="row text-center">
                 <div className="col border-end border-light">
-                  <h6 className="text-white">총 SEAT권</h6>
+                  <h6 className="text-white">SEAT권 총 수량</h6>
                   <h4 className="text-white">{tournamentDetails.totalTicketQuantity || 0}</h4>
                 </div>
                 <div className="col border-end border-light">
-                  <h6 className="text-white">매장 할당 SEAT권</h6>
+                  <h6 className="text-white">매장 수량 SEAT권</h6>
                   <h4 className="text-white">{totalAllocatedToStores}</h4>
                 </div>
                 <div className="col border-end border-light">
