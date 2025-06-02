@@ -32,6 +32,21 @@ const TournamentManagement = () => {
     quantity: '',
   });
 
+  // 토너먼트 수정 모달 관련 상태 추가
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTournament, setEditingTournament] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    id: null,
+    name: '',
+    start_date: '',
+    start_time: '',
+    buy_in: '',
+    ticket_quantity: '',
+    description: '',
+    status: 'UPCOMING'
+  });
+  const [editModalLoading, setEditModalLoading] = useState(false);
+
   // 매장 정보 캐시 추가 (전역 캐시)
   const [allStoresCache, setAllStoresCache] = useState(null);
   const [storesLoading, setStoresLoading] = useState(false);
@@ -760,8 +775,7 @@ const TournamentManagement = () => {
             size="sm"
             onClick={(e) => {
               e.stopPropagation(); // 행 확장 방지
-              console.log('토너먼트 수정:', row.id);
-              // TODO: 토너먼트 수정 기능 구현 예정
+              handleOpenEditModal(row);
             }}
             className="me-2 py-1 px-2"
             style={{ fontSize: '12px' }}
@@ -1137,6 +1151,98 @@ const TournamentManagement = () => {
     setShowCreateModal(true);
   };
 
+  // 토너먼트 수정 모달 열기
+  const handleOpenEditModal = (tournament) => {
+    console.log('토너먼트 수정 모달 열기:', tournament);
+    
+    // start_time을 date와 time으로 분리
+    const startDateTime = new Date(tournament.start_time);
+    const startDate = startDateTime.toISOString().split('T')[0];
+    const startTime = startDateTime.toTimeString().slice(0, 5);
+    
+    setEditingTournament(tournament);
+    setEditFormData({
+      id: tournament.id,
+      name: tournament.name || '',
+      start_date: startDate,
+      start_time: startTime,
+      buy_in: tournament.buy_in || '',
+      ticket_quantity: tournament.ticket_quantity || '',
+      description: tournament.description || '',
+      status: tournament.status || 'UPCOMING'
+    });
+    setError(null); // 이전 오류 메시지 초기화
+    setShowEditModal(true);
+  };
+
+  // 토너먼트 수정 폼 데이터 변경 핸들러
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData({
+      ...editFormData,
+      [name]: value
+    });
+  };
+
+  // 토너먼트 수정 제출 핸들러
+  const handleUpdateTournament = async (e) => {
+    e.preventDefault();
+    
+    try {
+      setEditModalLoading(true);
+      setError(null);
+
+      // 필수 필드 검증
+      if (!editFormData.name || !editFormData.start_date || !editFormData.start_time || 
+          !editFormData.buy_in || !editFormData.ticket_quantity) {
+        setError('모든 필수 필드를 입력해주세요.');
+        setEditModalLoading(false);
+        return;
+      }
+
+      // 날짜 & 시간 결합
+      const startDateTime = `${editFormData.start_date}T${editFormData.start_time}:00`;
+
+      // 수정할 토너먼트 데이터 준비
+      const updateData = {
+        name: editFormData.name,
+        start_time: startDateTime,
+        buy_in: editFormData.buy_in,
+        ticket_quantity: editFormData.ticket_quantity,
+        description: editFormData.description || "",
+        status: editFormData.status
+      };
+
+      console.log('토너먼트 수정 요청:', updateData);
+
+      // API 호출
+      await tournamentAPI.updateTournament(editFormData.id, updateData);
+
+      setSuccess(`토너먼트 "${editFormData.name}"이 성공적으로 수정되었습니다.`);
+      
+      // 토너먼트 목록 다시 불러오기
+      await fetchTournaments();
+
+      // 모달 닫기
+      setShowEditModal(false);
+      setEditModalLoading(false);
+
+      // 3초 후 성공 메시지 제거
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+
+    } catch (err) {
+      console.error('토너먼트 수정 오류:', err);
+      if (err.response && err.response.data) {
+        setError(`토너먼트 수정 중 오류가 발생했습니다: ${JSON.stringify(err.response.data)}`);
+      } else {
+        setError('토너먼트 수정 중 오류가 발생했습니다.');
+      }
+      setEditModalLoading(false);
+    }
+  };
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -1347,7 +1453,7 @@ const TournamentManagement = () => {
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>
-                    SEAT 권 수량 <span className="text-danger">*</span>
+                    SEAT권 수량 <span className="text-danger">*</span>
                   </Form.Label>
                   <div className="input-group">
                     <Form.Control
@@ -1390,7 +1496,7 @@ const TournamentManagement = () => {
                   <i className="fas fa-info-circle me-1"></i>
                   <span className="text-danger">*</span> 표시된 항목은 필수 입력 사항입니다.
                   <br />
-                  매장 정보는 토너먼트 생성 후 SEAT 권 분배 시 자동으로 연결됩니다.
+                  매장 정보는 토너먼트 생성 후 SEAT권 분배 시 자동으로 연결됩니다.
                 </small>
               </div>
               <div>
@@ -1566,6 +1672,226 @@ const TournamentManagement = () => {
                         <>
                           <i className={`fas fa-edit me-1`}></i> 
                           SEAT권 수량 변경
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </Form>
+            </>
+          )}
+        </Modal.Body>
+      </Modal>
+
+      {/* 토너먼트 수정 모달 */}
+      <Modal
+        show={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        size="lg"
+        backdrop="static"
+        keyboard={false}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            토너먼트 정보 수정
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {error && (
+            <Alert variant="danger" className="mb-3">
+              {error}
+            </Alert>
+          )}
+
+          {editingTournament && (
+            <>
+              <div className="mb-4 p-3 border rounded bg-light">
+                <h6 className="fw-bold text-center mb-2">수정 대상 토너먼트</h6>
+                <div className="text-center">
+                  <span className="fs-5 fw-bold text-primary">{editingTournament.name}</span>
+                  <small className="d-block text-muted mt-1">
+                    ID: {editingTournament.id} | 현재 상태: {editingTournament.status}
+                  </small>
+                </div>
+              </div>
+
+              <Form onSubmit={handleUpdateTournament}>
+                {/* 토너먼트 이름 */}
+                <Row>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>
+                        토너먼트 이름 <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="예: 주말 스페셜 토너먼트"
+                        name="name"
+                        value={editFormData.name}
+                        onChange={handleEditFormChange}
+                        required
+                        maxLength={100}
+                      />
+                      <Form.Text className="text-muted">
+                        최대 100자까지 입력 가능합니다.
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>
+                        시작 날짜 <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        type="date"
+                        name="start_date"
+                        value={editFormData.start_date}
+                        onChange={handleEditFormChange}
+                        required
+                      />
+                      <Form.Text className="text-muted">
+                        토너먼트 시작 날짜를 선택해주세요.
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>
+                        시작 시간 <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        type="time"
+                        name="start_time"
+                        value={editFormData.start_time}
+                        onChange={handleEditFormChange}
+                        required
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>
+                        바이인 <span className="text-danger">*</span>
+                      </Form.Label>
+                      <div className="input-group">
+                        <Form.Control
+                          type="number"
+                          placeholder="1"
+                          name="buy_in"
+                          value={editFormData.buy_in}
+                          onChange={handleEditFormChange}
+                          required
+                          min="0"
+                          step="1"
+                        />
+                        <span className="input-group-text">매</span>
+                      </div>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>
+                        SEAT권 총 수량 <span className="text-danger">*</span>
+                      </Form.Label>
+                      <div className="input-group">
+                        <Form.Control
+                          type="number"
+                          placeholder="100"
+                          name="ticket_quantity"
+                          value={editFormData.ticket_quantity}
+                          onChange={handleEditFormChange}
+                          required
+                          min="1"
+                          max="10000"
+                        />
+                        <span className="input-group-text">매</span>
+                      </div>
+                      <Form.Text className="text-muted">
+                        토너먼트의 전체 SEAT권 수량을 설정해주세요.
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col md={12}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>토너먼트 상태</Form.Label>
+                      <Form.Select
+                        name="status"
+                        value={editFormData.status}
+                        onChange={handleEditFormChange}
+                      >
+                        <option value="UPCOMING">UPCOMING (예정)</option>
+                        <option value="ONGOING">ONGOING (진행중)</option>
+                        <option value="COMPLETED">COMPLETED (완료)</option>
+                        <option value="CANCELLED">CANCELLED (취소)</option>
+                      </Form.Select>
+                      <Form.Text className="text-muted">
+                        토너먼트의 현재 상태를 선택해주세요.
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Form.Group className="mb-4">
+                  <Form.Label>토너먼트 설명</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={4}
+                    placeholder="토너먼트에 대한 상세 설명을 입력해주세요. (선택사항)"
+                    name="description"
+                    value={editFormData.description}
+                    onChange={handleEditFormChange}
+                    maxLength={500}
+                  />
+                  <Form.Text className="text-muted">
+                    최대 500자까지 입력 가능합니다. ({editFormData.description.length}/500)
+                  </Form.Text>
+                </Form.Group>
+
+                <hr />
+
+                <div className="d-flex justify-content-between align-items-center mt-4">
+                  <div className="text-muted">
+                    <small>
+                      <i className="fas fa-info-circle me-1"></i>
+                      <span className="text-danger">*</span> 표시된 항목은 필수 입력 사항입니다.
+                      <br />
+                      <i className="fas fa-exclamation-triangle me-1"></i>
+                      토너먼트 정보 수정은 즉시 반영되며, 신중하게 작업해주세요.
+                    </small>
+                  </div>
+                  <div>
+                    <Button
+                      variant="outline-secondary"
+                      onClick={() => setShowEditModal(false)}
+                      className="me-2"
+                      disabled={editModalLoading}
+                    >
+                      <i className="fas fa-times me-1"></i>
+                      취소
+                    </Button>
+                    <Button
+                      variant="primary"
+                      type="submit"
+                      disabled={editModalLoading}
+                    >
+                      {editModalLoading ? (
+                        <>
+                          <Spinner as="span" animation="border" size="sm" className="me-2" />
+                          수정 중...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-save me-1"></i>
+                          토너먼트 수정
                         </>
                       )}
                     </Button>
