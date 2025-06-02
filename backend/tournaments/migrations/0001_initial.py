@@ -66,8 +66,8 @@ class Migration(migrations.Migration):
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='tournament_registrations', to=settings.AUTH_USER_MODEL)),
             ],
             options={
-                'verbose_name': '토너먼트 등록',
-                'verbose_name_plural': '토너먼트 등록들',
+                'verbose_name': '토너먼트 참가',
+                'verbose_name_plural': '토너먼트 참가들',
                 'db_table': 'tournament_registrations',
                 'unique_together': {('tournament', 'user')},
             },

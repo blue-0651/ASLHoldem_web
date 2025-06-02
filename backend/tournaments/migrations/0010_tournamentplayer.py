@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('nickname', models.CharField(max_length=50, verbose_name='닉네임')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='등록 시간')),
+                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='참가 시간')),
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='수정 시간')),
                 ('tournament', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='tournaments.tournament', verbose_name='토너먼트')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL, verbose_name='사용자')),

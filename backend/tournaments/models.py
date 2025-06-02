@@ -64,8 +64,8 @@ class TournamentPlayer(models.Model):
     # 닉네임 (토너먼트에서 사용할 이름)
     nickname = models.CharField(max_length=50, verbose_name='닉네임')
     
-    # 등록 시간
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='등록 시간')
+    # 참가 시간
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='참가 시간')
     
     # 수정 시간
     updated_at = models.DateTimeField(auto_now=True, verbose_name='수정 시간')

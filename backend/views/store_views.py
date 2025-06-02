@@ -509,7 +509,7 @@ def register_player_to_tournament(request):
         
         return Response({
             'success': True,
-            'message': '선수가 성공적으로 등록되었습니다. 좌석권 1개가 사용되었습니다.',
+            'message': '선수가 성공적으로 참가되었습니다. 좌석권 1개가 사용되었습니다.',
             'player': {
                 'id': tournament_player.id,
                 'user_id': user.id,
@@ -527,7 +527,7 @@ def register_player_to_tournament(request):
         
     except Exception as e:
         return Response({
-            'error': f'선수 등록 중 오류가 발생했습니다: {str(e)}'
+            'error': f'선수 참가 중 오류가 발생했습니다: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
