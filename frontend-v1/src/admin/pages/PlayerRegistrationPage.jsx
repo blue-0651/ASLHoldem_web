@@ -252,10 +252,10 @@ const PlayerRegistrationPage = () => {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>선수 회원 등록 관리</h2>
+        <h2>선수 회원 참가 관리</h2>
         <Button variant="primary" onClick={() => handleShowModal()}>
           <FiPlus className="me-2" />
-          새 선수 등록
+          새 선수 참가
         </Button>
       </div>
 
@@ -425,11 +425,11 @@ const PlayerRegistrationPage = () => {
         </Card.Body>
       </Card>
 
-      {/* 선수 등록/수정 모달 */}
+      {/* 선수 참가/수정 모달 */}
       <Modal show={showModal} onHide={handleCloseModal} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>
-            {editingPlayer ? '선수 정보 수정' : '새 선수 등록'}
+            {editingPlayer ? '선수 정보 수정' : '새 선수 참가'}
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
@@ -528,7 +528,7 @@ const PlayerRegistrationPage = () => {
               취소
             </Button>
             <Button variant="primary" type="submit">
-              {editingPlayer ? '수정' : '등록'}
+              {editingPlayer ? '수정' : '참가'}
             </Button>
           </Modal.Footer>
         </Form>

@@ -149,7 +149,7 @@ const SamplePage = () => {  // 다이얼로그(모달) 상태 관리
               </Card.Text>
             </Card.Body>
             <Card.Footer className="bg-transparent border-primary">
-              <Button variant="primary" size="sm" onClick={() => setShowRegisterModal(true)}>등록하기</Button>
+              <Button variant="primary" size="sm" onClick={() => setShowRegisterModal(true)}>참가하기</Button>
             </Card.Footer>
           </Card>
         </Col>
@@ -338,7 +338,7 @@ const SamplePage = () => {  // 다이얼로그(모달) 상태 관리
             // 여기에 등록 로직 추가
             setShowRegisterModal(false);
           }}>
-            등록하기
+            참가하기
           </Button>
         </Modal.Footer>
       </Modal>

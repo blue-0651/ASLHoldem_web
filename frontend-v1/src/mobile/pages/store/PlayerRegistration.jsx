@@ -72,7 +72,7 @@ api.interceptors.response.use(
 );
 
 /**
- * 선수회원 등록 컴포넌트
+ * 선수회원 참가 컴포넌트
  * 매장관리자가 선수를 등록하고 토너먼트에 매핑할 수 있는 페이지입니다.
  */
 const PlayerRegistration = () => {
@@ -307,7 +307,7 @@ const PlayerRegistration = () => {
 
   /**
    * 폼 제출 핸들러
-   * 선수 등록 폼을 제출할 때 호출됩니다.
+   * 선수 참가 폼을 제출할 때 호출됩니다.
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -352,7 +352,7 @@ const PlayerRegistration = () => {
         requestData.email = playerData.email;
       }
 
-      console.log('선수 등록 요청 데이터:', requestData);
+      console.log('선수 참가 요청 데이터:', requestData);
 
       const response = await api.post('/store/register-player/', requestData);
       
@@ -375,11 +375,11 @@ const PlayerRegistration = () => {
         }
       }
     } catch (err) {
-      console.error('선수 등록 오류:', err);
+      console.error('선수 참가 오류:', err);
       if (err.response?.data?.error) {
         setError(err.response.data.error);
       } else {
-        setError('선수 등록 중 오류가 발생했습니다. 다시 시도해주세요.');
+        setError('선수 참가 중 오류가 발생했습니다. 다시 시도해주세요.');
       }
     } finally {
       setLoading(false);
@@ -436,7 +436,7 @@ const PlayerRegistration = () => {
   return (
     <div className="asl-mobile-container">
       {/* MobileHeader 컴포넌트 사용 */}
-      <MobileHeader title="선수회원 등록" backButton={true} />
+      <MobileHeader title="선수회원 참가" backButton={true} />
       
       <Container className="asl-mobile-content">
         {/* QR 스캔 영역 */}
@@ -444,7 +444,7 @@ const PlayerRegistration = () => {
           <Card.Body>
             <Card.Title>QR 코드 스캔</Card.Title>
             <Card.Text>
-              사용자의 QR 코드를 스캔하여 토너먼트에 등록하세요.
+              사용자의 QR 코드를 스캔하여 토너먼트에 참가하세요.
             </Card.Text>
             
             {isScanning ? (
@@ -501,14 +501,14 @@ const PlayerRegistration = () => {
           </Card.Body>
         </Card>
 
-        {/* 선수 등록 폼 */}
+        {/* 선수 참가 폼 */}
         <Card className="mb-4">
           <Card.Body>
-            <Card.Title>선수회원 등록</Card.Title>
+            <Card.Title>선수회원 참가</Card.Title>
             
             {success && (
               <Alert variant="success" className="mb-3">
-                선수회원이 성공적으로 등록되었습니다.
+                선수회원이 성공적으로 참가되었습니다.
               </Alert>
             )}
 
@@ -610,7 +610,7 @@ const PlayerRegistration = () => {
                     <div>
                       <strong>신규 회원</strong>
                       <div className="mt-1">
-                        <small>해당 휴대폰 번호로 등록된 회원이 없습니다. 추가 정보를 입력해주세요.</small>
+                        <small>해당 휴대폰 번호로 참가된 회원이 없습니다. 추가 정보를 입력해주세요.</small>
                       </div>
                     </div>
                   </div>
@@ -698,12 +698,12 @@ const PlayerRegistration = () => {
                     {loading ? (
                       <>
                         <Spinner animation="border" size="sm" className="me-2" />
-                        등록 중...
+                        참가 중...
                       </>
                     ) : (
                       <>
                         <i className="fas fa-user-plus me-2"></i>
-                        {foundUser ? '기존 회원 토너먼트 등록' : '신규 회원 등록 및 토너먼트 참가'}
+                        {foundUser ? '기존 회원 토너먼트 참가' : '신규 회원 참가 및 토너먼트 참가'}
                       </>
                     )}
                   </Button>
@@ -721,17 +721,17 @@ const PlayerRegistration = () => {
           </Card.Body>
         </Card>
 
-        {/* 이미 등록된 선수 목록 섹션 */}
+        {/* 이미 참가된 선수 목록 섹션 */}
         <Card>
           <Card.Body>
-            <Card.Title>등록된 선수 목록</Card.Title>
+            <Card.Title>참가된 선수 목록</Card.Title>
             {playerMappingData ? (
               <div className="table-responsive">
                 <Table striped hover size="sm">
                   <thead>
                     <tr>
                       <th>이름</th>
-                      <th>등록일시</th>
+                      <th>참가일시</th>
                       <th>상태</th>
                     </tr>
                   </thead>
@@ -750,7 +750,7 @@ const PlayerRegistration = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="3" className="text-center">등록된 선수가 없습니다.</td>
+                        <td colSpan="3" className="text-center">참가된 선수가 없습니다.</td>
                       </tr>
                     )}
                   </tbody>

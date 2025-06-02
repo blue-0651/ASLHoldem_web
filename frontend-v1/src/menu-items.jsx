@@ -80,7 +80,7 @@ const menuItems = {
         },
         {
           id: 'dashboard-player',
-          title: '선수회원등록',
+          title: '선수회원참가',
           type: 'item',
           icon: 'feather icon-user-plus',
           url: '/player-registration'
