@@ -30,7 +30,6 @@ const TournamentManagement = () => {
   const [seatEditFormData, setSeatEditFormData] = useState({
     action: 'add', // 'add' 또는 'remove'
     quantity: '',
-    reason: ''
   });
 
   // 매장 정보 캐시 추가 (전역 캐시)
@@ -299,14 +298,14 @@ const TournamentManagement = () => {
       tournamentId,
       storeId: storeData.storeId,
       storeName: storeData.storeName,
-      currentQuantity: storeData.ticketQuantity || 0,
+      currentQuantity: storeData.ticketQuantity || 0, // 현재 총 SEAT권 수량
       distributedQuantity: storeData.distributedQuantity || 0,
       remainingQuantity: storeData.remainingQuantity || 0
     });
     setSeatEditFormData({
-      action: 'add',
-      quantity: '',
-      reason: ''
+      action: 'add', // 이 값은 더 이상 직접적인 의미는 없지만, 혹시 모를 사이드 이펙트 방지 위해 유지
+      // "변경할 수량"의 기본값을 현재 매장의 총 SEAT권 수량으로 설정
+      quantity: storeData.ticketQuantity || 0, 
     });
     setError(null); // 이전 오류 메시지 초기화
     setShowSeatEditModal(true);
@@ -329,25 +328,12 @@ const TournamentManagement = () => {
       setSeatEditModalLoading(true);
       setError(null);
 
-      const quantity = parseInt(seatEditFormData.quantity);
-      if (!quantity || quantity <= 0) {
-        setError('올바른 수량을 입력해주세요.');
+      const newTotalQuantity = parseInt(seatEditFormData.quantity);
+      // 변경할 수량이 음수이거나 숫자가 아닌 경우 방지
+      if (isNaN(newTotalQuantity) || newTotalQuantity < 0) { 
+        setError('올바른 수량을 입력해주세요. (0 이상의 숫자)');
         setSeatEditModalLoading(false);
         return;
-      }
-
-      if (!seatEditFormData.reason.trim()) {
-        setError('사유를 입력해주세요.');
-        setSeatEditModalLoading(false);
-        return;
-      }
-
-      if (seatEditFormData.action === 'remove') {
-        if (quantity > selectedStoreForSeatEdit.currentQuantity) {
-          setError(`삭제할 수 있는 최대 수량은 ${selectedStoreForSeatEdit.currentQuantity}매입니다.`);
-          setSeatEditModalLoading(false);
-          return;
-        }
       }
 
       const distributionsResponse = await distributionAPI.getSummaryByTournament(selectedStoreForSeatEdit.tournamentId);
@@ -358,7 +344,6 @@ const TournamentManagement = () => {
       if (currentDistribution && currentDistribution.id) {
           distributionIdToUpdate = currentDistribution.id;
       } else {
-          // 분배 ID가 없는 경우, store와 tournament로 다시 조회 시도
           const distributionListResponse = await distributionAPI.getDistributions({
               tournament: selectedStoreForSeatEdit.tournamentId,
               store: selectedStoreForSeatEdit.storeId
@@ -366,55 +351,109 @@ const TournamentManagement = () => {
           if (distributionListResponse.data && distributionListResponse.data.results && distributionListResponse.data.results.length > 0) {
               distributionIdToUpdate = distributionListResponse.data.results[0].id;
           } else if (Array.isArray(distributionListResponse.data) && distributionListResponse.data.length > 0 && distributionListResponse.data[0].id) {
-            // API 응답이 results 키 없이 바로 배열로 오는 경우
             distributionIdToUpdate = distributionListResponse.data[0].id;
         }
       }
 
-      const newAllocatedQuantity = seatEditFormData.action === 'add'
-        ? selectedStoreForSeatEdit.currentQuantity + quantity
-        : selectedStoreForSeatEdit.currentQuantity - quantity;
+      // 새로운 총 할당량은 사용자가 입력한 값이 됨
+      const newAllocatedQuantity = newTotalQuantity;
+
+      // 새로운 보유 수량 계산 (새 총량 - 이미 배포된 수량)
+      // 만약 새 총량이 배포된 수량보다 적으면, 문제가 될 수 있으므로 서버에서 처리하거나 추가 UI 필요
+      // 여기서는 일단 계산된 값을 그대로 사용
+      const newRemainingQuantity = newAllocatedQuantity - (selectedStoreForSeatEdit.distributedQuantity || 0);
+      if (newRemainingQuantity < 0) {
+        // 이 경우, 배포된 티켓을 회수하는 로직이 없다면 문제가 될 수 있음.
+        // 일단 경고를 표시하거나, 서버에서 이 상황을 처리하도록 함.
+        // 여기서는 일단 진행하되, 콘솔에 경고를 남김.
+        console.warn(`경고: 새로운 총 수량(${newAllocatedQuantity})이 배포된 수량(${selectedStoreForSeatEdit.distributedQuantity})보다 적습니다.`);
+      }
 
       const commonPayload = {
         tournament: selectedStoreForSeatEdit.tournamentId,
         store: selectedStoreForSeatEdit.storeId,
         allocated_quantity: newAllocatedQuantity,
-        // remaining_quantity와 distributed_quantity는 서버에서 계산하거나, 기존 값을 유지해야 할 수 있습니다.
-        // 여기서는 allocated_quantity 변경에 따른 remaining_quantity를 간단히 계산합니다.
-        remaining_quantity: newAllocatedQuantity - (selectedStoreForSeatEdit.distributedQuantity || 0),
+        remaining_quantity: newRemainingQuantity >= 0 ? newRemainingQuantity : 0, // 보유 수량은 음수가 될 수 없음
         distributed_quantity: selectedStoreForSeatEdit.distributedQuantity || 0,
-        memo: `${seatEditFormData.action === 'add' ? '추가' : '삭제'}: ${quantity}매 - ${seatEditFormData.reason.trim()}`
+        memo: `관리자 수량 변경: 총 ${newAllocatedQuantity}매로 수정`
       };
 
       if (distributionIdToUpdate) {
-        console.log('SEAT권 분배 수정 요청:', commonPayload);
+        console.log('SEAT권 분배 수정 요청 (수량 변경):', commonPayload);
         await distributionAPI.updateDistribution(distributionIdToUpdate, commonPayload);
       } else {
-        console.log('SEAT권 분배 생성 요청:', commonPayload);
+        console.log('SEAT권 분배 생성 요청 (수량 변경):', commonPayload);
         await distributionAPI.createDistribution(commonPayload);
       }
 
-      setSuccess(`${selectedStoreForSeatEdit.storeName} 매장의 SEAT권 수량이 성공적으로 ${seatEditFormData.action === 'add' ? '추가' : '삭제'}되었습니다.`);
+      setSuccess(`${selectedStoreForSeatEdit.storeName} 매장의 SEAT권 총 수량이 ${newAllocatedQuantity}매로 성공적으로 변경되었습니다.`);
 
-      setTournamentDetailsCache(prev => {
-        const newCache = new Map(prev);
-        newCache.delete(selectedStoreForSeatEdit.tournamentId);
-        return newCache;
-      });
-      
-      setLoadingDetails(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(selectedStoreForSeatEdit.tournamentId);
-        return newSet;
-      });
-      
-      await fetchTournamentDetails(selectedStoreForSeatEdit.tournamentId);
+      // 전체 토너먼트 상세 정보 다시 불러오는 대신, 매장별 현황 관련 데이터만 업데이트
+      try {
+        setSeatEditModalLoading(true); // 로딩 상태는 유지
+        const tournamentId = selectedStoreForSeatEdit.tournamentId;
+
+        // 1. 최신 분배 정보 가져오기
+        const newDistributionResponse = await distributionAPI.getSummaryByTournament(tournamentId);
+        
+        // 2. 매장별 현황 데이터 (storeDetails) 재구성
+        const newStoreDistributions = newDistributionResponse.data.store_distributions || [];
+        const newDistributionMap = new Map();
+        newStoreDistributions.forEach(dist => {
+          newDistributionMap.set(dist.store_id, dist);
+        });
+
+        // allStoresCache가 로드되었는지 확인, 안되었으면 로드 (일반적으로는 이미 로드되어 있을 것임)
+        const currentAllStores = allStoresCache || await fetchAllStores(); 
+
+        const newCombinedStoreData = (currentAllStores || []).map(store => {
+          const distribution = newDistributionMap.get(store.id);
+          return {
+            storeName: store.name || '미지정 매장',
+            storeId: store.id,
+            ticketQuantity: distribution?.allocated_quantity || 0,
+            distributedQuantity: distribution?.distributed_quantity || 0,
+            remainingQuantity: distribution?.remaining_quantity || 0,
+          };
+        });
+
+        // 3. 캐시 업데이트 (부분 업데이트)
+        setTournamentDetailsCache(prevCache => {
+          const updatedCache = new Map(prevCache);
+          const currentTournamentDetails = updatedCache.get(tournamentId);
+
+          if (currentTournamentDetails) {
+            const updatedDetails = {
+              ...currentTournamentDetails,
+              storeDetails: newCombinedStoreData,
+              totalTicketQuantity: newDistributionResponse.data.tournament?.ticket_quantity || currentTournamentDetails.totalTicketQuantity,
+              distributedTicketQuantity: newDistributionResponse.data.summary?.total_distributed || currentTournamentDetails.distributedTicketQuantity,
+              // storeCount는 allStoresCache 기반이므로 변경 필요 없음
+              // playerCount, usedTicketQuantity 등 다른 API에서 오는 정보는 이 부분 업데이트에서 제외
+            };
+            updatedCache.set(tournamentId, updatedDetails);
+            console.log(`토너먼트 ${tournamentId}의 매장별 현황 캐시 업데이트 완료`);
+          } else {
+            console.warn(`토너먼트 ${tournamentId} 캐시 정보를 찾을 수 없어 부분 업데이트 실패`);
+            // 캐시가 없는 경우, 전체를 다시 불러오도록 유도할 수도 있으나, 일단은 경고만
+            // 이 경우 사용자는 행을 다시 확장해야 할 수 있음
+          }
+          return updatedCache;
+        });
+
+      } catch (err) {
+        console.error('매장별 현황 업데이트 중 오류:', err);
+        setError('매장별 현황을 업데이트하는 중 오류가 발생했습니다. 페이지를 새로고침하거나 다시 시도해주세요.');
+        // 성공 메시지가 이미 설정되었을 수 있으므로, 오류 발생 시 성공 메시지 초기화
+        setSuccess(null);
+      }
 
       setShowSeatEditModal(false);
       setSeatEditModalLoading(false);
 
       setTimeout(() => {
         setSuccess(null);
+        // setError(null); // 위에서 에러 발생 시 success를 null로 하므로, 여기서 error도 같이 null 처리해줄 수 있음
       }, 3000);
 
     } catch (err) {
@@ -736,6 +775,14 @@ const TournamentManagement = () => {
       return filteredResult;
     };
 
+    // 매장에 할당된 총 SEAT권 수량 계산
+    const totalAllocatedToStores = useMemo(() => {
+      if (!tournamentDetails?.storeDetails) {
+        return 0;
+      }
+      return tournamentDetails.storeDetails.reduce((sum, store) => sum + (store.ticketQuantity || 0), 0);
+    }, [tournamentDetails?.storeDetails]);
+
     if (isLoadingDetails) {
       return (
         <div className="p-4 text-center">
@@ -939,19 +986,23 @@ const TournamentManagement = () => {
           <div className="col-12">
             <div className="text-white p-3 rounded border border-light" style={{ backgroundColor: '#721c24' }}>
               <div className="row text-center">
-                <div className="col-md-3 border-end border-light">
+                <div className="col border-end border-light">
                   <h6 className="text-white">총 SEAT권</h6>
                   <h4 className="text-white">{tournamentDetails.totalTicketQuantity || 0}</h4>
                 </div>
-                <div className="col-md-3 border-end border-light">
+                <div className="col border-end border-light">
+                  <h6 className="text-white">매장 할당 SEAT권</h6>
+                  <h4 className="text-white">{totalAllocatedToStores}</h4>
+                </div>
+                <div className="col border-end border-light">
                   <h6 className="text-white">배포된 SEAT권</h6>
                   <h4 className="text-white">{tournamentDetails.distributedTicketQuantity || 0}</h4>
                 </div>
-                <div className="col-md-3 border-end border-light">
+                <div className="col border-end border-light">
                   <h6 className="text-white">사용된 SEAT권</h6>
                   <h4 className="text-white">{tournamentDetails.usedTicketQuantity || 0}</h4>
                 </div>
-                <div className="col-md-3">
+                <div className="col">
                   <h6 className="text-white">참가 선수 수</h6>
                   <h4 className="text-white">{tournamentDetails.playerCount || 0}명</h4>
                 </div>
@@ -1325,115 +1376,55 @@ const TournamentManagement = () => {
               </Card>
 
               <Form onSubmit={handleSeatQuantityEditSubmit}>
-                <Form.Group className="mb-3">
-                  <Form.Label className="fw-bold">작업 선택 <span className="text-danger">*</span></Form.Label>
-                  <Row>
-                    <Col md={6}>
-                      <Form.Check
-                        type="radio"
-                        name="action"
-                        id="edit-action-add"
-                        label="SEAT권 추가"
-                        value="add"
-                        checked={seatEditFormData.action === 'add'}
-                        onChange={handleSeatEditFormChange}
-                        className="fs-5"
-                      />
-                    </Col>
-                    <Col md={6}>
-                      <Form.Check
-                        type="radio"
-                        name="action"
-                        id="edit-action-remove"
-                        label="SEAT권 삭제"
-                        value="remove"
-                        checked={seatEditFormData.action === 'remove'}
-                        onChange={handleSeatEditFormChange}
-                        className="fs-5"
-                      />
-                    </Col>
-                  </Row>
-                </Form.Group>
-
                 <Row className="align-items-end">
                   <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label className="fw-bold">
-                        {seatEditFormData.action === 'add' ? '추가할' : '삭제할'} 수량 <span className="text-danger">*</span>
+                        변경할 수량 <span className="text-danger">*</span>
                       </Form.Label>
                       <div className="input-group">
                         <Form.Control
                           type="number"
-                          placeholder="수량 입력"
+                          placeholder="새로운 총 수량 입력"
                           name="quantity"
                           value={seatEditFormData.quantity}
                           onChange={handleSeatEditFormChange}
                           required
-                          min="1"
-                          max={seatEditFormData.action === 'remove' ? selectedStoreForSeatEdit.currentQuantity : "10000"} // 최대 추가량은 임의로 설정
+                          min="0" // 총 수량이므로 0매도 가능하도록 변경
+                          max={"10000"} 
                           className="form-control-lg"
                         />
                         <span className="input-group-text fs-5">매</span>
                       </div>
-                      {seatEditFormData.action === 'remove' && selectedStoreForSeatEdit.currentQuantity > 0 && (
-                        <Form.Text className="text-muted">
-                          최대 {selectedStoreForSeatEdit.currentQuantity}매까지 삭제 가능합니다.
-                        </Form.Text>
-                      )}
-                       {seatEditFormData.action === 'remove' && selectedStoreForSeatEdit.currentQuantity === 0 && (
-                        <Form.Text className="text-danger">
-                          삭제할 SEAT권이 없습니다.
-                        </Form.Text>
-                      )}
                     </Form.Group>
                   </Col>
                   
                   <Col md={6}>
-                    {seatEditFormData.quantity && parseInt(seatEditFormData.quantity) > 0 && selectedStoreForSeatEdit && (
+                    {seatEditFormData.quantity !== '' && !isNaN(parseInt(seatEditFormData.quantity)) && selectedStoreForSeatEdit && (
                       <div className="mb-3 p-3 border rounded bg-light">
-                        <h6 className="fw-bold text-center mb-2">변경 후 예상 수량</h6>
+                        <h6 className="fw-bold text-center mb-2">변경 후 예상 정보</h6>
                         <div className="d-flex justify-content-between align-items-center mb-1">
-                          <span className="text-muted">현재:</span>
+                          <span className="text-muted">변경 전 총 수량:</span>
                           <strong className="fs-5">{selectedStoreForSeatEdit.currentQuantity}매</strong>
                         </div>
-                        <div className={`d-flex justify-content-between align-items-center mb-1 ${seatEditFormData.action === 'add' ? 'text-success' : 'text-danger'}`}>
-                          <span>{seatEditFormData.action === 'add' ? '변경:' : '변경:'}</span>
+                        <div className={`d-flex justify-content-between align-items-center mb-1 ${parseInt(seatEditFormData.quantity) >= selectedStoreForSeatEdit.currentQuantity ? 'text-success' : 'text-danger'}`}>
+                          <span>수량 변화:</span>
                           <strong className="fs-5">
-                            {seatEditFormData.action === 'add' ? '+' : '-'}{seatEditFormData.quantity}매
+                            {parseInt(seatEditFormData.quantity) - selectedStoreForSeatEdit.currentQuantity >= 0 ? '+' : ''}
+                            {parseInt(seatEditFormData.quantity) - selectedStoreForSeatEdit.currentQuantity}매
                           </strong>
                         </div>
                         <hr className="my-1" />
                         <div className="d-flex justify-content-between align-items-center text-primary">
-                          <span className="fw-bold">예상 최종 수량:</span>
+                          <span className="fw-bold">변경 후 총 수량:</span>
                           <strong className="fs-4 fw-bold">
-                            {seatEditFormData.action === 'add' 
-                              ? selectedStoreForSeatEdit.currentQuantity + parseInt(seatEditFormData.quantity)
-                              : selectedStoreForSeatEdit.currentQuantity - parseInt(seatEditFormData.quantity)
-                            }매
+                            {parseInt(seatEditFormData.quantity)}매
                           </strong>
                         </div>
                       </div>
                     )}
                   </Col>
                 </Row>
-
-                <Form.Group className="mb-4">
-                  <Form.Label className="fw-bold">사유 <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={3}
-                    placeholder="SEAT권 수량 변경 사유를 입력해주세요 (예: 이벤트용 추가 지급, 운영자 착오로 인한 수정 등)"
-                    name="reason"
-                    value={seatEditFormData.reason}
-                    onChange={handleSeatEditFormChange}
-                    required
-                    maxLength={500}
-                    className="form-control-lg"
-                  />
-                  <Form.Text className="text-muted">
-                    최대 500자까지 입력 가능합니다. (현재: {seatEditFormData.reason.length}/500자)
-                  </Form.Text>
-                </Form.Group>
 
                 <hr className="my-4"/>
 
@@ -1458,9 +1449,9 @@ const TournamentManagement = () => {
                       취소
                     </Button>
                     <Button
-                      variant={seatEditFormData.action === 'add' ? 'success' : 'danger'}
+                      variant='success'
                       type="submit"
-                      disabled={seatEditModalLoading || !seatEditFormData.quantity || parseInt(seatEditFormData.quantity) <= 0 || !seatEditFormData.reason.trim() || (seatEditFormData.action === 'remove' && parseInt(seatEditFormData.quantity) > selectedStoreForSeatEdit.currentQuantity)}
+                      disabled={seatEditModalLoading || seatEditFormData.quantity === '' || isNaN(parseInt(seatEditFormData.quantity)) || parseInt(seatEditFormData.quantity) < 0}
                       size="lg"
                     >
                       {seatEditModalLoading ? (
@@ -1470,8 +1461,8 @@ const TournamentManagement = () => {
                         </>
                       ) : (
                         <>
-                          <i className={`fas ${seatEditFormData.action === 'add' ? 'fa-plus-circle' : 'fa-minus-circle'} me-1`}></i>
-                          SEAT권 {seatEditFormData.action === 'add' ? '추가 적용' : '삭제 적용'}
+                          <i className={`fas fa-edit me-1`}></i> 
+                          SEAT권 수량 변경
                         </>
                       )}
                     </Button>
