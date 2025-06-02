@@ -153,7 +153,7 @@ const TournamentDetail = () => {
                   </Col>
                   
                   <Col xs={6} className="mb-3">
-                    <h6><i className="fas fa-users me-2"></i>총 좌석</h6>
+                    <h6><i className="fas fa-users me-2"></i>총 SEAT</h6>
                     <p className="text-muted mb-0">{tournament.ticket_quantity}석</p>
                   </Col>
                   
@@ -167,19 +167,19 @@ const TournamentDetail = () => {
               </Card.Body>
             </Card>
 
-            {/* 좌석 배분 정보 카드 */}
+            {/* SEAT 배분 정보 카드 */}
             <Card className="mb-3">
               <Card.Header>
-                <h6 className="mb-0"><i className="fas fa-ticket-alt me-2"></i>좌석 배분 정보</h6>
+                <h6 className="mb-0"><i className="fas fa-ticket-alt me-2"></i>SEAT 배분 정보</h6>
               </Card.Header>
               <Card.Body>
                 <Row>
                   <Col xs={6} className="mb-2">
-                    <small className="text-muted">배분된 좌석</small>
+                    <small className="text-muted">배분된 SEAT</small>
                     <h5 className="text-primary">{tournament.allocated_quantity || 0}석</h5>
                   </Col>
                   <Col xs={6} className="mb-2">
-                    <small className="text-muted">남은 좌석</small>
+                    <small className="text-muted">남은 SEAT</small>
                     <h5 className="text-success">{tournament.remaining_quantity || 0}석</h5>
                   </Col>
                   {tournament.distribution_created_at && (
