@@ -248,7 +248,7 @@ const TournamentsList = () => {
 
                   <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>
                     <i className="fas fa-clock" style={{ marginRight: '8px' }}></i>
-                    좌석권 배분일: {formatDate(tournament.distribution_created_at)}
+                    SEAT권 배분일: {formatDate(tournament.distribution_created_at)}
                   </div>
 
                   <Button

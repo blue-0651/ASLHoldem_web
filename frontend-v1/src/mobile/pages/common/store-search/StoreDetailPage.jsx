@@ -282,7 +282,7 @@ const StoreDetailPage = () => {
                               <Badge bg="primary" className="me-2">예정됨</Badge>
                             )}
                             {tournament.seats_available > 0 ? (
-                              <Badge bg="info">좌석 가능: {tournament.seats_available}석</Badge>
+                              <Badge bg="info">SEAT 가능: {tournament.seats_available}석</Badge>
                             ) : (
                               <Badge bg="danger">매진</Badge>
                             )}
