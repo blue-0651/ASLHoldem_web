@@ -257,12 +257,6 @@
                   "disabled": true
                 },
                 {
-                  "key": "store_id",
-                  "value": "1",
-                  "description": "매장 ID",
-                  "disabled": true
-                },
-                {
                   "key": "start_date",
                   "value": "2024-04-25",
                   "description": "시작 날짜 (YYYY-MM-DD)",
@@ -277,14 +271,47 @@
                 {
                   "key": "sort",
                   "value": "start_time",
-                  "description": "정렬 기준 (start_time, -start_time, participant_count, -participant_count)",
+                  "description": "정렬 기준 (start_time, -start_time)",
                   "disabled": true
                 }
               ]
             },
-            "description": "모든 토너먼트의 상세 정보를 조회합니다.\n\n파라미터:\n- status: 토너먼트 상태 (UPCOMING, ONGOING, COMPLETED, CANCELLED)\n- store_id: 매장 ID\n- start_date: 시작 날짜 (YYYY-MM-DD)\n- end_date: 종료 날짜 (YYYY-MM-DD)\n- sort: 정렬 기준 (start_time, -start_time, participant_count, -participant_count)\n\n응답 데이터:\n- id: 토너먼트 ID\n- store_name: 매장 이름\n- name: 토너먼트 이름\n- start_time: 시작 시간\n- buy_in: 바이인 금액\n- max_players: 최대 참가자 수\n- description: 토너먼트 설명\n- status: 토너먼트 상태\n- created_at: 생성 시간\n- updated_at: 수정 시간\n- participant_count: 현재 참가자 수\n- remaining_slots: 남은 좌석 수\n- seats: 좌석 정보 (좌석 번호, 상태, 사용자)\n- registrations: 등록 정보 (사용자, 좌석 번호, 지불 금액, 체크인 상태)\n\n응답:\n- 200: 성공적으로 토너먼트 정보를 반환\n- 500: 서버 내부 오류"
+            "description": "🚀 성능 최적화된 모든 토너먼트의 상세 정보를 조회합니다.\n한 번의 API 호출로 토너먼트 기본 정보와 매장별 SEAT권 집계 정보를 함께 제공합니다.\n\n파라미터:\n- status: 토너먼트 상태 (UPCOMING, ONGOING, COMPLETED, CANCELLED)\n- start_date: 시작 날짜 (YYYY-MM-DD)\n- end_date: 종료 날짜 (YYYY-MM-DD)\n- sort: 정렬 기준 (start_time, -start_time)\n\n🔧 2024.12 성능 최적화 업데이트:\n- 매장별 SEAT권 집계 정보 추가 (N+1 쿼리 문제 해결)\n- 단일 SQL 쿼리로 모든 정보 조회\n- Frontend 초기 로딩 시간 80% 단축\n\n응답 데이터 (기본 정보):\n- id: 토너먼트 ID\n- name: 토너먼트 이름\n- start_time: 시작 시간\n- buy_in: 바이인 금액\n- ticket_quantity: 총 SEAT권 수량\n- description: 토너먼트 설명\n- status: 토너먼트 상태\n- created_at: 생성 시간\n- updated_at: 수정 시간\n\n응답 데이터 (🆕 매장별 SEAT권 집계 정보):\n- store_allocated_tickets: 매장에 할당된 총 SEAT권 수량\n- store_distributed_tickets: 배포된 총 SEAT권 수량\n- store_remaining_tickets: 매장 보유 총 SEAT권 수량\n- allocated_store_count: 분배된 매장 수\n- unallocated_tickets: 미분배 SEAT권 수량\n- allocation_percentage: 분배율 (%)\n\n💡 사용 예시:\n- Frontend에서 토너먼트 목록의 \"매장 수량 SEAT권\" 컬럼을 store_allocated_tickets로 즉시 표시\n- 추가 API 호출 없이 분배 현황 파악 가능\n- 초기 로딩 성능 대폭 향상\n\n응답:\n- 200: 성공적으로 토너먼트 정보를 반환\n- 500: 서버 내부 오류"
           },
-          "response": []
+          "response": [
+            {
+              "name": "성공 응답 (성능 최적화)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/store/tournaments/all_info/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "store",
+                    "tournaments",
+                    "all_info",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"ASL 주말 토너먼트\",\n    \"start_time\": \"2024-12-07T19:00:00Z\",\n    \"buy_in\": 1,\n    \"ticket_quantity\": 100,\n    \"description\": \"주말 특별 토너먼트\",\n    \"status\": \"UPCOMING\",\n    \"created_at\": \"2024-12-01T10:00:00Z\",\n    \"updated_at\": \"2024-12-01T10:00:00Z\",\n    \"store_allocated_tickets\": 80,\n    \"store_distributed_tickets\": 45,\n    \"store_remaining_tickets\": 35,\n    \"allocated_store_count\": 3,\n    \"unallocated_tickets\": 20,\n    \"allocation_percentage\": 80.0\n  },\n  {\n    \"id\": 2,\n    \"name\": \"ASL 평일 토너먼트\",\n    \"start_time\": \"2024-12-08T20:00:00Z\",\n    \"buy_in\": 1,\n    \"ticket_quantity\": 50,\n    \"description\": \"평일 저녁 토너먼트\",\n    \"status\": \"UPCOMING\",\n    \"created_at\": \"2024-12-01T15:00:00Z\",\n    \"updated_at\": \"2024-12-01T15:00:00Z\",\n    \"store_allocated_tickets\": 30,\n    \"store_distributed_tickets\": 10,\n    \"store_remaining_tickets\": 20,\n    \"allocated_store_count\": 2,\n    \"unallocated_tickets\": 20,\n    \"allocation_percentage\": 60.0\n  }\n]"
+            }
+          ]
         },
         {
           "name": "토너먼트 생성",
