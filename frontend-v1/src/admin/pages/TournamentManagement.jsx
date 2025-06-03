@@ -17,6 +17,10 @@ const TournamentManagement = () => {
   const [tournamentDetailsCache, setTournamentDetailsCache] = useState(new Map());
   const [loadingDetails, setLoadingDetails] = useState(new Set());
 
+  // 매장별 사용자 데이터 캐시 및 로딩 상태 관리
+  const [storeUsersCache, setStoreUsersCache] = useState(new Map()); // 매장별 사용자 캐시
+  const [loadingStoreUsers, setLoadingStoreUsers] = useState(new Set()); // 로딩 중인 매장
+
   // 선택된 매장 상태 추가
   const [selectedStoreByTournament, setSelectedStoreByTournament] = useState(new Map());
 
@@ -227,6 +231,32 @@ const TournamentManagement = () => {
       // 캐시에 저장
       setTournamentDetailsCache(prev => new Map([...prev, [tournamentId, combinedData]]));
 
+      // 🚀 백그라운드 프리로딩: SEAT권을 보유한 매장들의 사용자 데이터를 미리 로딩
+      console.log('🔄 백그라운드 프리로딩 시작: SEAT권 보유 매장들의 사용자 데이터');
+      const storesWithTickets = combinedStoreData.filter(store => store.ticketQuantity > 0);
+      
+      if (storesWithTickets.length > 0) {
+        console.log(`📋 프리로딩 대상 매장: ${storesWithTickets.length}개`);
+        
+        // 프리로딩은 백그라운드에서 병렬로 실행 (UI 블록킹 방지)
+        setTimeout(() => {
+          Promise.all(
+            storesWithTickets.slice(0, 3).map(store => { // 상위 3개 매장만 프리로딩 (성능 고려)
+              const cacheKey = `${tournamentId}-${store.storeId}`;
+              if (!storeUsersCache.has(cacheKey) && !loadingStoreUsers.has(cacheKey)) {
+                console.log(`🔄 백그라운드 프리로딩: ${store.storeName}`);
+                return fetchStoreUsers(tournamentId, store.storeId, store.storeName);
+              }
+              return Promise.resolve();
+            })
+          ).then(() => {
+            console.log('✅ 백그라운드 프리로딩 완료');
+          }).catch(err => {
+            console.warn('⚠️ 백그라운드 프리로딩 중 일부 오류 발생:', err);
+          });
+        }, 100); // 100ms 후 실행 (메인 로딩 완료 후)
+      }
+
     } catch (err) {
       console.error('토너먼트 상세 정보 API 오류:', err);
       setError(`토너먼트 상세 정보를 불러오는 중 오류가 발생했습니다.`);
@@ -239,67 +269,94 @@ const TournamentManagement = () => {
     }
   };
 
-  // 매장별 사용자 조회 함수 수정
+  // 매장별 사용자 조회 함수 수정 (성능 최적화)
   const fetchStoreUsers = async (tournamentId, storeId, storeName) => {
-    try {
-      console.log(`매장별 사용자 조회: ${storeName} (ID: ${storeId})`);
-
-      // 백엔드에서 매장별 필터링된 좌석권 조회
-      const response = await seatTicketAPI.getUsersByStore(tournamentId, storeId);
-
-      // API 응답 구조 처리
-      let ticketsData = [];
-      if (Array.isArray(response.data)) {
-        ticketsData = response.data;
-      } else if (response.data && Array.isArray(response.data.results)) {
-        // 페이지네이션된 응답인 경우
-        ticketsData = response.data.results;
-      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        // 중첩된 data 구조인 경우
-        ticketsData = response.data.data;
-      } else {
-        console.warn('예상하지 못한 API 응답 구조:', response.data);
-        ticketsData = [];
-      }
-
-      // 사용자별로 그룹화하여 중복 제거 (백엔드에서 이미 필터링됨)
-      const userMap = new Map();
-      ticketsData.forEach(ticket => {
-        const userId = ticket.user;
-        const userPhone = ticket.user_name || '미지정';
-
-        if (!userMap.has(userId)) {
-          userMap.set(userId, {
-            playerName: userPhone,
-            hasTicket: 'Y',
-            storeName: storeName,
-            ticketCount: 0
+    // 캐시 키 생성
+    const cacheKey = `${tournamentId}-${storeId}`;
+    
+    // 1. 즉시 피드백: 선택된 매장 상태를 먼저 업데이트 (UI 반응성 개선)
+    setSelectedStoreByTournament(prev => new Map([...prev, [tournamentId, { storeId, storeName }]]));
+    
+    // 2. 캐시 확인: 이미 불러온 데이터가 있으면 즉시 반환
+    if (storeUsersCache.has(cacheKey)) {
+      console.log(`🎯 캐시에서 사용자 데이터 즉시 반환: ${storeName} (캐시키: ${cacheKey})`);
+      const cachedUsers = storeUsersCache.get(cacheKey);
+      
+      // 캐시된 데이터로 즉시 업데이트
+      setTournamentDetailsCache(prev => {
+        const newCache = new Map(prev);
+        const tournamentDetails = newCache.get(tournamentId);
+        if (tournamentDetails) {
+          newCache.set(tournamentId, {
+            ...tournamentDetails,
+            playerDetails: cachedUsers
           });
         }
-
-        // 활성 좌석권 수량 증가
-        if (ticket.status === 'ACTIVE') {
-          userMap.get(userId).ticketCount += 1;
-        }
+        return newCache;
       });
+      return;
+    }
+    
+    // 3. 중복 요청 방지: 이미 로딩 중인 매장은 스킵
+    if (loadingStoreUsers.has(cacheKey)) {
+      console.log(`⏳ 이미 로딩 중인 매장: ${storeName} (캐시키: ${cacheKey})`);
+      return;
+    }
 
-      const storeUsers = Array.from(userMap.values());
+    try {
+      // 4. 로딩 상태 시작
+      setLoadingStoreUsers(prev => new Set([...prev, cacheKey]));
+      
+      console.log(`🔄 매장별 전체 사용자 조회 시작: ${storeName} (ID: ${storeId}), 토너먼트: ${tournamentId}`);
 
-      // 매장에 사용자가 없는 경우 안내 메시지
-      if (storeUsers.length === 0) {
-        console.log(`${storeName} 매장에 등록된 사용자가 없습니다.`);
-        // 빈 배열이지만 안내 메시지를 위한 더미 데이터 추가
+      // 5. API 호출 시작
+      const response = await seatTicketAPI.getStoreUsers(storeId, tournamentId);
+
+      console.log('📊 매장별 전체 사용자 조회 응답:', response.data);
+
+      // API 응답에서 사용자 데이터 추출
+      const usersData = response.data?.users || [];
+      
+      console.log(`📋 ${storeName} 매장의 전체 사용자 데이터:`, usersData);
+
+      let storeUsers = [];
+
+      if (usersData.length === 0) {
+        console.log(`❌ ${storeName} 매장에 등록된 사용자가 없습니다.`);
         storeUsers.push({
+          userId: null,
           playerName: '등록된 선수가 없습니다',
-          hasTicket: 'N',
+          playerPhone: '',
           storeName: storeName,
-          ticketCount: 0
+          activeTickets: 0,
+          usedTickets: 0,
+          totalTickets: 0,
+          hasTicket: 'N'
         });
       } else {
-        console.log(`${storeName} 매장 사용자 ${storeUsers.length}명 조회 완료`);
+        // API에서 이미 정렬된 사용자 데이터를 그대로 사용
+        // (해당 토너먼트 좌석권 보유자가 상단에 배치됨)
+        storeUsers = usersData.map(user => ({
+          userId: user.userId,
+          playerName: user.playerName,
+          playerPhone: user.playerPhone,
+          storeName: user.storeName,
+          activeTickets: user.activeTickets,
+          usedTickets: user.usedTickets,
+          totalTickets: user.totalTickets,
+          hasTicket: user.hasTicket
+        }));
+        
+        console.log(`✅ ${storeName} 매장 전체 사용자 ${storeUsers.length}명 조회 완료`);
+        console.log('- 해당 토너먼트 좌석권 보유자:', storeUsers.filter(u => u.hasTicket === 'Y').length, '명');
+        console.log('- 해당 토너먼트 좌석권 미보유자:', storeUsers.filter(u => u.hasTicket === 'N').length, '명');
       }
 
-      // 토너먼트 상세 정보 업데이트
+      // 6. 캐시에 저장 (향후 빠른 접근을 위해)
+      setStoreUsersCache(prev => new Map([...prev, [cacheKey, storeUsers]]));
+      console.log(`💾 사용자 데이터 캐시 저장: ${cacheKey}`);
+
+      // 7. 토너먼트 상세 정보 업데이트
       setTournamentDetailsCache(prev => {
         const newCache = new Map(prev);
         const tournamentDetails = newCache.get(tournamentId);
@@ -312,17 +369,68 @@ const TournamentManagement = () => {
         return newCache;
       });
 
-      // 선택된 매장 정보 저장
-      setSelectedStoreByTournament(prev => new Map([...prev, [tournamentId, { storeId, storeName }]]));
-
     } catch (err) {
-      console.error('매장별 사용자 조회 오류:', err);
+      console.error('❌ 매장별 전체 사용자 조회 오류:', err);
       setError(`매장별 사용자 정보를 불러오는 중 오류가 발생했습니다: ${err.message}`);
+      
+      // 오류 발생 시 빈 목록 표시
+      const errorUsers = [{
+        userId: null,
+        playerName: '사용자 정보를 불러올 수 없습니다',
+        playerPhone: '',
+        storeName: storeName,
+        activeTickets: 0,
+        usedTickets: 0,
+        totalTickets: 0,
+        hasTicket: 'N'
+      }];
+      
+      // 오류 상태도 캐시에 저장 (무한 재시도 방지)
+      setStoreUsersCache(prev => new Map([...prev, [cacheKey, errorUsers]]));
+      
+      setTournamentDetailsCache(prev => {
+        const newCache = new Map(prev);
+        const tournamentDetails = newCache.get(tournamentId);
+        if (tournamentDetails) {
+          newCache.set(tournamentId, {
+            ...tournamentDetails,
+            playerDetails: errorUsers
+          });
+        }
+        return newCache;
+      });
+    } finally {
+      // 8. 로딩 상태 종료
+      setLoadingStoreUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(cacheKey);
+        return newSet;
+      });
     }
   };
 
-  // 매장명 클릭 핸들러
-  const handleStoreClick = (tournamentId, storeId, storeName) => {
+  // 캐시 초기화 함수 (필요 시 데이터 새로고침)
+  const clearStoreUsersCache = () => {
+    setStoreUsersCache(new Map());
+    console.log('🧹 매장별 사용자 캐시 초기화 완료');
+  };
+
+  // 특정 매장의 캐시만 초기화
+  const clearStoreUsersCacheByStore = (tournamentId, storeId) => {
+    const cacheKey = `${tournamentId}-${storeId}`;
+    setStoreUsersCache(prev => {
+      const newCache = new Map(prev);
+      newCache.delete(cacheKey);
+      return newCache;
+    });
+    console.log(`🧹 특정 매장 캐시 초기화: ${cacheKey}`);
+  };
+
+  // 매장명 클릭 핸들러 (강제 새로고침 옵션 추가)
+  const handleStoreClick = (tournamentId, storeId, storeName, forceRefresh = false) => {
+    if (forceRefresh) {
+      clearStoreUsersCacheByStore(tournamentId, storeId);
+    }
     fetchStoreUsers(tournamentId, storeId, storeName);
   };
 
@@ -953,6 +1061,16 @@ const TournamentManagement = () => {
                   </small>
                 </div>
               </div>
+              
+              {/* 매장별 현황 안내 문구 */}
+              <div className="text-end mb-1">
+                <small style={{ color: '#e3f2fd', fontSize: '12px' }}>
+                  💡 매장명을 클릭하면 해당 매장 선수를 조회합니다 
+                  <span className="ms-1" title="한 번 조회한 데이터는 캐시되어 빠르게 로딩됩니다">
+                    (🚀 빠른 로딩)
+                  </span>
+                </small>
+              </div>
               <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
                 <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
                   <tr>
@@ -968,6 +1086,8 @@ const TournamentManagement = () => {
                     filteredStores.map((store, index) => {
                       const selectedStore = selectedStoreByTournament.get(data.id);
                       const isSelected = selectedStore && selectedStore.storeId === store.storeId;
+                      const cacheKey = `${data.id}-${store.storeId}`;
+                      const isLoadingUsers = loadingStoreUsers.has(cacheKey);
                       
                       const hasSeatTickets = (store.ticketQuantity || 0) > 0;
                       const rowStyle = {
@@ -985,12 +1105,28 @@ const TournamentManagement = () => {
                             style={{
                               fontWeight: isSelected ? 'bold' : 'normal',
                               color: isSelected ? '#1976d2' : (hasSeatTickets ? 'inherit' : '#856404'),
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center'
                             }}
                             onClick={() => handleStoreClick(data.id, store.storeId, store.storeName)}
                           >
-                            {hasSeatTickets ? '🎫' : '❌'} {store.storeName}
-                            {isSelected && <span className="ms-2">👈 선택됨</span>}
+                            {/* 로딩 상태 표시 */}
+                            {isLoadingUsers && (
+                              <Spinner 
+                                animation="border" 
+                                size="sm" 
+                                variant="primary" 
+                                className="me-2"
+                                style={{ width: '1rem', height: '1rem' }}
+                              />
+                            )}
+                            
+                            {/* 매장 상태 아이콘 */}
+                            {!isLoadingUsers && (hasSeatTickets ? '🎫' : '❌')} {store.storeName}
+                            
+                            {/* 선택 상태 표시 */}
+                            {isSelected && !isLoadingUsers && <span className="ms-2">▶️</span>}
                           </td>
                           <td className="text-center border border-secondary">{store.distributedQuantity || 0}</td>
                           <td className="text-center border border-secondary">{store.remainingQuantity || 0}</td>
@@ -1054,17 +1190,29 @@ const TournamentManagement = () => {
           <div className="col-md-6">
             <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
               <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>
-                선수별 현황
                 {(() => {
                   const selectedStore = selectedStoreByTournament.get(data.id);
+                  const cacheKey = selectedStore ? `${data.id}-${selectedStore.storeId}` : null;
+                  const isLoadingUsers = cacheKey && loadingStoreUsers.has(cacheKey);
+                  
                   return selectedStore ? (
-                    <small className="d-block mt-1" style={{ fontSize: '14px', fontWeight: 'normal' }}>
-                      📍 {selectedStore.storeName} 매장 선수 목록
-                    </small>
+                    <>
+                      {isLoadingUsers && (
+                        <Spinner 
+                          animation="border" 
+                          size="sm" 
+                          variant="light" 
+                          className="me-2"
+                          style={{ width: '1.2rem', height: '1.2rem' }}
+                        />
+                      )}
+                      ▶️ {selectedStore.storeName} 매장선수 목록
+                      {isLoadingUsers && <span className="ms-2 text-warning">로딩 중...</span>}
+                    </>
                   ) : (
-                    <small className="d-block mt-1" style={{ fontSize: '14px', fontWeight: 'normal' }}>
-                      💡 매장명을 클릭하면 해당 매장 선수를 조회합니다
-                    </small>
+                    <>
+                      ▶️ 매장선수 목록
+                    </>
                   );
                 })()}
               </h4>
@@ -1073,25 +1221,48 @@ const TournamentManagement = () => {
                   <tr>
                     <th className="border border-dark text-white">선수</th>
                     <th className="border border-dark text-white">SEAT권 보유 수량</th>
+                    <th className="border border-dark text-white">SEAT권 사용 수량</th>
                     <th className="border border-dark text-white">획득매장</th>
-                    <th className="border border-dark text-white">SEAT권 사용 정보</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tournamentDetails.playerDetails?.length > 0 ? (
-                    tournamentDetails.playerDetails.map((player, index) => (
-                      <tr key={index}>
-                        <td className="border border-secondary">{player.playerName}</td>
-                        <td className="text-center border border-secondary">{player.ticketCount || 0}</td>
-                        <td className="border border-secondary">{player.storeName}</td>
-                        <td className="text-center border border-secondary">0</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" className="text-center border border-secondary">선수 데이터가 없습니다.</td>
-                    </tr>
-                  )}
+                  {(() => {
+                    const selectedStore = selectedStoreByTournament.get(data.id);
+                    const cacheKey = selectedStore ? `${data.id}-${selectedStore.storeId}` : null;
+                    const isLoadingUsers = cacheKey && loadingStoreUsers.has(cacheKey);
+                    
+                    if (isLoadingUsers) {
+                      return (
+                        <tr>
+                          <td colSpan="4" className="text-center border border-secondary p-4">
+                            <div className="d-flex align-items-center justify-content-center">
+                              <Spinner animation="border" variant="primary" className="me-2" />
+                              <span>선수 목록을 불러오는 중입니다...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                    
+                    if (tournamentDetails.playerDetails?.length > 0) {
+                      return tournamentDetails.playerDetails.map((player, index) => (
+                        <tr key={index}>
+                          <td className="border border-secondary">{player.playerName}</td>
+                          <td className="text-center border border-secondary">{player.activeTickets || 0}</td>
+                          <td className="text-center border border-secondary">{player.usedTickets || 0}</td>
+                          <td className="border border-secondary">{player.storeName}</td>
+                        </tr>
+                      ));
+                    } else {
+                      return (
+                        <tr>
+                          <td colSpan="4" className="text-center border border-secondary">
+                            {selectedStore ? '선수 데이터가 없습니다.' : '매장을 선택해주세요.'}
+                          </td>
+                        </tr>
+                      );
+                    }
+                  })()}
                 </tbody>
               </Table>
             </div>

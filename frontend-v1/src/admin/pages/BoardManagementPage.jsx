@@ -55,8 +55,8 @@ const BoardManagementPage = () => {
         console.log('📋 API 응답:', response.data);
       }
 
-      // 페이지네이션 구조에서 results 배열 추출
-      const boardsData = response.data?.results || [];
+      // API 응답이 직접 배열로 반환됨 (페이지네이션 구조가 아님)
+      const boardsData = Array.isArray(response.data) ? response.data : [];
       setBoards(boardsData);
       setLoading(false);
 

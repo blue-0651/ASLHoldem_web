@@ -284,4 +284,29 @@ def get_my_read_notices(request):
     ).select_related('notice').order_by('-read_at')
     
     serializer = NoticeReadStatusSerializer(read_statuses, many=True)
-    return Response(serializer.data) 
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_admin_notices_simple(request):
+    """
+    관리자용 공지사항 목록 조회 API (단순 GET 방식, OPTIONS 방지)
+    - 권한 확인은 내부에서 처리
+    - 모든 공지사항 조회 (활성화 여부, 날짜 제한 무관)
+    """
+    # 권한 확인 (관리자가 아니면 빈 목록 반환)
+    if not (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)):
+        return Response([])
+    
+    try:
+        # 모든 공지사항 조회 (is_published=True인 것만)
+        queryset = Notice.objects.select_related('author').filter(is_published=True)
+        queryset = queryset.order_by('-is_pinned', '-priority', '-created_at')
+        
+        # 시리얼라이저 사용하여 데이터 변환
+        serializer = NoticeAdminListSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+        
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from django.db.models import Count, Sum
 from django.db import connection
 import datetime
@@ -364,4 +364,31 @@ class TournamentViewSet(viewsets.ModelViewSet):
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_dashboard_stats_simple(request):
+    """
+    대시보드 통계 조회 API (단순 GET 방식, OPTIONS 방지)
+    - 총 토너먼트 수
+    - 활성 매장 수
+    """
+    try:
+        # 총 토너먼트 수 계산
+        tournament_count = Tournament.objects.count()
+        
+        # 활성 매장 수 계산
+        active_store_count = Store.objects.count()
+        
+        result = {
+            'tournament_count': tournament_count,
+            'active_store_count': active_store_count,
+        }
+        
+        return Response(result)
+    except Exception as e:
+        import traceback
+        print(f"대시보드 통계 API 오류: {str(e)}")
+        print(traceback.format_exc())
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
