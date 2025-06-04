@@ -49,6 +49,7 @@ const SeatManagementPage = () => {
   const [searchPhone, setSearchPhone] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [source, setSource] = useState('ADMIN');
   const [memo, setMemo] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -144,59 +145,66 @@ const SeatManagementPage = () => {
     setRecentTransactions(dummyTransactions);
   };
 
-  // 사용자 검색 함수 (더미)
-  const searchUser = () => {
+  // 사용자 검색 함수
+  const searchUser = async () => {
     if (!searchPhone.trim()) {
       showAlert('warning', '전화번호를 입력해주세요.');
       return;
     }
 
     setSearchLoading(true);
-
-    // 더미 사용자 데이터
-    const dummyUsers = [
-      {
-        id: 1,
-        nickname: '김철수',
-        phone: '010-1234-5678',
-        username: 'chulsoo_kim'
-      },
-      {
-        id: 2,
-        nickname: '이영희',
-        phone: '010-2345-6789',
-        username: 'younghee_lee'
-      },
-      {
-        id: 3,
-        nickname: '박민수',
-        phone: '010-3456-7890',
-        username: 'minsu_park'
-      }
-    ];
-
-    // 전화번호로 사용자 찾기
-    setTimeout(() => {
-      const foundUser = dummyUsers.find(user => 
-        user.phone.includes(searchPhone.replace(/[^0-9]/g, ''))
-      );
-
-      if (foundUser) {
-        setSelectedUser(foundUser);
+    try {
+      const token = localStorage.getItem('asl_holdem_access_token');
+      
+      // 전화번호 형식 정리
+      const cleanPhone = searchPhone.replace(/-/g, '');
+      const formattedPhone = `${cleanPhone.slice(0,3)}-${cleanPhone.slice(3,7)}-${cleanPhone.slice(7)}`;
+      
+      const response = await fetch(`http://localhost:8000/api/v1/accounts/users/get_user/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phone: formattedPhone
+        })
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('사용자 검색 결과:', userData);
         
-        // 회수 탭일 때 사용자의 SEAT권 목록 로드
-        if (activeTab === 'retrieve') {
-          loadUserTickets(foundUser.id);
+        // role이 'USER'인지 확인
+        if (userData && userData.id) {
+          if (userData.role === 'USER') {
+            setSelectedUser(userData);
+            
+            // 회수 탭일 때 사용자의 SEAT권 목록 로드
+            if (activeTab === 'retrieve') {
+              loadUserTickets(userData.id);
+            }
+            
+            showAlert('success', '사용자를 찾았습니다.');
+          } else {
+            setSelectedUser(null);
+            showAlert('warning', '일반 사용자만 SEAT권을 전송/회수할 수 있습니다.');
+          }
+        } else {
+          setSelectedUser(null);
+          showAlert('warning', '해당 전화번호의 사용자를 찾을 수 없습니다.');
         }
-        
-        showAlert('success', '사용자를 찾았습니다.');
       } else {
+        const errorData = await response.json().catch(() => ({}));
         setSelectedUser(null);
-        setUserTickets([]);
-        showAlert('error', '해당 전화번호로 등록된 사용자를 찾을 수 없습니다.');
+        showAlert('warning', errorData.error || '해당 전화번호의 사용자를 찾을 수 없습니다.');
       }
+    } catch (error) {
+      console.error('사용자 검색 실패:', error);
+      showAlert('danger', '사용자 검색 중 오류가 발생했습니다.');
+    } finally {
       setSearchLoading(false);
-    }, 1000);
+    }
   };
 
   // 사용자의 SEAT권 목록 로드 (더미)
@@ -283,6 +291,7 @@ const SeatManagementPage = () => {
       setSelectedUser(null);
       setSearchPhone('');
       setQuantity(1);
+      setSource('ADMIN');
       setMemo('');
       setSelectedTickets([]);
       setUserTickets([]);
@@ -299,6 +308,30 @@ const SeatManagementPage = () => {
   const showAlert = (type, message) => {
     setAlert({ show: true, type, message });
     setTimeout(() => setAlert({ show: false, type: '', message: '' }), 5000);
+  };
+
+  // 전화번호 포맷팅 함수
+  const formatPhoneNumber = (value) => {
+    // 숫자만 추출
+    const phoneNumber = value.replace(/[^\d]/g, '');
+    
+    // 11자리를 초과하지 않도록 제한
+    const limitedPhoneNumber = phoneNumber.slice(0, 11);
+    
+    // 자동 하이픈 삽입
+    if (limitedPhoneNumber.length <= 3) {
+      return limitedPhoneNumber;
+    } else if (limitedPhoneNumber.length <= 7) {
+      return `${limitedPhoneNumber.slice(0, 3)}-${limitedPhoneNumber.slice(3)}`;
+    } else {
+      return `${limitedPhoneNumber.slice(0, 3)}-${limitedPhoneNumber.slice(3, 7)}-${limitedPhoneNumber.slice(7)}`;
+    }
+  };
+
+  // 전화번호 입력 핸들러
+  const handlePhoneChange = (e) => {
+    const formattedPhone = formatPhoneNumber(e.target.value);
+    setSearchPhone(formattedPhone);
   };
 
   // 상태 배지
@@ -370,6 +403,9 @@ const SeatManagementPage = () => {
                       setActiveTab('send');
                       setSelectedUser(null);
                       setSearchPhone('');
+                      setQuantity(1);
+                      setSource('ADMIN');
+                      setMemo('');
                       setUserTickets([]);
                       setSelectedTickets([]);
                     }}
@@ -386,6 +422,9 @@ const SeatManagementPage = () => {
                       setActiveTab('retrieve');
                       setSelectedUser(null);
                       setSearchPhone('');
+                      setQuantity(1);
+                      setSource('ADMIN');
+                      setMemo('');
                       setUserTickets([]);
                       setSelectedTickets([]);
                     }}
@@ -423,6 +462,110 @@ const SeatManagementPage = () => {
                       </Col>
                       <Col md={6}>
                         <FormGroup>
+                          <Label for="source">전송 방법</Label>
+                          <Input
+                            type="select"
+                            id="source"
+                            value={source}
+                            onChange={(e) => setSource(e.target.value)}
+                          >
+                            <option value="ADMIN">관리자 지급</option>
+                            <option value="EVENT">이벤트</option>
+                            <option value="PROMOTION">프로모션</option>
+                            <option value="REWARD">보상</option>
+                          </Input>
+                        </FormGroup>
+                      </Col>
+                    </Row>
+
+                    <Row>
+                      <Col md={12}>
+                        <FormGroup>
+                          <Label for="searchPhone">전화번호 (사용자 검색) *</Label>
+                          <div className="d-flex">
+                            <Input
+                              type="text"
+                              id="searchPhone"
+                              placeholder="전화번호를 입력하세요 (숫자만 입력)"
+                              value={searchPhone}
+                              onChange={handlePhoneChange}
+                              onKeyPress={(e) => e.key === 'Enter' && searchUser()}
+                              inputMode="numeric"
+                              pattern="[0-9-]*"
+                              maxLength="13"
+                            />
+                            <Button
+                              color="primary"
+                              className="ms-2"
+                              onClick={searchUser}
+                              disabled={searchLoading}
+                            >
+                              {searchLoading ? <Spinner size="sm" /> : <Search size={16} />}
+                            </Button>
+                          </div>
+                        </FormGroup>
+                      </Col>
+                    </Row>
+
+                    <Row>
+                      <Col md={12}>
+                        <div className="user-search-result-area p-3 border rounded bg-light" style={{ minHeight: '80px' }}>
+                          {selectedUser ? (
+                            <div className="user-info">
+                              <div className="d-flex align-items-center">
+                                <div className="user-avatar me-3" style={{
+                                  width: '50px',
+                                  height: '50px',
+                                  borderRadius: '50%',
+                                  backgroundColor: '#007bff',
+                                  color: 'white',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: 'bold',
+                                  fontSize: '18px'
+                                }}>
+                                  {((selectedUser.nickname || selectedUser.first_name || selectedUser.phone || 'U')).charAt(0).toUpperCase()}
+                                </div>
+                                <div className="user-details">
+                                  <div className="user-name fw-bold" style={{ fontSize: '16px' }}>
+                                    {selectedUser.nickname || `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim() || '이름 없음'}
+                                  </div>
+                                  <div className="user-phone text-muted" style={{ fontSize: '14px' }}>
+                                    {selectedUser.phone || '전화번호 없음'}
+                                  </div>
+                                  <div className="user-email text-muted" style={{ fontSize: '12px' }}>
+                                    {selectedUser.email || '이메일 없음'}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center text-muted d-flex align-items-center justify-content-center h-100">
+                              <User size={20} className="me-2" />
+                              {searchLoading ? '사용자 검색 중...' : '전화번호를 입력하고 검색 버튼을 클릭하세요.'}
+                            </div>
+                          )}
+                        </div>
+                      </Col>
+                    </Row>
+
+                    <Row>
+                      <Col md={4}>
+                        <FormGroup>
+                          <Label for="quantity">수량 *</Label>
+                          <Input
+                            type="number"
+                            id="quantity"
+                            min="1"
+                            max="100"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                          />
+                        </FormGroup>
+                      </Col>
+                      <Col md={4}>
+                        <FormGroup>
                           <Label for="store">현재 매장</Label>
                           <Input
                             type="text"
@@ -441,77 +584,7 @@ const SeatManagementPage = () => {
                     </Row>
 
                     <Row>
-                      <Col md={8}>
-                        <FormGroup>
-                          <Label for="searchPhone">사용자 검색 (전화번호) *</Label>
-                          <div className="d-flex">
-                            <Input
-                              type="text"
-                              id="searchPhone"
-                              placeholder="전화번호를 입력하세요 (예: 010-1234-5678)"
-                              value={searchPhone}
-                              onChange={(e) => setSearchPhone(e.target.value)}
-                              onKeyPress={(e) => e.key === 'Enter' && searchUser()}
-                            />
-                            <Button
-                              color="primary"
-                              className="ms-2"
-                              onClick={searchUser}
-                              disabled={searchLoading}
-                            >
-                              {searchLoading ? <Spinner size="sm" /> : <Search size={16} />}
-                            </Button>
-                          </div>
-                        </FormGroup>
-                      </Col>
-                      <Col md={4}>
-                        {selectedUser && (
-                          <div className="user-search-result mt-4">
-                            <div className="user-info p-3 border rounded bg-light">
-                              <div className="d-flex align-items-center">
-                                <div className="user-avatar me-3" style={{
-                                  width: '40px',
-                                  height: '40px',
-                                  borderRadius: '50%',
-                                  backgroundColor: '#007bff',
-                                  color: 'white',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontWeight: 'bold'
-                                }}>
-                                  {((selectedUser.nickname || selectedUser.username || selectedUser.phone || 'U')).charAt(0).toUpperCase()}
-                                </div>
-                                <div className="user-details">
-                                  <div className="user-name fw-bold">
-                                    {selectedUser.nickname || selectedUser.username || '이름 없음'}
-                                  </div>
-                                  <div className="user-phone text-muted">
-                                    {selectedUser.phone || '전화번호 없음'}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </Col>
-                    </Row>
-
-                    <Row>
-                      <Col md={4}>
-                        <FormGroup>
-                          <Label for="quantity">전송할 수량 *</Label>
-                          <Input
-                            type="number"
-                            id="quantity"
-                            min="1"
-                            max="100"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
-                          />
-                        </FormGroup>
-                      </Col>
-                      <Col md={8}>
+                      <Col md={12}>
                         <FormGroup>
                           <Label for="memo">메모</Label>
                           <Input
@@ -553,17 +626,20 @@ const SeatManagementPage = () => {
                 <TabPane tabId="retrieve">
                   <Form>
                     <Row>
-                      <Col md={8}>
+                      <Col md={12}>
                         <FormGroup>
-                          <Label for="searchPhoneRetrieve">사용자 검색 (전화번호) *</Label>
+                          <Label for="searchPhoneRetrieve">전화번호 (사용자 검색) *</Label>
                           <div className="d-flex">
                             <Input
                               type="text"
                               id="searchPhoneRetrieve"
-                              placeholder="전화번호를 입력하세요 (예: 010-1234-5678)"
+                              placeholder="전화번호를 입력하세요 (숫자만 입력)"
                               value={searchPhone}
-                              onChange={(e) => setSearchPhone(e.target.value)}
+                              onChange={handlePhoneChange}
                               onKeyPress={(e) => e.key === 'Enter' && searchUser()}
+                              inputMode="numeric"
+                              pattern="[0-9-]*"
+                              maxLength="13"
                             />
                             <Button
                               color="primary"
@@ -576,36 +652,48 @@ const SeatManagementPage = () => {
                           </div>
                         </FormGroup>
                       </Col>
-                      <Col md={4}>
-                        {selectedUser && (
-                          <div className="user-search-result mt-4">
-                            <div className="user-info p-3 border rounded bg-light">
+                    </Row>
+
+                    <Row>
+                      <Col md={12}>
+                        <div className="user-search-result-area p-3 border rounded bg-light" style={{ minHeight: '80px' }}>
+                          {selectedUser ? (
+                            <div className="user-info">
                               <div className="d-flex align-items-center">
                                 <div className="user-avatar me-3" style={{
-                                  width: '40px',
-                                  height: '40px',
+                                  width: '50px',
+                                  height: '50px',
                                   borderRadius: '50%',
                                   backgroundColor: '#007bff',
                                   color: 'white',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  fontWeight: 'bold'
+                                  fontWeight: 'bold',
+                                  fontSize: '18px'
                                 }}>
-                                  {((selectedUser.nickname || selectedUser.username || selectedUser.phone || 'U')).charAt(0).toUpperCase()}
+                                  {((selectedUser.nickname || selectedUser.first_name || selectedUser.phone || 'U')).charAt(0).toUpperCase()}
                                 </div>
                                 <div className="user-details">
-                                  <div className="user-name fw-bold">
-                                    {selectedUser.nickname || selectedUser.username || '이름 없음'}
+                                  <div className="user-name fw-bold" style={{ fontSize: '16px' }}>
+                                    {selectedUser.nickname || `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim() || '이름 없음'}
                                   </div>
-                                  <div className="user-phone text-muted">
+                                  <div className="user-phone text-muted" style={{ fontSize: '14px' }}>
                                     {selectedUser.phone || '전화번호 없음'}
+                                  </div>
+                                  <div className="user-email text-muted" style={{ fontSize: '12px' }}>
+                                    {selectedUser.email || '이메일 없음'}
                                   </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="text-center text-muted d-flex align-items-center justify-content-center h-100">
+                              <User size={20} className="me-2" />
+                              {searchLoading ? '사용자 검색 중...' : '전화번호를 입력하고 검색 버튼을 클릭하세요.'}
+                            </div>
+                          )}
+                        </div>
                       </Col>
                     </Row>
 
