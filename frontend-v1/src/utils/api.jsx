@@ -328,7 +328,12 @@ export const userAPI = {
     return API.get('/accounts/users/', { params });
   },
   
-  // 전화번호로 사용자 조회
+  // 전화번호 또는 사용자 ID로 사용자 조회 (JSON 방식)
+  getUserByPhoneOrId: (data) => {
+    return API.post('/accounts/users/get_user/', data);
+  },
+  
+  // 전화번호로 사용자 조회 (FormData 방식)
   getUserByPhone: (phone) => {
     const formData = new FormData();
     formData.append('phone', phone);

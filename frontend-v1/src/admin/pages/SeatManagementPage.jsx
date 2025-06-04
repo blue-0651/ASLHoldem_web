@@ -37,6 +37,7 @@ import {
   ArrowRight,
   ArrowLeft
 } from 'react-feather';
+import { userAPI, tournamentAPI } from '../../utils/api';
 
 const SeatManagementPage = () => {
   // 탭 상태
@@ -44,6 +45,7 @@ const SeatManagementPage = () => {
 
   // 기본 상태
   const [tournaments, setTournaments] = useState([]);
+  const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [currentStore, setCurrentStore] = useState(null);
   const [selectedTournament, setSelectedTournament] = useState('');
   const [searchPhone, setSearchPhone] = useState('');
@@ -64,37 +66,26 @@ const SeatManagementPage = () => {
   // 더미 데이터 초기화
   useEffect(() => {
     initializeDummyData();
+    fetchTournaments();
   }, []);
 
-  const initializeDummyData = () => {
-    // 더미 토너먼트 데이터
-    const dummyTournaments = [
-      {
-        id: 1,
-        name: '2024년 신년 토너먼트',
-        start_time: '2024-01-15T14:00:00',
-        buy_in: 2,
-        ticket_quantity: 100,
-        status: 'UPCOMING'
-      },
-      {
-        id: 2,
-        name: '주말 스페셜 토너먼트',
-        start_time: '2024-01-20T19:00:00',
-        buy_in: 3,
-        ticket_quantity: 150,
-        status: 'UPCOMING'
-      },
-      {
-        id: 3,
-        name: '월말 챔피언십',
-        start_time: '2024-01-30T16:00:00',
-        buy_in: 5,
-        ticket_quantity: 200,
-        status: 'ONGOING'
-      }
-    ];
+  // 토너먼트 목록 조회
+  const fetchTournaments = async () => {
+    setTournamentsLoading(true);
+    try {
+      const response = await tournamentAPI.getAllTournaments();
+      const tournamentsData = response.data.results || response.data;
+      console.log('토너먼트 목록:', tournamentsData);
+      setTournaments(tournamentsData);
+    } catch (error) {
+      console.error('토너먼트 목록 조회 실패:', error);
+      showAlert('warning', '토너먼트 목록을 불러오는데 실패했습니다.');
+    } finally {
+      setTournamentsLoading(false);
+    }
+  };
 
+  const initializeDummyData = () => {
     // 더미 매장 데이터
     const dummyStore = {
       id: 1,
@@ -140,7 +131,6 @@ const SeatManagementPage = () => {
       }
     ];
 
-    setTournaments(dummyTournaments);
     setCurrentStore(dummyStore);
     setRecentTransactions(dummyTransactions);
   };
@@ -154,54 +144,46 @@ const SeatManagementPage = () => {
 
     setSearchLoading(true);
     try {
-      const token = localStorage.getItem('asl_holdem_access_token');
-      
       // 전화번호 형식 정리
       const cleanPhone = searchPhone.replace(/-/g, '');
       const formattedPhone = `${cleanPhone.slice(0,3)}-${cleanPhone.slice(3,7)}-${cleanPhone.slice(7)}`;
       
-      const response = await fetch(`http://localhost:8000/api/v1/accounts/users/get_user/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          phone: formattedPhone
-        })
+      const response = await userAPI.getUserByPhoneOrId({
+        phone: formattedPhone
       });
       
-      if (response.ok) {
-        const userData = await response.json();
-        console.log('사용자 검색 결과:', userData);
-        
-        // role이 'USER'인지 확인
-        if (userData && userData.id) {
-          if (userData.role === 'USER') {
-            setSelectedUser(userData);
-            
-            // 회수 탭일 때 사용자의 SEAT권 목록 로드
-            if (activeTab === 'retrieve') {
-              loadUserTickets(userData.id);
-            }
-            
-            showAlert('success', '사용자를 찾았습니다.');
-          } else {
-            setSelectedUser(null);
-            showAlert('warning', '일반 사용자만 SEAT권을 전송/회수할 수 있습니다.');
+      const userData = response.data;
+      console.log('사용자 검색 결과:', userData);
+      
+      // role이 'USER'인지 확인
+      if (userData && userData.id) {
+        if (userData.role === 'USER') {
+          setSelectedUser(userData);
+          
+          // 회수 탭일 때 사용자의 SEAT권 목록 로드
+          if (activeTab === 'retrieve') {
+            loadUserTickets(userData.id);
           }
+          
+          showAlert('success', '사용자를 찾았습니다.');
         } else {
           setSelectedUser(null);
-          showAlert('warning', '해당 전화번호의 사용자를 찾을 수 없습니다.');
+          showAlert('warning', '일반 사용자만 SEAT권을 전송/회수할 수 있습니다.');
         }
       } else {
-        const errorData = await response.json().catch(() => ({}));
         setSelectedUser(null);
-        showAlert('warning', errorData.error || '해당 전화번호의 사용자를 찾을 수 없습니다.');
+        showAlert('warning', '해당 전화번호의 사용자를 찾을 수 없습니다.');
       }
     } catch (error) {
       console.error('사용자 검색 실패:', error);
-      showAlert('danger', '사용자 검색 중 오류가 발생했습니다.');
+      setSelectedUser(null);
+      
+      // API 에러 응답 처리
+      if (error.response?.data?.error) {
+        showAlert('warning', error.response.data.error);
+      } else {
+        showAlert('danger', '사용자 검색 중 오류가 발생했습니다.');
+      }
     } finally {
       setSearchLoading(false);
     }
@@ -450,14 +432,28 @@ const SeatManagementPage = () => {
                             id="tournament"
                             value={selectedTournament}
                             onChange={(e) => setSelectedTournament(e.target.value)}
+                            disabled={tournamentsLoading}
                           >
-                            <option value="">토너먼트를 선택하세요</option>
+                            <option value="">
+                              {tournamentsLoading ? '토너먼트 목록 로딩 중...' : '토너먼트를 선택하세요'}
+                            </option>
                             {tournaments.map(tournament => (
                               <option key={tournament.id} value={tournament.id}>
-                                {tournament.name} ({new Date(tournament.start_time).toLocaleDateString()})
+                                {tournament.name} ({new Date(tournament.start_time).toLocaleDateString()}) - {tournament.status}
                               </option>
                             ))}
                           </Input>
+                          {tournaments.length === 0 && !tournamentsLoading && (
+                            <small className="text-muted">
+                              토너먼트가 없습니다.
+                            </small>
+                          )}
+                          {tournamentsLoading && (
+                            <small className="text-muted">
+                              <Spinner size="sm" className="me-2" />
+                              토너먼트 목록을 불러오는 중...
+                            </small>
+                          )}
                         </FormGroup>
                       </Col>
                       <Col md={6}>
