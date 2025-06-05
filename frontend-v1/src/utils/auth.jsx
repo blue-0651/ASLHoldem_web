@@ -170,6 +170,28 @@ export const reqLoginWithPhone = async (phone, password, userType = 'user') => {
     localStorage.setItem(USER_TYPE_KEY, userType);
     localStorage.setItem('userPhone', phone);
 
+    // JWT 토큰에서 사용자 정보 추출 및 저장
+    try {
+      const tokenParts = access.split('.');
+      const tokenPayload = JSON.parse(atob(tokenParts[1]));
+      
+      const userInfo = {
+        id: tokenPayload.user_id,
+        phone: tokenPayload.phone,
+        nickname: tokenPayload.nickname || '',
+        email: tokenPayload.email || '',
+        is_store_owner: tokenPayload.is_store_owner || false,
+        is_staff: tokenPayload.is_staff || false,
+        is_superuser: tokenPayload.is_superuser || false,
+        role: tokenPayload.role || (userType === 'admin' ? 'ADMIN' : userType === 'store' ? 'STORE_OWNER' : 'USER')
+      };
+      
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+      console.log('사용자 정보 저장 완료:', userInfo);
+    } catch (tokenError) {
+      console.error('JWT 토큰 파싱 오류:', tokenError);
+    }
+
     return {
       success: true,
       response: response.data
