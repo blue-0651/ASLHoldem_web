@@ -222,6 +222,44 @@ LOGGING = {
         },
     },
 } 
-CORS_ALLOW_ALL_ORIGINS = True  # 개발 환경에서는 True, 운영에서는 도메인 지정
-#CORS_ALLOW_HEADERS = ['*']
-CORS_ALLOW_METHODS = ['*']
+
+# 🚀 클라우드 최적화된 CORS 설정
+import os
+if os.getenv('ENVIRONMENT') == 'production':
+    # 운영환경: 특정 도메인만 허용 (보안 강화)
+    CORS_ALLOWED_ORIGINS = [
+        "https://your-frontend-domain.com",
+        "https://www.your-frontend-domain.com",
+    ]
+    CORS_ALLOW_ALL_ORIGINS = False
+else:
+    # 개발환경: 모든 출처 허용
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# Preflight 요청 캐싱 (클라우드 비용 절감)
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24시간 캐싱
+
+# 필요한 헤더만 허용 (보안 + 성능)
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# 필요한 메서드만 허용
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_CREDENTIALS = True

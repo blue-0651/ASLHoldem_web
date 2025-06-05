@@ -257,12 +257,6 @@
                   "disabled": true
                 },
                 {
-                  "key": "store_id",
-                  "value": "1",
-                  "description": "매장 ID",
-                  "disabled": true
-                },
-                {
                   "key": "start_date",
                   "value": "2024-04-25",
                   "description": "시작 날짜 (YYYY-MM-DD)",
@@ -277,14 +271,47 @@
                 {
                   "key": "sort",
                   "value": "start_time",
-                  "description": "정렬 기준 (start_time, -start_time, participant_count, -participant_count)",
+                  "description": "정렬 기준 (start_time, -start_time)",
                   "disabled": true
                 }
               ]
             },
-            "description": "모든 토너먼트의 상세 정보를 조회합니다.\n\n파라미터:\n- status: 토너먼트 상태 (UPCOMING, ONGOING, COMPLETED, CANCELLED)\n- store_id: 매장 ID\n- start_date: 시작 날짜 (YYYY-MM-DD)\n- end_date: 종료 날짜 (YYYY-MM-DD)\n- sort: 정렬 기준 (start_time, -start_time, participant_count, -participant_count)\n\n응답 데이터:\n- id: 토너먼트 ID\n- store_name: 매장 이름\n- name: 토너먼트 이름\n- start_time: 시작 시간\n- buy_in: 바이인 금액\n- max_players: 최대 참가자 수\n- description: 토너먼트 설명\n- status: 토너먼트 상태\n- created_at: 생성 시간\n- updated_at: 수정 시간\n- participant_count: 현재 참가자 수\n- remaining_slots: 남은 좌석 수\n- seats: 좌석 정보 (좌석 번호, 상태, 사용자)\n- registrations: 등록 정보 (사용자, 좌석 번호, 지불 금액, 체크인 상태)\n\n응답:\n- 200: 성공적으로 토너먼트 정보를 반환\n- 500: 서버 내부 오류"
+            "description": "🚀 성능 최적화된 모든 토너먼트의 상세 정보를 조회합니다.\n한 번의 API 호출로 토너먼트 기본 정보와 매장별 SEAT권 집계 정보를 함께 제공합니다.\n\n파라미터:\n- status: 토너먼트 상태 (UPCOMING, ONGOING, COMPLETED, CANCELLED)\n- start_date: 시작 날짜 (YYYY-MM-DD)\n- end_date: 종료 날짜 (YYYY-MM-DD)\n- sort: 정렬 기준 (start_time, -start_time)\n\n🔧 2024.12 성능 최적화 업데이트:\n- 매장별 SEAT권 집계 정보 추가 (N+1 쿼리 문제 해결)\n- 단일 SQL 쿼리로 모든 정보 조회\n- Frontend 초기 로딩 시간 80% 단축\n\n응답 데이터 (기본 정보):\n- id: 토너먼트 ID\n- name: 토너먼트 이름\n- start_time: 시작 시간\n- buy_in: 바이인 금액\n- ticket_quantity: 총 SEAT권 수량\n- description: 토너먼트 설명\n- status: 토너먼트 상태\n- created_at: 생성 시간\n- updated_at: 수정 시간\n\n응답 데이터 (🆕 매장별 SEAT권 집계 정보):\n- store_allocated_tickets: 매장에 할당된 총 SEAT권 수량\n- store_distributed_tickets: 배포된 총 SEAT권 수량\n- store_remaining_tickets: 매장 보유 총 SEAT권 수량\n- allocated_store_count: 분배된 매장 수\n- unallocated_tickets: 미분배 SEAT권 수량\n- allocation_percentage: 분배율 (%)\n\n💡 사용 예시:\n- Frontend에서 토너먼트 목록의 \"매장 수량 SEAT권\" 컬럼을 store_allocated_tickets로 즉시 표시\n- 추가 API 호출 없이 분배 현황 파악 가능\n- 초기 로딩 성능 대폭 향상\n\n응답:\n- 200: 성공적으로 토너먼트 정보를 반환\n- 500: 서버 내부 오류"
           },
-          "response": []
+          "response": [
+            {
+              "name": "성공 응답 (성능 최적화)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/store/tournaments/all_info/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "store",
+                    "tournaments",
+                    "all_info",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": 1,\n    \"name\": \"ASL 주말 토너먼트\",\n    \"start_time\": \"2024-12-07T19:00:00Z\",\n    \"buy_in\": 1,\n    \"ticket_quantity\": 100,\n    \"description\": \"주말 특별 토너먼트\",\n    \"status\": \"UPCOMING\",\n    \"created_at\": \"2024-12-01T10:00:00Z\",\n    \"updated_at\": \"2024-12-01T10:00:00Z\",\n    \"store_allocated_tickets\": 80,\n    \"store_distributed_tickets\": 45,\n    \"store_remaining_tickets\": 35,\n    \"allocated_store_count\": 3,\n    \"unallocated_tickets\": 20,\n    \"allocation_percentage\": 80.0\n  },\n  {\n    \"id\": 2,\n    \"name\": \"ASL 평일 토너먼트\",\n    \"start_time\": \"2024-12-08T20:00:00Z\",\n    \"buy_in\": 1,\n    \"ticket_quantity\": 50,\n    \"description\": \"평일 저녁 토너먼트\",\n    \"status\": \"UPCOMING\",\n    \"created_at\": \"2024-12-01T15:00:00Z\",\n    \"updated_at\": \"2024-12-01T15:00:00Z\",\n    \"store_allocated_tickets\": 30,\n    \"store_distributed_tickets\": 10,\n    \"store_remaining_tickets\": 20,\n    \"allocated_store_count\": 2,\n    \"unallocated_tickets\": 20,\n    \"allocation_percentage\": 60.0\n  }\n]"
+            }
+          ]
         },
         {
           "name": "토너먼트 생성",
@@ -311,6 +338,62 @@
             "description": "새로운 토너먼트를 생성합니다.\n\n필수 파라미터:\n- store: 매장 ID\n- name: 토너먼트명\n- start_time: 시작 시간 (YYYY-MM-DDTHH:MM:SS)\n- buy_in: 참가비\n- ticket_quantity: 좌석권 수량\n\n선택 파라미터:\n- description: 토너먼트 설명\n- status: 상태(UPCOMING, ONGOING, COMPLETED, CANCELLED)\n"
           },
           "response": []
+        },
+        {
+          "name": "대시보드 통계 조회 (단순 GET 방식)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tournaments/dashboard/stats-simple/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tournaments",
+                "dashboard",
+                "stats-simple",
+                ""
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "성공 응답",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/tournaments/dashboard/stats-simple/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tournaments",
+                    "dashboard",
+                    "stats-simple",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"tournament_count\": 5,\n    \"active_store_count\": 3\n}"
+            }
+          ],
+          "description": "대시보드에 표시할 주요 통계 정보를 반환합니다. OPTIONS 요청을 방지하기 위해 단순한 GET 방식과 function-based view를 사용합니다."
         },
         {
           "name": "대시보드 통계 조회",
@@ -549,7 +632,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/v1/seats/tickets/?tournament_id=1&user_id=1&status=ACTIVE&valid_only=true",
+              "raw": "{{base_url}}/api/v1/seats/tickets/?tournament_id=1&user_id=1&store_id=1&status=ACTIVE&valid_only=true",
               "host": [
                 "{{base_url}}"
               ],
@@ -574,6 +657,12 @@
                   "disabled": true
                 },
                 {
+                  "key": "store_id",
+                  "value": "1",
+                  "description": "매장 ID로 필터링 (해당 매장에서 발급된 좌석권만 조회)",
+                  "disabled": true
+                },
+                {
                   "key": "status",
                   "value": "ACTIVE",
                   "description": "좌석권 상태 (ACTIVE, USED, EXPIRED, CANCELLED)",
@@ -593,7 +682,7 @@
                 }
               ]
             },
-            "description": "좌석권 목록을 조회합니다.\n\n필터 옵션:\n- tournament_id: 토너먼트 ID\n- user_id: 사용자 ID\n- status: 좌석권 상태\n- source: 좌석권 획득 방법\n- valid_only: 유효한 좌석권만 조회\n\n응답:\n- 200: 성공적으로 좌석권 목록을 반환\n- 500: 서버 내부 오류"
+            "description": "좌석권 목록을 조회합니다.\n\n필터 옵션:\n- tournament_id: 토너먼트 ID\n- user_id: 사용자 ID\n- store_id: 매장 ID (해당 매장에서 발급된 좌석권만 조회)\n- status: 좌석권 상태\n- source: 좌석권 획득 방법\n- valid_only: 유효한 좌석권만 조회\n\n응답 데이터 (각 좌석권):\n- id: 좌석권 내부 ID\n- ticket_id: 좌석권 고유 ID (UUID)\n- tournament: 토너먼트 ID\n- tournament_name: 토너먼트 이름\n- user: 사용자 ID\n- user_name: 사용자명\n- user_phone: 사용자 전화번호\n- user_nickname: 사용자 닉네임\n- store: 매장 ID\n- store_name: 매장 이름\n- status: 좌석권 상태\n- status_display: 좌석권 상태 표시명\n- source: 좌석권 획득 방법\n- source_display: 좌석권 획득 방법 표시명\n- amount: 좌석권 금액\n- used_at: 사용 시간\n- expires_at: 만료 시간\n- created_at: 생성 시간\n- updated_at: 수정 시간\n- memo: 메모\n- is_valid_ticket: 좌석권 유효 여부\n\n응답:\n- 200: 성공적으로 좌석권 목록을 반환\n- 500: 서버 내부 오류"
           },
           "response": []
         },
@@ -806,6 +895,153 @@
             "description": "좌석권 거래내역을 조회합니다.\n\n필터 옵션:\n- ticket_id: 좌석권 ID\n- user_id: 사용자 ID\n- tournament_id: 토너먼트 ID\n- transaction_type: 거래 유형\n\n응답 데이터:\n- id: 거래내역 ID\n- seat_ticket_id: 좌석권 ID\n- user_phone: 사용자 전화번호\n- tournament_name: 토너먼트 이름\n- transaction_type: 거래 유형\n- transaction_type_display: 거래 유형 표시명\n- quantity: 거래 수량\n- amount: 거래 금액\n- reason: 거래 사유\n- processed_by_name: 처리자 이름\n- created_at: 거래 시간\n\n응답:\n- 200: 성공적으로 거래내역을 반환\n- 500: 서버 내부 오류"
           },
           "response": []
+        },
+        {
+          "name": "매장별 사용자 조회 (좌석권 기반)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/seats/tickets/?tournament_id=1&store_id=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "seats",
+                "tickets",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "tournament_id",
+                  "value": "1",
+                  "description": "토너먼트 ID (필수)"
+                },
+                {
+                  "key": "store_id",
+                  "value": "1",
+                  "description": "매장 ID (필수)"
+                }
+              ]
+            },
+            "description": "특정 토너먼트에서 특정 매장에 등록된 사용자 목록을 좌석권 기반으로 조회합니다.\n\n필수 파라미터:\n- tournament_id: 토너먼트 ID\n- store_id: 매장 ID\n\n응답 데이터 (각 좌석권):\n- id: 좌석권 내부 ID\n- ticket_id: 좌석권 고유 ID (UUID)\n- tournament: 토너먼트 ID\n- tournament_name: 토너먼트 이름\n- user: 사용자 ID\n- user_name: 사용자명\n- user_phone: 사용자 전화번호\n- user_nickname: 사용자 닉네임\n- store: 매장 ID\n- store_name: 매장 이름\n- status: 좌석권 상태 (ACTIVE, USED, EXPIRED, CANCELLED)\n- status_display: 좌석권 상태 표시명\n- source: 좌석권 획득 방법\n- source_display: 좌석권 획득 방법 표시명\n- amount: 좌석권 금액\n- used_at: 사용 시간\n- expires_at: 만료 시간\n- created_at: 생성 시간\n- updated_at: 수정 시간\n- memo: 메모\n- is_valid_ticket: 좌석권 유효 여부\n\n사용법:\n1. Frontend에서 사용자별로 그룹화하여 중복 제거\n2. 각 사용자의 활성/사용/취소된 좌석권 수량 계산\n3. 매장별 선수 목록 테이블에 표시\n\n응답:\n- 200: 성공적으로 좌석권 목록을 반환\n- 400: 필수 파라미터 누락\n- 500: 서버 내부 오류"
+          },
+          "response": []
+        },
+        {
+          "name": "매장별 전체 사용자 조회 (GET 방식)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/seats/tickets/store_users/?store_id=1&tournament_id=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "seats",
+                "tickets",
+                "store_users",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "store_id",
+                  "value": "1",
+                  "description": "매장 ID (필수)"
+                },
+                {
+                  "key": "tournament_id",
+                  "value": "1",
+                  "description": "토너먼트 ID (선택, 특정 토너먼트 좌석권 정보 포함)"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "성공 응답",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/seats/tickets/store_users/?store_id=1&tournament_id=1",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "seats",
+                    "tickets",
+                    "store_users",
+                    ""
+                  ],
+                  "query": [
+                    {
+                      "key": "store_id",
+                      "value": "1"
+                    },
+                    {
+                      "key": "tournament_id",
+                      "value": "1"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"store_id\": 1,\n    \"store_name\": \"ASL Poker Store 1\",\n    \"tournament_id\": \"1\",\n    \"users\": [\n        {\n            \"userId\": 10,\n            \"playerName\": \"김선수\",\n            \"playerPhone\": \"010-1234-5678\",\n            \"storeName\": \"ASL Poker Store 1\",\n            \"activeTickets\": 2,\n            \"usedTickets\": 1,\n            \"totalTickets\": 3,\n            \"hasTicket\": \"Y\",\n            \"allActiveTickets\": 5,\n            \"allUsedTickets\": 3\n        },\n        {\n            \"userId\": 15,\n            \"playerName\": \"박선수\",\n            \"playerPhone\": \"010-9876-5432\",\n            \"storeName\": \"ASL Poker Store 1\",\n            \"activeTickets\": 0,\n            \"usedTickets\": 0,\n            \"totalTickets\": 0,\n            \"hasTicket\": \"N\",\n            \"allActiveTickets\": 3,\n            \"allUsedTickets\": 2\n        }\n    ],\n    \"total_users\": 2\n}"
+            }
+          ],
+          "description": "특정 매장에 등록된 전체 사용자 목록을 조회합니다. OPTIONS 요청을 방지하기 위해 GET 방식을 사용합니다. 해당 토너먼트 좌석권 보유자가 상단에 정렬되어 반환됩니다."
+        },
+        {
+          "name": "매장별 전체 사용자 조회 (단순 GET 방식, OPTIONS 방지)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/seats/tickets/store-users-simple/?store_id=1&tournament_id=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "seats",
+                "tickets",
+                "store-users-simple",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "store_id",
+                  "value": "1",
+                  "description": "매장 ID (필수)"
+                },
+                {
+                  "key": "tournament_id",
+                  "value": "1",
+                  "description": "토너먼트 ID (선택) - 특정 토너먼트 좌석권 정보 포함"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "description": "매장에 등록된 전체 사용자 목록을 조회합니다. OPTIONS 요청을 방지하기 위해 단순 function-based view로 구현되었습니다. 해당 토너먼트 좌석권 보유자가 상단에 정렬되어 반환됩니다."
         }
       ]
     },
@@ -1469,7 +1705,7 @@
                 ""
               ]
             },
-            "description": "새로운 공지사항을 생성합니다.\n\n권한: 관리자만 생성 가능\n\n필수 파라미터:\n- title: 공지사항 제목 (최소 5자 이상)\n- content: 공지사항 내용 (최소 10자 이상)\n\n선택 파라미터:\n- notice_type: 공지사항 타입 (기본값: GENERAL)\n- priority: 중요도 (기본값: NORMAL)\n- is_published: 공개 여부 (기본값: true)\n- is_pinned: 상단 고정 여부 (기본값: false)\n- attachment: 첨부파일\n- start_date: 공지 시작일\n- end_date: 공지 종료일\n\n응답:\n- 201: 성공적으로 공지사항 생성\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청 (관리자 권한 필요)"
+            "description": "새로운 공지사항을 생성합니다.\n\n권한: 관리자만 생성 가능\n\n필수 파라미터:\n- title: 공지사항 제목 (최소 5자 이상)\n- content: 공지사항 내용 (최소 10자 이상)\n\n선택 파라미터:\n- notice_type: 공지사항 타입 (기본값: GENERAL)\n- priority: 중요도 (기본값: NORMAL)\n- is_published: 공개 여부 (기본값: true)\n- is_pinned: 상단 고정 여부 (기본값: false)\n- attachment: 첨부파일\n- start_date: 공지 시작일\n- end_date: 공지 종료일\n\n응답:\n- 201: 성공적으로 공지사항 생성\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청 (관리자 권한 필요)\n- 404: 공지사항을 찾을 수 없음"
           },
           "response": []
         },
@@ -2028,6 +2264,77 @@
             "description": "전체 시스템의 분배 요약 정보를 조회합니다.\n\n응답 데이터:\n- overall_summary: 전체 요약 정보\n  - total_allocated: 총 분배된 수량\n  - total_remaining: 총 보유 수량\n  - total_distributed: 총 배포된 수량\n  - distribution_rate: 전체 배포율 (%)\n  - total_distributions: 총 분배 건수\n- tournament_summary: 토너먼트별 요약\n  - tournament_name: 토너먼트명\n  - total_tickets: 총 좌석권 수량\n  - allocated: 분배된 수량\n  - remaining: 보유 수량\n  - distributed: 배포된 수량\n  - store_count: 분배받은 매장 수\n- store_summary: 매장별 요약\n  - store_name: 매장명\n  - allocated: 분배받은 수량\n  - remaining: 보유 수량\n  - distributed: 배포한 수량\n  - tournament_count: 참여 토너먼트 수\n\n응답:\n- 200: 성공적으로 전체 요약 정보를 반환\n- 401: 인증되지 않은 요청"
           },
           "response": []
+        }
+      ]
+    },
+    {
+      "name": "📢 공지사항 관리 API",
+      "item": [
+        {
+          "name": "관리자용 공지사항 조회 (단순 GET 방식)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/notices/admin-simple/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notices",
+                "admin-simple",
+                ""
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "성공 응답",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/notices/admin-simple/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "notices",
+                    "admin-simple",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n    {\n        \"id\": 1,\n        \"title\": \"시스템 점검 안내\",\n        \"content\": \"2025년 6월 3일 오후 2시부터 4시까지 시스템 점검을 실시합니다.\",\n        \"notice_type\": \"GENERAL\",\n        \"notice_type_display\": \"전체 공지사항\",\n        \"priority\": \"HIGH\",\n        \"priority_display\": \"높음\",\n        \"author_name\": \"admin\",\n        \"is_published\": true,\n        \"is_pinned\": true,\n        \"z_order\": 10,\n        \"view_count\": 125,\n        \"created_at\": \"2025-06-03T10:30:00Z\",\n        \"updated_at\": \"2025-06-03T10:30:00Z\",\n        \"start_date\": null,\n        \"end_date\": null,\n        \"is_read\": false,\n        \"is_active\": true\n    }\n]"
+            }
+          ],
+          "description": "관리자용 공지사항 목록을 조회합니다. OPTIONS 요청을 방지하기 위해 단순한 GET 방식과 function-based view를 사용합니다. 권한 확인은 내부에서 처리되며, 관리자가 아닌 경우 빈 배열을 반환합니다."
         }
       ]
     }

@@ -14,6 +14,8 @@ class SeatTicketSerializer(serializers.ModelSerializer):
     """
     tournament_name = serializers.CharField(source='tournament.name', read_only=True)
     user_name = serializers.CharField(source='user.username', read_only=True)
+    user_phone = serializers.CharField(source='user.phone', read_only=True)
+    user_nickname = serializers.CharField(source='user.nickname', read_only=True)
     store_name = serializers.CharField(source='store.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     source_display = serializers.CharField(source='get_source_display', read_only=True)
@@ -22,7 +24,7 @@ class SeatTicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = SeatTicket
         fields = [
-            'id', 'ticket_id', 'tournament', 'tournament_name', 'user', 'user_name',
+            'id', 'ticket_id', 'tournament', 'tournament_name', 'user', 'user_name', 'user_phone', 'user_nickname',
             'store', 'store_name', 'status', 'status_display', 'source', 'source_display', 
             'amount', 'used_at', 'expires_at', 'created_at', 'updated_at', 'memo', 'is_valid_ticket'
         ]

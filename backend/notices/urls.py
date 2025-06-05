@@ -10,6 +10,9 @@ urlpatterns = [
     # 관리자용 공지사항 목록 조회 (모든 공지사항)
     path('admin/', notices_views.NoticeAdminListView.as_view(), name='notice-admin-list'),
     
+    # 관리자용 공지사항 목록 조회 (단순 GET 방식, OPTIONS 방지)
+    path('admin-simple/', notices_views.get_admin_notices_simple, name='notice-admin-simple'),
+    
     # 공지사항 상세 조회
     path('<int:pk>/', notices_views.NoticeDetailView.as_view(), name='notice-detail'),
     

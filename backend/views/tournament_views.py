@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from django.db.models import Count, Sum
 from django.db import connection
 import datetime
@@ -81,6 +81,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
         모든 토너먼트의 상세 정보를 반환합니다.
         응답에는 다음 정보가 포함됩니다:
         - 토너먼트 기본 정보
+        - 매장에 할당된 총 SEAT권 수량 (성능 최적화를 위해 추가)
         - 참가자 수
         - 등록 정보
 
@@ -91,8 +92,22 @@ class TournamentViewSet(viewsets.ModelViewSet):
         - sort: 정렬 기준 (start_time, -start_time)
         """
         try:
-            # 기본 쿼리셋
-            tournaments = Tournament.objects.all()
+            from django.db.models import Sum, Count
+            from seats.models import TournamentTicketDistribution
+            
+            # 🚀 성능 최적화: JOIN과 집계를 사용하여 한 번의 쿼리로 모든 정보 조회
+            tournaments = Tournament.objects.select_related().prefetch_related(
+                'ticket_distributions'
+            ).annotate(
+                # 매장에 할당된 총 SEAT권 수량 계산
+                total_allocated_to_stores=Sum('ticket_distributions__allocated_quantity'),
+                # 배포된 총 SEAT권 수량 계산
+                total_distributed=Sum('ticket_distributions__distributed_quantity'),
+                # 매장에서 보유 중인 총 SEAT권 수량 계산
+                total_remaining=Sum('ticket_distributions__remaining_quantity'),
+                # 분배된 매장 수 계산
+                store_count=Count('ticket_distributions', distinct=True)
+            )
             
             # 필터링 파라미터 처리
             status_param = request.query_params.get('status')
@@ -111,11 +126,14 @@ class TournamentViewSet(viewsets.ModelViewSet):
             sort = request.query_params.get('sort')
             if sort:
                 tournaments = tournaments.order_by(sort)
+            else:
+                # 기본 정렬: 시작 시간 오름차순
+                tournaments = tournaments.order_by('start_time')
             
             results = []
             
             for tournament in tournaments:
-                # 토너먼트 정보 구성
+                # 🚀 성능 최적화: 집계 결과를 활용하여 추가 쿼리 없이 정보 구성
                 tournament_info = {
                     'id': tournament.id,
                     'name': tournament.name,
@@ -126,6 +144,16 @@ class TournamentViewSet(viewsets.ModelViewSet):
                     'status': tournament.status,
                     'created_at': tournament.created_at,
                     'updated_at': tournament.updated_at,
+                    
+                    # 🆕 매장별 SEAT권 집계 정보 추가 (Frontend 성능 최적화용)
+                    'store_allocated_tickets': tournament.total_allocated_to_stores or 0,  # 매장에 할당된 총 SEAT권
+                    'store_distributed_tickets': tournament.total_distributed or 0,        # 배포된 총 SEAT권
+                    'store_remaining_tickets': tournament.total_remaining or 0,           # 매장 보유 총 SEAT권
+                    'allocated_store_count': tournament.store_count or 0,                 # 분배된 매장 수
+                    
+                    # 🆕 추가 계산 정보
+                    'unallocated_tickets': max(0, tournament.ticket_quantity - (tournament.total_allocated_to_stores or 0)),  # 미분배 SEAT권
+                    'allocation_percentage': round((tournament.total_allocated_to_stores or 0) / tournament.ticket_quantity * 100, 1) if tournament.ticket_quantity > 0 else 0,  # 분배율
                 }
                 
                 results.append(tournament_info)
@@ -134,7 +162,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
         except Exception as e:
             import traceback
             from rest_framework import status as rf_status
-            print(f"토너먼트 상세 정보 API 오류: {str(e)}")
+            print(f"❌ 토너먼트 상세 정보 API 오류: {str(e)}")
             print(traceback.format_exc())
             return Response({"error": str(e)}, status=rf_status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -364,4 +392,31 @@ class TournamentViewSet(viewsets.ModelViewSet):
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def get_dashboard_stats_simple(request):
+    """
+    대시보드 통계 조회 API (단순 GET 방식, OPTIONS 방지)
+    - 총 토너먼트 수
+    - 활성 매장 수
+    """
+    try:
+        # 총 토너먼트 수 계산
+        tournament_count = Tournament.objects.count()
+        
+        # 활성 매장 수 계산
+        active_store_count = Store.objects.count()
+        
+        result = {
+            'tournament_count': tournament_count,
+            'active_store_count': active_store_count,
+        }
+        
+        return Response(result)
+    except Exception as e:
+        import traceback
+        print(f"대시보드 통계 API 오류: {str(e)}")
+        print(traceback.format_exc())
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

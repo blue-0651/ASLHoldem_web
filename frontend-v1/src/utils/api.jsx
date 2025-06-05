@@ -194,8 +194,8 @@ export const registrationAPI = {
 
 // 대시보드 관련 API
 export const dashboardAPI = {
-  // 대시보드 통계 데이터 조회
-  getStats: () => API.get('/tournaments/dashboard/stats/'),
+  // 대시보드 통계 데이터 조회 (OPTIONS 방지)
+  getStats: () => API.get('/tournaments/dashboard/stats-simple/'),
 
   // 대시보드 매장/선수 매핑 현황 데이터 조회
   getPlayerMapping: (tournamentId) =>
@@ -303,7 +303,18 @@ export const seatTicketAPI = {
         tournament_id: tournamentId,
         ...filters
       } 
-    })
+    }),
+
+  // 매장별 전체 사용자 조회 (GET 방식, OPTIONS 방지)
+  getStoreUsers: (storeId, tournamentId = null) => {
+    const params = {
+      store_id: storeId
+    };
+    if (tournamentId) {
+      params.tournament_id = tournamentId;
+    }
+    return API.get('/seats/tickets/store-users-simple/', { params });
+  }
 };
 
 // 사용자 정보 관련 API
@@ -317,7 +328,12 @@ export const userAPI = {
     return API.get('/accounts/users/', { params });
   },
   
-  // 전화번호로 사용자 조회
+  // 전화번호 또는 사용자 ID로 사용자 조회 (JSON 방식)
+  getUserByPhoneOrId: (data) => {
+    return API.post('/accounts/users/get_user/', data);
+  },
+  
+  // 전화번호로 사용자 조회 (FormData 방식)
   getUserByPhone: (phone) => {
     const formData = new FormData();
     formData.append('phone', phone);
@@ -333,8 +349,8 @@ export const noticeAPI = {
   //  모든 공지사항 조회 (일반 사용자용 - 활성화된 공지사항만)
   getAllNotices: () => API.get('/notices/'),
 
-  // 관리자용 모든 공지사항 조회 (날짜 제한 없음)
-  getAllNoticesAdmin: () => API.get('/notices/admin/'),
+  // 관리자용 모든 공지사항 조회 (날짜 제한 없음, OPTIONS 방지)
+  getAllNoticesAdmin: () => API.get('/notices/admin-simple/'),
 
   // 공지사항 상세 조회
   getNoticeById: (id) => API.get(`/notices/${id}/`),
