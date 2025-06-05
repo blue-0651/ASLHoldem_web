@@ -198,12 +198,12 @@ const DashAnalytics = () => {
                     <img src={avatar1} className="img-radius " alt="User-Profile" />
                   </div>
                   <h6>
-                    <span className="badge bg-danger">File</span> Eddie uploaded new files:{' '}
-                    <small className="text-muted">2 hours ago</small>
+                    <span className="badge bg-danger">File</span> 관리자가 새로운 파일을 업로드했습니다:{' '}
+                    <small className="text-muted">2시간 전</small>
                   </h6>
                   <p className="m-b-15 m-t-15">
-                    hii <b> @everone</b> Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the
-                    industry&apos;s standard dummy text ever since the 1500s.
+                    안녕하세요 <b>@everyone</b> 새로운 토너먼트 관련 파일들이 업로드되었습니다. 
+                    확인해 주시기 바랍니다.
                   </p>
                   <Row>
                     <Col sm="auto" className="text-center">
@@ -234,9 +234,9 @@ const DashAnalytics = () => {
                     <img src={avatar1} className="img-radius" alt="User-Profile" />
                   </div>
                   <h6>
-                    <span className="badge bg-success">Task</span> Sarah marked the Pending Review:{' '}
-                    <span className="text-c-green"> Trash Can Icon Design</span>
-                    <small className="text-muted"> 2 hours ago</small>
+                    <span className="badge bg-success">Task</span> 매장 관리자가 작업을 완료했습니다:{' '}
+                    <span className="text-c-green"> 토너먼트 일정 검토</span>
+                    <small className="text-muted"> 2시간 전</small>
                   </h6>
                 </ListGroup.Item>
                 <ListGroup.Item as="li" bsPrefix=" " className="diactive-feed">
@@ -244,12 +244,12 @@ const DashAnalytics = () => {
                     <img src={avatar1} className="img-radius" alt="User-Profile" />
                   </div>
                   <h6>
-                    <span className="badge bg-primary">comment</span> abc posted a task:{' '}
-                    <span className="text-c-green">Design a new Homepage</span> <small className="text-muted">6 hours ago</small>
+                    <span className="badge bg-primary">comment</span> 시스템 관리자가 새 작업을 등록했습니다:{' '}
+                    <span className="text-c-green">새로운 토너먼트 기능 개발</span> <small className="text-muted">6시간 전</small>
                   </h6>
                   <p className="m-b-15 m-t-15">
-                    hii <b> @everone</b> Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the
-                    industry&apos;s standard dummy text ever since the 1500s.
+                    안녕하세요 <b>@everyone</b> 새로운 토너먼트 기능 개발 작업이 시작되었습니다. 
+                    프로젝트 진행 상황을 확인해 주세요.
                   </p>
                 </ListGroup.Item>
               </ListGroup>

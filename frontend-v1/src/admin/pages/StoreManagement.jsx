@@ -101,51 +101,18 @@ const StoreManagement = () => {
       setLoadingUsers(prev => ({ ...prev, [storeId]: true }));
       console.log(`매장 ${storeId} 사용자 목록 조회 시작...`);
 
-      // 현재 백엔드에 매장별 사용자 API가 구현되지 않았으므로
-      // 임시로 일반 사용자 목록을 조회하여 샘플 데이터 생성
+      // TODO: 매장별 사용자 API 구현 후 연동 필요
       try {
-        const response = await userAPI.getAllUsers('USER');
-        console.log(`사용자 목록 응답:`, response.data);
+        // 실제 매장별 사용자 목록 조회 API 호출
+        // const response = await storeAPI.getStoreUsers(storeId);
+        // setStoreUsers(prev => ({ ...prev, [storeId]: response.data }));
         
-        // 매장별 사용자 관계가 구현되지 않았으므로 임시 데이터 생성
-        const allUsers = Array.isArray(response.data) ? response.data : [];
-        const randomUserCount = Math.floor(Math.random() * Math.min(5, allUsers.length)) + 1;
-        const selectedUsers = allUsers.slice(0, randomUserCount);
-        
-        const mockStoreUsers = selectedUsers.map(user => ({
-          id: user.id,
-          nickname: user.nickname || user.phone || '익명',
-          phone: user.phone || '-',
-          email: user.email || '-',
-          tournament_count: Math.floor(Math.random() * 10),
-          last_visit: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
-        }));
-
-        setStoreUsers(prev => ({ ...prev, [storeId]: mockStoreUsers }));
+        // 임시로 빈 배열 설정
+        setStoreUsers(prev => ({ ...prev, [storeId]: [] }));
+        console.log(`매장 ${storeId} 사용자 목록: 구현 대기 중`);
       } catch (apiError) {
-        console.warn('사용자 API 호출 실패, 샘플 데이터 생성:', apiError);
-        
-        // API 호출 실패 시 샘플 데이터 생성
-        const sampleUsers = [
-          {
-            id: 1,
-            nickname: '홀덤마스터',
-            phone: '010-1234-5678',
-            email: 'user1@example.com',
-            tournament_count: 5,
-            last_visit: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: 2,
-            nickname: '포커킹',
-            phone: '010-9876-5432',
-            email: 'user2@example.com',
-            tournament_count: 3,
-            last_visit: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-          }
-        ];
-        
-        setStoreUsers(prev => ({ ...prev, [storeId]: sampleUsers }));
+        console.error('매장별 사용자 목록 조회 실패:', apiError);
+        setStoreUsers(prev => ({ ...prev, [storeId]: [] }));
       }
       
       setLoadingUsers(prev => ({ ...prev, [storeId]: false }));
