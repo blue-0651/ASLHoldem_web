@@ -31,10 +31,11 @@ const TicketIssue = () => {
   const fetchCurrentUserStore = async () => {
     try {
       const token = localStorage.getItem('asl_holdem_access_token');
-      console.log('현재 사용자 매장 정보 조회 시작, 토큰:', token);
+      console.log('현재 사용자 매장 정보 조회 시작, 토큰:', token ? '있음' : '없음');
       
       if (!token) {
-        console.error('토큰이 없습니다.');
+        console.error('❌ 토큰이 없습니다.');
+        showAlert('warning', '로그인이 필요합니다. 다시 로그인해주세요.');
         fetchStores();
         return;
       }
@@ -47,37 +48,53 @@ const TicketIssue = () => {
       // JWT 토큰에서 사용자 정보 추출
       try {
         const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-        console.log('토큰 페이로드:', tokenPayload);
+        console.log('📝 토큰 페이로드:', { user_id: tokenPayload.user_id, exp: tokenPayload.exp });
+        
+        // 토큰 만료 확인
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (tokenPayload.exp && tokenPayload.exp < currentTime) {
+          console.error('❌ 토큰이 만료되었습니다.');
+          showAlert('warning', '로그인이 만료되었습니다. 다시 로그인해주세요.');
+          fetchStores();
+          return;
+        }
         
         // 토큰에서 사용자 ID 추출
         const userId = tokenPayload.user_id;
         if (userId) {
+          console.log('🔍 사용자 ID로 매장 조회:', userId);
+          
           // 해당 사용자가 소유한 매장 조회
-          const storeResponse = await fetch(`http://localhost:8000/api/v1/stores/?owner_id=${userId}`, {
+          const storeResponse = await fetch(`http://localhost:8000/api/v1/stores/by_owner/?owner_id=${userId}`, {
             headers: headers
           });
           
           if (storeResponse.ok) {
             const storeData = await storeResponse.json();
-            console.log('사용자 소유 매장 데이터:', storeData);
+            console.log('✅ 사용자 소유 매장 데이터:', storeData);
             
-            const storesList = storeData.results || storeData;
-            if (storesList.length > 0) {
-              setCurrentStore(storesList[0]); // 첫 번째 소유 매장을 현재 매장으로 설정
-              return;
-            }
+            setCurrentStore(storeData);
+            showAlert('success', `${storeData.name} 매장으로 로그인되었습니다.`);
+            return;
+          } else {
+            console.warn('⚠️ 사용자 소유 매장 조회 실패:', storeResponse.status, storeResponse.statusText);
+            const errorData = await storeResponse.json().catch(() => ({}));
+            console.log('오류 상세:', errorData);
           }
         }
       } catch (tokenError) {
-        console.error('토큰 파싱 실패:', tokenError);
+        console.error('❌ 토큰 파싱 실패:', tokenError);
+        showAlert('warning', '토큰 정보가 올바르지 않습니다. 다시 로그인해주세요.');
       }
 
-      // 모든 방법이 실패한 경우 첫 번째 매장을 기본값으로 사용
-      console.log('사용자별 매장 정보를 가져올 수 없어 전체 매장 목록을 조회합니다.');
+      // 모든 방법이 실패한 경우 사용자에게 명확한 안내
+      console.log('❌ 사용자별 매장 정보를 가져올 수 없어 fallback을 실행합니다.');
+      showAlert('warning', '매장 정보를 자동으로 가져올 수 없습니다. 올바른 매장 관리자 계정으로 다시 로그인해주세요.');
       fetchStores();
       
     } catch (error) {
-      console.error('현재 사용자 매장 정보 조회 실패:', error);
+      console.error('❌ 현재 사용자 매장 정보 조회 실패:', error);
+      showAlert('danger', '매장 정보 조회 중 오류가 발생했습니다. 다시 로그인해주세요.');
       fetchStores();
     }
   };
@@ -106,15 +123,17 @@ const TicketIssue = () => {
         console.log('매장 데이터:', data);
         const storesList = data.results || data;
         
-        // 첫 번째 매장을 기본값으로 설정
-        if (storesList.length > 0 && !currentStore) {
-          setCurrentStore(storesList[0]);
-        }
+        // 하드코딩된 첫 번째 매장 자동 선택 로직 제거
+        // 사용자가 명시적으로 매장을 선택하도록 변경
+        console.warn('⚠️ 사용자별 매장 정보를 가져올 수 없습니다. 매장을 수동으로 선택해주세요.');
+        showAlert('warning', '매장 정보를 자동으로 가져올 수 없습니다. 올바른 계정으로 다시 로그인해주세요.');
       } else {
         console.error('매장 조회 실패:', response.status, response.statusText);
+        showAlert('danger', '매장 정보를 불러오는데 실패했습니다.');
       }
     } catch (error) {
       console.error('매장 조회 실패:', error);
+      showAlert('danger', '매장 정보를 불러오는데 실패했습니다.');
     }
   };
 
@@ -243,6 +262,13 @@ const TicketIssue = () => {
     setConfirmModal(false);
 
     try {
+      // 매장 정보 유효성 검사 추가
+      if (!currentStore || !currentStore.id) {
+        showAlert('danger', '매장 정보가 설정되지 않았습니다. 올바른 매장 관리자 계정으로 다시 로그인해주세요.');
+        setLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem('asl_holdem_access_token');
       const requestData = {
         user_id: selectedUser.id,
@@ -252,6 +278,8 @@ const TicketIssue = () => {
         source: 'ADMIN', // 모바일에서는 기본값으로 설정
         memo: memo
       };
+
+      console.log('🎫 SEAT권 발급 요청:', requestData);
 
       const response = await fetch('http://localhost:8000/api/v1/seats/tickets/grant/', {
         method: 'POST',
@@ -276,10 +304,11 @@ const TicketIssue = () => {
         fetchRecentTickets();
       } else {
         const errorData = await response.json();
+        console.error('❌ SEAT권 발급 실패:', errorData);
         showAlert('danger', errorData.error || 'SEAT권 발급에 실패했습니다.');
       }
     } catch (error) {
-      console.error('SEAT권 발급 실패:', error);
+      console.error('❌ SEAT권 발급 실패:', error);
       showAlert('danger', 'SEAT권 발급 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

@@ -60,7 +60,8 @@ class StoreViewSet(viewsets.ViewSet):
         모든 매장 목록을 반환합니다.
         """
         try:
-            stores = Store.objects.all().order_by('name')
+            # 한글 정렬 문제 해결을 위해 ID 순으로 정렬
+            stores = Store.objects.all().order_by('id')
             serializer = StoreSerializer(stores, many=True)
             return Response(serializer.data)
         except Exception as e:

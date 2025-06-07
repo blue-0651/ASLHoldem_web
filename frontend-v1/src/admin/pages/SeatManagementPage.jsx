@@ -111,11 +111,10 @@ const SeatManagementPage = () => {
       
       setStores(storesData);
       
-      // 첫 번째 매장을 현재 매장으로 설정 (또는 로그인한 사용자의 매장으로 설정)
-      if (storesData.length > 0) {
-        setCurrentStore(storesData[0]);
-        console.log('현재 매장 설정:', storesData[0]);
-      }
+      // 하드코딩된 첫 번째 매장 자동 선택 로직 제거
+      // 관리자가 적절한 매장을 수동으로 선택하도록 변경
+      console.warn('⚠️ 관리자는 적절한 매장을 수동으로 선택해주세요.');
+      showAlert('info', '매장을 선택한 후 SEAT권 관리를 시작하세요.');
     } catch (error) {
       console.error('❌ 매장 목록 조회 실패:', error);
       showAlert('warning', '매장 정보를 불러오는데 실패했습니다.');
