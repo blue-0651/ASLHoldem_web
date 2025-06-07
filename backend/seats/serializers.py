@@ -13,13 +13,17 @@ class SeatTicketSerializer(serializers.ModelSerializer):
     좌석권 정보를 위한 시리얼라이저
     """
     tournament_name = serializers.CharField(source='tournament.name', read_only=True)
-    user_name = serializers.CharField(source='user.username', read_only=True)
+    user_name = serializers.SerializerMethodField()
     user_phone = serializers.CharField(source='user.phone', read_only=True)
     user_nickname = serializers.CharField(source='user.nickname', read_only=True)
     store_name = serializers.CharField(source='store.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     source_display = serializers.CharField(source='get_source_display', read_only=True)
     is_valid_ticket = serializers.SerializerMethodField()
+    
+    def get_user_name(self, obj):
+        """사용자 이름 반환 (nickname 우선, 없으면 phone)"""
+        return obj.user.nickname or obj.user.phone
     
     class Meta:
         model = SeatTicket

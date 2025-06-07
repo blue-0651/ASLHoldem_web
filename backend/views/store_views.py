@@ -345,7 +345,7 @@ def search_user_by_phone(request):
                 'found': True,
                 'user': {
                     'id': user.id,
-                    'username': user.username,
+                    'username': user.nickname or user.phone,
                     'email': user.email,
                     'phone': user.phone,
                     'first_name': user.first_name,
@@ -439,7 +439,7 @@ def register_player_to_tournament(request):
                 'player': {
                     'id': existing_registration.id,
                     'user_id': user.id,
-                    'username': user.username,
+                    'username': user.nickname or user.phone,
                     'phone_number': user.phone_number,
                     'registered_at': existing_registration.created_at
                 }
@@ -476,7 +476,7 @@ def register_player_to_tournament(request):
             tournament_player = TournamentPlayer.objects.create(
                 tournament=tournament,
                 user=user,
-                nickname=data.get('nickname', user.username)
+                nickname=data.get('nickname', user.nickname or user.phone)
             )
             
             # 좌석권 사용 처리
@@ -513,7 +513,7 @@ def register_player_to_tournament(request):
             'player': {
                 'id': tournament_player.id,
                 'user_id': user.id,
-                'username': user.username,
+                'username': user.nickname or user.phone,
                 'phone_number': user.phone_number,
                 'nickname': tournament_player.nickname,
                 'registered_at': tournament_player.created_at

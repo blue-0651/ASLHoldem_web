@@ -25,9 +25,8 @@ class NoticeFilter(django_filters.FilterSet):
     
     # 작성자 필터
     author = django_filters.CharFilter(
-        field_name='author__username',
-        lookup_expr='icontains',
-        help_text='작성자 이름으로 필터링'
+        method='filter_author',
+        help_text='작성자 닉네임 또는 전화번호로 필터링'
     )
     
     # 날짜 범위 필터
@@ -60,6 +59,14 @@ class NoticeFilter(django_filters.FilterSet):
             'created_before',
             'search'
         ]
+    
+    def filter_author(self, queryset, name, value):
+        """작성자 닉네임 또는 전화번호로 필터링"""
+        if value:
+            return queryset.filter(
+                Q(author__nickname__icontains=value) | Q(author__phone__icontains=value)
+            )
+        return queryset
     
     def filter_search(self, queryset, name, value):
         """제목 또는 내용에서 검색"""

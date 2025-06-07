@@ -6,11 +6,15 @@ from .models import Notice, NoticeReadStatus
 class NoticeListSerializer(serializers.ModelSerializer):
     """공지사항 목록용 시리얼라이저"""
     
-    author_name = serializers.CharField(source='author.username', read_only=True)
+    author_name = serializers.SerializerMethodField()
     notice_type_display = serializers.CharField(source='get_notice_type_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
     is_read = serializers.SerializerMethodField()
     is_active = serializers.SerializerMethodField()
+    
+    def get_author_name(self, obj):
+        """작성자 이름 반환 (nickname 우선, 없으면 phone)"""
+        return obj.author.nickname or obj.author.phone
     
     class Meta:
         model = Notice
@@ -40,12 +44,16 @@ class NoticeListSerializer(serializers.ModelSerializer):
 class NoticeDetailSerializer(serializers.ModelSerializer):
     """공지사항 상세용 시리얼라이저"""
     
-    author_name = serializers.CharField(source='author.username', read_only=True)
+    author_name = serializers.SerializerMethodField()
     notice_type_display = serializers.CharField(source='get_notice_type_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
     is_read = serializers.SerializerMethodField()
     is_active = serializers.SerializerMethodField()
     attachment_url = serializers.SerializerMethodField()
+    
+    def get_author_name(self, obj):
+        """작성자 이름 반환 (nickname 우선, 없으면 phone)"""
+        return obj.author.nickname or obj.author.phone
     
     class Meta:
         model = Notice
@@ -134,11 +142,15 @@ class NoticeCreateUpdateSerializer(serializers.ModelSerializer):
 class NoticeAdminListSerializer(serializers.ModelSerializer):
     """관리자용 공지사항 목록 시리얼라이저 (content 포함)"""
     
-    author_name = serializers.CharField(source='author.username', read_only=True)
+    author_name = serializers.SerializerMethodField()
     notice_type_display = serializers.CharField(source='get_notice_type_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
     is_read = serializers.SerializerMethodField()
     is_active = serializers.SerializerMethodField()
+    
+    def get_author_name(self, obj):
+        """작성자 이름 반환 (nickname 우선, 없으면 phone)"""
+        return obj.author.nickname or obj.author.phone
     
     class Meta:
         model = Notice
@@ -169,7 +181,11 @@ class NoticeReadStatusSerializer(serializers.ModelSerializer):
     """공지사항 읽음 상태 시리얼라이저"""
     
     notice_title = serializers.CharField(source='notice.title', read_only=True)
-    user_name = serializers.CharField(source='user.username', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    
+    def get_user_name(self, obj):
+        """사용자 이름 반환 (nickname 우선, 없으면 phone)"""
+        return obj.user.nickname or obj.user.phone
     
     class Meta:
         model = NoticeReadStatus

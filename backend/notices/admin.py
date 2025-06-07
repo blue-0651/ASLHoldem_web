@@ -31,7 +31,7 @@ class NoticeAdmin(admin.ModelAdmin):
         'author'
     ]
     
-    search_fields = ['title', 'content', 'author__username']
+    search_fields = ['title', 'content', 'author__nickname', 'author__phone']
     
     readonly_fields = ['view_count', 'created_at', 'updated_at']
     
@@ -111,7 +111,7 @@ class NoticeReadStatusAdmin(admin.ModelAdmin):
     
     list_filter = ['read_at', 'notice__notice_type']
     
-    search_fields = ['user__username', 'user__phone', 'notice__title']
+    search_fields = ['user__nickname', 'user__phone', 'notice__title']
     
     readonly_fields = ['user', 'notice', 'read_at']
     
