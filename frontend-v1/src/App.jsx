@@ -20,6 +20,7 @@ import {
   StoreInfo,
   Tournament,
   PlayerRegistration,
+  TicketIssue,
   UserDashboard
 } from './mobile/pages';
 
@@ -106,7 +107,7 @@ function App() {
             <Route path="tournament" element={<Tournament />} />
             <Route path="tournament/:id" element={<TournamentDetail />} />
             <Route path="info" element={<StoreInfo />} />
-            <Route path="ticket-issue" element={<TicketIssuePage />} />
+            <Route path="ticket-issue" element={<TicketIssue />} />
             <Route path="player-registration" element={<PlayerRegistration />} />
           </Route>
           <Route path="user" element={<ProtectedRoute userType="user" />}>

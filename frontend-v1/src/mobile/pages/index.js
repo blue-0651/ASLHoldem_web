@@ -3,6 +3,7 @@ import StoreDashboard from './store/StoreDashboard';
 import StoreInfo from './store/StoreInfo';
 import Tournament from './store/Tournament';
 import PlayerRegistration from './store/PlayerRegistration';
+import TicketIssue from './store/TicketIssue';
 import UserDashboard from './user/UserDashboard';
 
 // 컴포넌트 내보내기
@@ -11,6 +12,7 @@ export {
   StoreInfo,
   Tournament, 
   PlayerRegistration,
+  TicketIssue,
   UserDashboard
 };
 
