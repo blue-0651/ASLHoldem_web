@@ -828,7 +828,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user_ids\": [1, 2, 3],\n  \"tournament_id\": 1,\n  \"operation\": \"grant\",\n  \"quantity\": 2,\n  \"reason\": \"예선전 승리자들에게 좌석권 지급\"\n}"
+              "raw": "{\n  \"user_ids\": [1, 2, 3],\n  \"tournament_id\": 1,\n  \"operation\": \"grant\",\n  \"quantity\": 2,\n  \"reason\": \"예선전 승리자들에게 좌석권 지급\"\n}\n\n// 좌석권 회수 예제:\n// {\n//   \"user_ids\": [5],\n//   \"tournament_id\": 1,\n//   \"operation\": \"cancel\",\n//   \"quantity\": 3,\n//   \"reason\": \"관리자 회수\"\n// }"
             },
             "url": {
               "raw": "{{base_url}}/api/v1/seats/tickets/bulk_operation/",

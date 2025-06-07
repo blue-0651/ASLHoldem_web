@@ -64,6 +64,7 @@ const SeatManagementPage = () => {
   const [confirmModal, setConfirmModal] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [selectedTournamentFilter, setSelectedTournamentFilter] = useState(''); // 토너먼트 필터용
 
   // 회수용 추가 상태
   const [userTickets, setUserTickets] = useState([]);
@@ -124,14 +125,23 @@ const SeatManagementPage = () => {
   };
 
   // 최근 발급된 SEAT권 조회
-  const fetchRecentTransactions = async () => {
+  const fetchRecentTransactions = async (tournamentFilter = null) => {
     setTransactionsLoading(true);
     try {
-      console.log('📋 최근 발급된 SEAT권 조회 시작');
-      const response = await seatTicketAPI.getRecentTransactions({
+      const filterTournamentId = tournamentFilter !== null ? tournamentFilter : selectedTournamentFilter;
+      console.log('📋 최근 발급된 SEAT권 조회 시작, 토너먼트 필터:', filterTournamentId || '전체');
+      
+      const params = {
         limit: 50,  // 최근 50개만 조회
         ordering: '-created_at'  // 최신순 정렬
-      });
+      };
+      
+      // 토너먼트 필터가 있으면 추가
+      if (filterTournamentId && filterTournamentId !== '') {
+        params.tournament_id = filterTournamentId;
+      }
+      
+      const response = await seatTicketAPI.getRecentTransactions(params);
       
       const transactionsData = response.data.results || response.data || [];
       console.log('✅ 최근 발급된 SEAT권 조회 완료:', transactionsData.length, '개');
@@ -213,6 +223,7 @@ const SeatManagementPage = () => {
       
       const ticketsData = response.data.results || response.data || [];
       console.log('✅ 사용자 SEAT권 조회 완료:', ticketsData.length, '개');
+      console.log('🔍 첫 번째 좌석권 데이터 구조:', ticketsData[0]);
       
       setUserTickets(ticketsData);
     } catch (error) {
@@ -275,16 +286,53 @@ const SeatManagementPage = () => {
         showAlert('success', `SEAT권 ${quantity}개가 성공적으로 전송되었습니다.`);
 
       } else if (activeTab === 'retrieve') {
-        // SEAT권 회수 API 호출
+        // 선택된 좌석권들에서 필요한 정보 추출
+        const selectedTicketDetails = userTickets.filter(ticket => 
+          selectedTickets.includes(ticket.ticket_id)
+        );
+        
+        if (selectedTicketDetails.length === 0) {
+          throw new Error('선택된 좌석권 정보를 찾을 수 없습니다.');
+        }
+
+        console.log('🔍 선택된 좌석권 상세 정보:', selectedTicketDetails);
+
+        // 토너먼트 ID 추출 - SeatTicketSerializer 구조에 맞게
+        let tournamentId;
+        const firstTicket = selectedTicketDetails[0];
+        
+        // 1. tournament 필드 직접 사용 (ID 값)
+        if (firstTicket.tournament && typeof firstTicket.tournament === 'number') {
+          tournamentId = firstTicket.tournament;
+        }
+        // 2. tournament_id 필드가 있는 경우
+        else if (firstTicket.tournament_id) {
+          tournamentId = firstTicket.tournament_id;
+        }
+        // 3. tournament 객체에서 id 추출 (백업)
+        else if (firstTicket.tournament?.id) {
+          tournamentId = firstTicket.tournament.id;
+        }
+        
+        console.log('🎯 추출된 토너먼트 ID:', tournamentId);
+        console.log('🎫 첫 번째 좌석권 전체 구조:', firstTicket);
+        
+        if (!tournamentId) {
+          throw new Error('토너먼트 정보를 찾을 수 없습니다. 좌석권 데이터를 확인해주세요.');
+        }
+
+        // SEAT권 회수 API 호출 (백엔드 형식에 맞게 변환)
         const retrieveData = {
           operation: 'cancel',
-          ticket_ids: selectedTickets,
-          memo: memo || '관리자 회수'
+          user_ids: [selectedUser.id],
+          tournament_id: tournamentId,
+          quantity: selectedTickets.length,
+          reason: memo || '관리자 회수'
         };
 
         console.log('🔄 SEAT권 회수 요청:', retrieveData);
         const response = await seatTicketAPI.bulkOperation(retrieveData);
-                  console.log('✅ SEAT권 회수 성공:', response.data);
+        console.log('✅ SEAT권 회수 성공:', response.data);
 
         // 성공 시 SEAT권 목록 다시 로드
         fetchRecentTransactions();
@@ -354,13 +402,20 @@ const SeatManagementPage = () => {
     setSearchPhone(formattedPhone);
   };
 
+  // 토너먼트 필터 변경 핸들러
+  const handleTournamentFilterChange = (e) => {
+    const newFilter = e.target.value;
+    setSelectedTournamentFilter(newFilter);
+    fetchRecentTransactions(newFilter);
+  };
+
   // 상태 배지
   const getStatusBadge = (status) => {
     const statusMap = {
       'ACTIVE': { color: 'success', text: '활성' },
       'USED': { color: 'secondary', text: '사용됨' },
       'EXPIRED': { color: 'warning', text: '만료됨' },
-      'CANCELLED': { color: 'danger', text: '취소됨' },
+      'CANCELLED': { color: 'danger', text: '회수됨' },
       'COMPLETED': { color: 'success', text: '완료' }
     };
 
@@ -478,7 +533,7 @@ const SeatManagementPage = () => {
           'CANCELLED': { 
             backgroundColor: '#dc3545', 
             color: 'white', 
-            text: '취소됨' 
+            text: '회수됨' 
           },
           'COMPLETED': { 
             backgroundColor: '#28a745', 
@@ -994,7 +1049,7 @@ const SeatManagementPage = () => {
                                           {ticket.ticket_id}
                                         </span>
                                       </td>
-                                      <td>{ticket.tournament?.name || '토너먼트 정보 없음'}</td>
+                                      <td>{ticket.tournament_name || '토너먼트 정보 없음'}</td>
                                       <td>{getStatusBadge(ticket.status)}</td>
                                       <td>
                                         {new Date(ticket.created_at).toLocaleDateString()}
@@ -1071,28 +1126,62 @@ const SeatManagementPage = () => {
         <Col md={12}>
           <Card className="form-section" style={{ minHeight: '750px' }}>
             <CardHeader>
-              <div className="d-flex justify-content-between align-items-center">
+              <div className="d-flex justify-content-between align-items-center mb-2">
                 <CardTitle tag="h5" className="mb-0">최근 발급된 SEAT권</CardTitle>
-                <Button 
-                  color="outline-primary" 
-                  size="sm"
-                  onClick={() => fetchRecentTransactions()}
-                  disabled={transactionsLoading}
-                >
-                  {transactionsLoading ? (
-                    <>
-                      <Spinner size="sm" className="me-2" />
-                      새로고침 중...
-                    </>
-                  ) : (
-                    <>
-                      <RotateCcw size={14} className="me-2" />
-                      새로고침
-                    </>
-                  )}
-                </Button>
+                <div className="d-flex align-items-center gap-3">
+                  {/* 토너먼트 필터 */}
+                  <div className="d-flex align-items-center">
+                    <Label className="me-2 mb-0" style={{ fontSize: '14px', fontWeight: '500' }}>토너먼트:</Label>
+                    <Input
+                      type="select"
+                      value={selectedTournamentFilter}
+                      onChange={handleTournamentFilterChange}
+                      style={{ width: '200px', fontSize: '13px' }}
+                      disabled={transactionsLoading}
+                    >
+                      <option value="">전체 토너먼트</option>
+                      {tournaments.map(tournament => (
+                        <option key={tournament.id} value={tournament.id}>
+                          {tournament.name}
+                        </option>
+                      ))}
+                    </Input>
+                  </div>
+                  
+                  {/* 새로고침 버튼 */}
+                  <Button 
+                    color="outline-primary" 
+                    size="sm"
+                    onClick={() => fetchRecentTransactions()}
+                    disabled={transactionsLoading}
+                  >
+                    {transactionsLoading ? (
+                      <>
+                        <Spinner size="sm" className="me-2" />
+                        새로고침 중...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={14} className="me-2" />
+                        새로고침
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-              <small className="text-muted">최근 발급된 SEAT권의 상태와 정보를 확인할 수 있습니다.</small>
+              <div className="d-flex justify-content-between align-items-center">
+                <small className="text-muted">
+                  최근 발급된 SEAT권의 상태와 정보를 확인할 수 있습니다.
+                  {selectedTournamentFilter && (
+                    <span className="ms-2">
+                      (필터: {tournaments.find(t => t.id == selectedTournamentFilter)?.name || '선택된 토너먼트'})
+                    </span>
+                  )}
+                </small>
+                <small className="text-muted">
+                  총 {recentTransactions.length}개 항목
+                </small>
+              </div>
             </CardHeader>
             <CardBody style={{ minHeight: '650px' }}>
               {transactionsLoading ? (
