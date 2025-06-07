@@ -89,7 +89,11 @@ const SeatManagementPage = () => {
     console.log('📋 토너먼트 목록 조회 시작');
     setTournamentsLoading(true);
     try {
-      const response = await tournamentAPI.getAllTournaments();
+      // 전체 토너먼트를 가져오기 위해 limit 제거
+      const response = await tournamentAPI.getAllTournaments({
+        ordering: '-created_at'  // 최신순 정렬
+        // limit 파라미터 제거로 전체 토너먼트 조회
+      });
       const tournamentsData = response.data.results || response.data;
       console.log('✅ 토너먼트 목록 조회 완료:', tournamentsData?.length || 0, '개');
       setTournaments(tournamentsData);
@@ -132,7 +136,7 @@ const SeatManagementPage = () => {
       console.log('📋 최근 발급된 SEAT권 조회 시작, 토너먼트 필터:', filterTournamentId || '전체');
       
       const params = {
-        limit: 50,  // 최근 50개만 조회
+        page_size: 50,  // Django REST Framework pagination 파라미터
         ordering: '-created_at'  // 최신순 정렬
       };
       
@@ -666,7 +670,7 @@ const SeatManagementPage = () => {
 
       {/* 알림 섹션 */}
       {alert.show && (
-        <Alert color={alert.type} className="mb-4">
+        <Alert color={alert.type} className="mb-4" fade={false}>
           {alert.message}
         </Alert>
       )}
@@ -1070,7 +1074,7 @@ const SeatManagementPage = () => {
                     {selectedUser && userTickets.length === 0 && (
                       <Row className="mt-4">
                         <Col md={12}>
-                          <Alert color="info">
+                          <Alert color="info" fade={false}>
                             이 사용자는 현재 보유한 SEAT권이 없습니다.
                           </Alert>
                         </Col>
@@ -1124,8 +1128,8 @@ const SeatManagementPage = () => {
       {/* 최근 거래 내역 */}
       <Row>
         <Col md={12}>
-          <Card className="form-section" style={{ minHeight: '750px' }}>
-            <CardHeader>
+          <Card className="form-section" style={{ height: '750px', display: 'flex', flexDirection: 'column' }}>
+            <CardHeader style={{ flexShrink: 0 }}>
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <CardTitle tag="h5" className="mb-0">최근 발급된 SEAT권</CardTitle>
                 <div className="d-flex align-items-center gap-3">
@@ -1183,33 +1187,62 @@ const SeatManagementPage = () => {
                 </small>
               </div>
             </CardHeader>
-            <CardBody style={{ minHeight: '650px' }}>
+            <CardBody style={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column',
+              overflow: 'hidden',
+              padding: '1rem'
+            }}>
               {transactionsLoading ? (
                 <div className="text-center p-5">
                   <Spinner animation="border" variant="primary" />
                   <p className="mt-3">SEAT권 목록을 불러오는 중입니다...</p>
                 </div>
               ) : (
-                <DataTable
-                  columns={transactionColumns}
-                  data={recentTransactions}
-                  customStyles={customStyles}
-                  pagination
-                  paginationPerPage={10}
-                  paginationRowsPerPageOptions={[5, 10, 15, 20]}
-                  noDataComponent={
-                    <div className="text-center p-5">
-                      <div className="mb-3">
-                        <i className="fas fa-ticket-alt fa-3x text-muted"></i>
+                <div style={{ 
+                  flex: 1, 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  height: '100%'
+                }}>
+                  <DataTable
+                    columns={transactionColumns}
+                    data={recentTransactions}
+                    customStyles={{
+                      ...customStyles,
+                      table: {
+                        style: {
+                          height: '100%'
+                        }
+                      },
+                      tableWrapper: {
+                        style: {
+                          display: 'flex',
+                          flexDirection: 'column',
+                          height: '100%'
+                        }
+                      }
+                    }}
+                    pagination
+                    paginationPerPage={10}
+                    paginationRowsPerPageOptions={[5, 10, 15, 20]}
+                    noDataComponent={
+                      <div className="text-center p-5">
+                        <div className="mb-3">
+                          <i className="fas fa-ticket-alt fa-3x text-muted"></i>
+                        </div>
+                        <h5 className="text-muted">발급된 SEAT권이 없습니다.</h5>
+                        <p className="text-muted mb-0">SEAT권 전송을 시작해보세요.</p>
                       </div>
-                      <h5 className="text-muted">발급된 SEAT권이 없습니다.</h5>
-                      <p className="text-muted mb-0">SEAT권 전송을 시작해보세요.</p>
-                    </div>
-                  }
-                  highlightOnHover
-                  striped
-                  dense
-                />
+                    }
+                    highlightOnHover
+                    striped
+                    dense
+                    fixedHeader
+                    fixedHeaderScrollHeight="calc(100vh - 400px)"
+                  />
+                </div>
               )}
             </CardBody>
           </Card>
