@@ -378,7 +378,7 @@ const StoreInfo = () => {
                       <h5>{tournament.name}</h5>
                       <p className="mb-1">시작 시간: {new Date(tournament.start_time).toLocaleString()}</p>
                       <p className="mb-1">상태: {tournament.status}</p>
-                      <p className="mb-1">참가비: {tournament.buy_in}원</p>
+                      <p className="mb-1">필요 좌석권: {tournament.buy_in}개</p>
                       <p className="mb-0">남은 좌석: {tournament.ticket_quantity - tournament.participant_count}석</p>
                     </Card.Body>
                   </Card>

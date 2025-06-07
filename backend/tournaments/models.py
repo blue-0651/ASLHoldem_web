@@ -22,8 +22,8 @@ class Tournament(models.Model):
     # 시작 시간
     start_time = models.DateTimeField(verbose_name='시작 시간')
     
-    # 참가비 (바이인)
-    buy_in = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='바이인')
+    # 필요 좌석권 수 (바이인)
+    buy_in = models.IntegerField(default=1, verbose_name='바이인(필요 좌석권 수)')
     
     # 좌석권 수량
     ticket_quantity = models.IntegerField(verbose_name='좌석권 수량', default=100)

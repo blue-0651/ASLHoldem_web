@@ -348,7 +348,6 @@ const TicketIssuePage = () => {
         store_id: currentStore.id,
         quantity: parseInt(quantity),
         source: source,
-        amount: parseFloat(amount),
         memo: memo
       };
 
@@ -373,7 +372,6 @@ const TicketIssuePage = () => {
         setSelectedUser(null);
         setSearchPhone('');
         setQuantity(1);
-        setAmount(0);
         setMemo('');
         setExpiresAt('');
         
@@ -542,7 +540,7 @@ const TicketIssuePage = () => {
                 </Row>
 
                 <Row>
-                  <Col md={3}>
+                  <Col md={4}>
                     <FormGroup>
                       <Label for="quantity">수량 *</Label>
                       <Input
@@ -555,20 +553,7 @@ const TicketIssuePage = () => {
                       />
                     </FormGroup>
                   </Col>
-                  <Col md={3}>
-                    <FormGroup>
-                      <Label for="amount">금액</Label>
-                      <Input
-                        type="number"
-                        id="amount"
-                        min="0"
-                        step="0.01"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                      />
-                    </FormGroup>
-                  </Col>
-                  <Col md={6}>
+                  <Col md={8}>
                     <FormGroup>
                       <Label for="expiresAt">만료 시간 (선택사항)</Label>
                       <Input
@@ -584,14 +569,14 @@ const TicketIssuePage = () => {
                 <Row>
                   <Col md={12}>
                     <FormGroup>
-                      <Label for="memo">메모</Label>
+                      <Label for="memo">메모 (선택사항)</Label>
                       <Input
                         type="textarea"
                         id="memo"
-                        rows="3"
-                        placeholder="발급 사유나 기타 메모를 입력하세요"
+                        placeholder="좌석권 발급 관련 메모를 입력하세요"
                         value={memo}
                         onChange={(e) => setMemo(e.target.value)}
+                        rows={3}
                       />
                     </FormGroup>
                   </Col>
@@ -639,7 +624,6 @@ const TicketIssuePage = () => {
                     <th>사용자</th>
                     <th>상태</th>
                     <th>발급방법</th>
-                    <th>금액</th>
                     <th>발급일시</th>
                   </tr>
                 </thead>
@@ -655,14 +639,6 @@ const TicketIssuePage = () => {
                       <td>{ticket.user_name}</td>
                       <td>{getStatusBadge(ticket.status)}</td>
                       <td>{getSourceBadge(ticket.source)}</td>
-                      <td className="amount-cell">
-                        {ticket.amount > 0 && (
-                          <>
-                            <DollarSign size={14} className="me-1" />
-                            {Number(ticket.amount).toLocaleString()}원
-                          </>
-                        )}
-                      </td>
                       <td className="date-cell">
                         {new Date(ticket.created_at).toLocaleString()}
                       </td>
@@ -688,7 +664,6 @@ const TicketIssuePage = () => {
             <li><strong>사용자:</strong> {selectedUser?.nickname || selectedUser?.username || '이름 없음'} ({selectedUser?.phone})</li>
             <li><strong>수량:</strong> {quantity}개</li>
             <li><strong>발급방법:</strong> {source}</li>
-            <li><strong>금액:</strong> {amount}원</li>
             {memo && <li><strong>메모:</strong> {memo}</li>}
           </ul>
         </ModalBody>

@@ -449,26 +449,35 @@ def register_player_to_tournament(request):
         from seats.models import SeatTicket, SeatTicketTransaction, UserSeatTicketSummary
         from django.db import transaction as db_transaction
         
-        # 사용 가능한 좌석권 조회
-        available_ticket = SeatTicket.objects.filter(
+        # 필요한 좌석권 개수 확인 (buy_in)
+        required_tickets = tournament.buy_in
+        
+        # 사용 가능한 좌석권 조회 (필요한 개수만큼)
+        available_tickets = SeatTicket.objects.filter(
             user=user,
             tournament=tournament,
             status='ACTIVE'
-        ).first()
+        )[:required_tickets]
         
-        if not available_ticket:
+        # 보유한 좌석권 개수 확인
+        available_count = available_tickets.count()
+        
+        if available_count < required_tickets:
             return Response({
-                'error': f'해당 토너먼트({tournament.name})의 사용 가능한 좌석권이 없습니다. 좌석권을 먼저 구매해주세요.',
+                'error': f'토너먼트 참가에는 좌석권 {required_tickets}개가 필요하지만, {available_count}개만 보유하고 있습니다.',
+                'required_tickets': required_tickets,
+                'available_tickets': available_count,
                 'tournament_name': tournament.name,
                 'user_phone': user.phone_number
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # 좌석권이 유효한지 확인
-        if not available_ticket.is_valid():
-            return Response({
-                'error': '보유하신 좌석권이 만료되었거나 사용할 수 없는 상태입니다.',
-                'ticket_status': available_ticket.get_status_display()
-            }, status=status.HTTP_400_BAD_REQUEST)
+        # 모든 좌석권이 유효한지 확인
+        for ticket in available_tickets:
+            if not ticket.is_valid():
+                return Response({
+                    'error': f'보유하신 좌석권 중 일부가 만료되었거나 사용할 수 없는 상태입니다. (티켓 ID: {ticket.ticket_id})',
+                    'ticket_status': ticket.get_status_display()
+                }, status=status.HTTP_400_BAD_REQUEST)
         
         # 트랜잭션으로 선수 등록과 좌석권 사용 처리
         with db_transaction.atomic():
@@ -479,18 +488,21 @@ def register_player_to_tournament(request):
                 nickname=data.get('nickname', user.nickname or user.phone)
             )
             
-            # 좌석권 사용 처리
-            available_ticket.use_ticket()
-            
-            # 좌석권 거래 내역 생성
-            SeatTicketTransaction.objects.create(
-                seat_ticket=available_ticket,
-                transaction_type='USE',
-                quantity=1,
-                amount=0,
-                reason=f'토너먼트 참가: {tournament.name}',
-                processed_by=request.user if request.user.is_authenticated else None
-            )
+            # 모든 필요한 좌석권 사용 처리
+            used_tickets = []
+            for ticket in available_tickets:
+                ticket.use_ticket()
+                used_tickets.append(str(ticket.ticket_id))
+                
+                # 좌석권 거래 내역 생성
+                SeatTicketTransaction.objects.create(
+                    seat_ticket=ticket,
+                    transaction_type='USE',
+                    quantity=1,
+                    amount=0,
+                    reason=f'토너먼트 참가: {tournament.name}',
+                    processed_by=request.user if request.user.is_authenticated else None
+                )
             
             # 사용자 좌석권 요약 정보 업데이트
             try:
@@ -509,7 +521,7 @@ def register_player_to_tournament(request):
         
         return Response({
             'success': True,
-            'message': '선수가 성공적으로 참가되었습니다. 좌석권 1개가 사용되었습니다.',
+            'message': f'선수가 성공적으로 참가되었습니다. 좌석권 {required_tickets}개가 사용되었습니다.',
             'player': {
                 'id': tournament_player.id,
                 'user_id': user.id,
@@ -518,9 +530,9 @@ def register_player_to_tournament(request):
                 'nickname': tournament_player.nickname,
                 'registered_at': tournament_player.created_at
             },
-            'used_ticket': {
-                'ticket_id': str(available_ticket.ticket_id),
-                'used_at': available_ticket.used_at,
+            'used_tickets': {
+                'ticket_ids': used_tickets,
+                'count': len(used_tickets),
                 'tournament_name': tournament.name
             }
         })

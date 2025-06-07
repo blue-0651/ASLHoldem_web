@@ -147,8 +147,6 @@ const SeatManagementPage = () => {
     }
   };
 
-
-
   // 사용자 검색 함수
   const searchUser = async () => {
     if (!searchPhone.trim()) {
@@ -446,25 +444,14 @@ const SeatManagementPage = () => {
     },
     {
       name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>상태</span>,
-      selector: (row) => row.status,
-      center: true,
-      width: '100px',
-      cell: (row) => {
-        const statusMap = {
-          'ACTIVE': { color: 'success', text: '활성', icon: <Award size={12} /> },
-          'USED': { color: 'secondary', text: '사용됨', icon: <Calendar size={12} /> },
-          'EXPIRED': { color: 'warning', text: '만료됨', icon: <Calendar size={12} /> },
-          'CANCELLED': { color: 'danger', text: '취소됨', icon: <ArrowLeft size={12} /> }
-        };
-        
-        const statusInfo = statusMap[row.status] || { color: 'secondary', text: row.status, icon: null };
-        return (
-          <Badge color={statusInfo.color} className="d-flex align-items-center gap-1" style={{ fontSize: '11px' }}>
-            {statusInfo.icon}
-            {statusInfo.text}
-          </Badge>
-        );
-      }
+      selector: (row) => row.status_display || row.status,
+      sortable: true,
+      width: '120px',
+      cell: (row) => (
+        <span className={`badge ${getStatusBadgeClass(row.status)}`}>
+          {row.status_display || row.status}
+        </span>
+      )
     },
     {
       name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>발급방법</span>,
@@ -487,17 +474,6 @@ const SeatManagementPage = () => {
           </Badge>
         );
       }
-    },
-    {
-      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>금액</span>,
-      selector: (row) => row.amount || 0,
-      center: true,
-      width: '80px',
-      cell: (row) => (
-        <span style={{ fontSize: '12px' }}>
-          {row.amount > 0 ? `${(row.amount || 0).toLocaleString()}원` : '-'}
-        </span>
-      )
     },
     {
       name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>매장</span>,

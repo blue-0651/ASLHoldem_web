@@ -149,7 +149,10 @@ const TournamentDetail = () => {
                   
                   <Col xs={6} className="mb-3">
                     <h6><i className="fas fa-coins me-2"></i>참가비</h6>
-                    <p className="text-muted mb-0">{tournament.buy_in?.toLocaleString()}원</p>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <span className="text-muted">필요 좌석권:</span>
+                      <p className="text-muted mb-0">{tournament.buy_in}개</p>
+                    </div>
                   </Col>
                   
                   <Col xs={6} className="mb-3">

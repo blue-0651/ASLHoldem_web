@@ -158,7 +158,7 @@ const Tournament = () => {
                       <div>
                         <h3 className="fs-5 mb-1">{tournament.name}</h3>
                         <p className="text-muted mb-2">
-                          {new Date(tournament.start_time).toLocaleString()} | 바이인: {tournament.buy_in?.toLocaleString()}원
+                          {new Date(tournament.start_time).toLocaleString()} | 바이인: {tournament.buy_in}개 좌석권
                         </p>
                         <div className="mb-2">
                           <small className="text-muted d-block">
