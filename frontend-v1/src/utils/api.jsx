@@ -314,6 +314,15 @@ export const seatTicketAPI = {
       params.tournament_id = tournamentId;
     }
     return API.get('/seats/tickets/store-users-simple/', { params });
+  },
+
+  // 최근 거래 내역 조회 - SeatTicket 엔드포인트 사용 (TicketIssuePage.jsx와 동일)
+  getRecentTransactions: (filters = {}) => {
+    const params = {
+      ordering: '-created_at', // 최신순 정렬
+      ...filters
+    };
+    return API.get('/seats/tickets/', { params });
   }
 };
 

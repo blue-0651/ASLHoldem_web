@@ -19,84 +19,21 @@ const PlayerRegistrationPage = () => {
     notes: ''
   });
 
-  // 목 데이터 - 매장 목록
-  const mockStores = [
-    { id: 1, name: '강남점' },
-    { id: 2, name: '홍대점' },
-    { id: 3, name: '부산점' },
-    { id: 4, name: '대구점' }
-  ];
 
-  // 목 데이터 - 선수 목록
-  const mockPlayers = [
-    {
-      id: 1,
-      name: '김선수',
-      email: 'kim.player@email.com',
-      phone: '010-1234-5678',
-      store_id: 1,
-      store_name: '강남점',
-      status: 'active',
-      notes: '정기 토너먼트 참가자',
-      created_at: '2024-01-15T10:30:00Z',
-      last_tournament: '2024-01-20T14:00:00Z',
-      tournament_count: 15
-    },
-    {
-      id: 2,
-      name: '이홀덤',
-      email: 'lee.holdem@email.com',
-      phone: '010-2345-6789',
-      store_id: 2,
-      store_name: '홍대점',
-      status: 'active',
-      notes: '신규 회원',
-      created_at: '2024-01-18T16:20:00Z',
-      last_tournament: '2024-01-22T18:00:00Z',
-      tournament_count: 3
-    },
-    {
-      id: 3,
-      name: '박포커',
-      email: 'park.poker@email.com',
-      phone: '010-3456-7890',
-      store_id: 1,
-      store_name: '강남점',
-      status: 'inactive',
-      notes: '휴면 계정',
-      created_at: '2023-12-01T09:15:00Z',
-      last_tournament: '2023-12-28T20:00:00Z',
-      tournament_count: 8
-    },
-    {
-      id: 4,
-      name: '최게임',
-      email: 'choi.game@email.com',
-      phone: '010-4567-8901',
-      store_id: 3,
-      store_name: '부산점',
-      status: 'active',
-      notes: '우수 선수',
-      created_at: '2024-01-05T14:45:00Z',
-      last_tournament: '2024-01-25T16:30:00Z',
-      tournament_count: 22
-    }
-  ];
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // 실제 API 호출 대신 목 데이터 사용
+        // TODO: 실제 API 호출로 변경 필요
         // const playersResponse = await playerAPI.getAllPlayers();
         // const storesResponse = await storeAPI.getAllStores();
         // setPlayers(playersResponse.data);
         // setStores(storesResponse.data);
         
-        // 시뮬레이션을 위한 딜레이
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setPlayers(mockPlayers);
-        setStores(mockStores);
+        // 임시로 빈 배열로 설정
+        setPlayers([]);
+        setStores([]);
         setLoading(false);
       } catch (err) {
         console.error('선수 데이터 로드 오류:', err);

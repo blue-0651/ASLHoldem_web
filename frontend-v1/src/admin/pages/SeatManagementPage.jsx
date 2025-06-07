@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Card,
   CardBody,
@@ -25,19 +25,22 @@ import {
   TabContent,
   TabPane
 } from 'reactstrap';
-import { 
-  Search, 
-  Send, 
-  RotateCcw, 
-  User, 
-  Award, 
-  Calendar, 
+import {
+  Search,
+  Send,
+  RotateCcw,
+  User,
+  Award,
+  Calendar,
   DollarSign,
   Users,
   ArrowRight,
   ArrowLeft
 } from 'react-feather';
-import { userAPI, tournamentAPI } from '../../utils/api';
+import { userAPI, tournamentAPI, storeAPI, seatTicketAPI } from '../../utils/api';
+
+// third party
+import DataTable from 'react-data-table-component';
 
 const SeatManagementPage = () => {
   // 탭 상태
@@ -47,6 +50,8 @@ const SeatManagementPage = () => {
   const [tournaments, setTournaments] = useState([]);
   const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [currentStore, setCurrentStore] = useState(null);
+  const [stores, setStores] = useState([]);
+  const [storesLoading, setStoresLoading] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState('');
   const [searchPhone, setSearchPhone] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
@@ -58,82 +63,91 @@ const SeatManagementPage = () => {
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
   const [confirmModal, setConfirmModal] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
 
   // 회수용 추가 상태
   const [userTickets, setUserTickets] = useState([]);
   const [selectedTickets, setSelectedTickets] = useState([]);
 
-  // 더미 데이터 초기화
+  // API 호출 중복 방지를 위한 ref
+  const hasFetchedData = useRef(false);
+
+  // 초기 데이터 로드 (중복 호출 방지)
   useEffect(() => {
-    initializeDummyData();
-    fetchTournaments();
+    if (!hasFetchedData.current) {
+      hasFetchedData.current = true;
+      console.log('🚀 SeatManagement 초기 데이터 로딩 시작');
+      fetchTournaments();
+      fetchStores();
+      fetchRecentTransactions();
+    }
   }, []);
 
   // 토너먼트 목록 조회
   const fetchTournaments = async () => {
+    console.log('📋 토너먼트 목록 조회 시작');
     setTournamentsLoading(true);
     try {
       const response = await tournamentAPI.getAllTournaments();
       const tournamentsData = response.data.results || response.data;
-      console.log('토너먼트 목록:', tournamentsData);
+      console.log('✅ 토너먼트 목록 조회 완료:', tournamentsData?.length || 0, '개');
       setTournaments(tournamentsData);
     } catch (error) {
-      console.error('토너먼트 목록 조회 실패:', error);
+      console.error('❌ 토너먼트 목록 조회 실패:', error);
       showAlert('warning', '토너먼트 목록을 불러오는데 실패했습니다.');
     } finally {
       setTournamentsLoading(false);
     }
   };
 
-  const initializeDummyData = () => {
-    // 더미 매장 데이터
-    const dummyStore = {
-      id: 1,
-      name: '강남 홀덤 매장',
-      address: '서울시 강남구 테헤란로 123',
-      max_capacity: 50
-    };
-
-    // 더미 거래 내역
-    const dummyTransactions = [
-      {
-        id: 1,
-        type: 'SEND',
-        tournament_name: '2024년 신년 토너먼트',
-        user_name: '김철수',
-        user_phone: '010-1234-5678',
-        quantity: 2,
-        memo: '신규 고객 환영 SEAT권',
-        created_at: '2024-01-10T10:30:00',
-        status: 'COMPLETED'
-      },
-      {
-        id: 2,
-        type: 'RETRIEVE',
-        tournament_name: '주말 스페셜 토너먼트',
-        user_name: '이영희',
-        user_phone: '010-2345-6789',
-        quantity: 1,
-        memo: '참가 취소로 인한 회수',
-        created_at: '2024-01-10T09:15:00',
-        status: 'COMPLETED'
-      },
-      {
-        id: 3,
-        type: 'SEND',
-        tournament_name: '월말 챔피언십',
-        user_name: '박민수',
-        user_phone: '010-3456-7890',
-        quantity: 3,
-        memo: '이벤트 당첨 SEAT권',
-        created_at: '2024-01-09T16:45:00',
-        status: 'COMPLETED'
+  // 매장 목록 조회 (TournamentManagement.jsx 방식 참고)
+  const fetchStores = async () => {
+    setStoresLoading(true);
+    try {
+      console.log('🏪 매장 정보 로딩 시작');
+      const response = await storeAPI.getAllStores();
+      const storesData = Array.isArray(response.data) ? response.data : [];
+      console.log('✅ 매장 정보 로딩 완료:', storesData.length, '개 매장');
+      
+      setStores(storesData);
+      
+      // 첫 번째 매장을 현재 매장으로 설정 (또는 로그인한 사용자의 매장으로 설정)
+      if (storesData.length > 0) {
+        setCurrentStore(storesData[0]);
+        console.log('현재 매장 설정:', storesData[0]);
       }
-    ];
-
-    setCurrentStore(dummyStore);
-    setRecentTransactions(dummyTransactions);
+    } catch (error) {
+      console.error('❌ 매장 목록 조회 실패:', error);
+      showAlert('warning', '매장 정보를 불러오는데 실패했습니다.');
+    } finally {
+      setStoresLoading(false);
+    }
   };
+
+  // 최근 발급된 SEAT권 조회
+  const fetchRecentTransactions = async () => {
+    setTransactionsLoading(true);
+    try {
+      console.log('📋 최근 발급된 SEAT권 조회 시작');
+      const response = await seatTicketAPI.getRecentTransactions({
+        limit: 50,  // 최근 50개만 조회
+        ordering: '-created_at'  // 최신순 정렬
+      });
+      
+      const transactionsData = response.data.results || response.data || [];
+      console.log('✅ 최근 발급된 SEAT권 조회 완료:', transactionsData.length, '개');
+      
+      setRecentTransactions(transactionsData);
+    } catch (error) {
+      console.error('❌ 최근 발급된 SEAT권 조회 실패:', error);
+      showAlert('warning', 'SEAT권 목록을 불러오는데 실패했습니다.');
+      setRecentTransactions([]);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  };
+
+
 
   // 사용자 검색 함수
   const searchUser = async () => {
@@ -146,25 +160,25 @@ const SeatManagementPage = () => {
     try {
       // 전화번호 형식 정리
       const cleanPhone = searchPhone.replace(/-/g, '');
-      const formattedPhone = `${cleanPhone.slice(0,3)}-${cleanPhone.slice(3,7)}-${cleanPhone.slice(7)}`;
-      
+      const formattedPhone = `${cleanPhone.slice(0, 3)}-${cleanPhone.slice(3, 7)}-${cleanPhone.slice(7)}`;
+
       const response = await userAPI.getUserByPhoneOrId({
         phone: formattedPhone
       });
-      
+
       const userData = response.data;
       console.log('사용자 검색 결과:', userData);
-      
+
       // role이 'USER'인지 확인
       if (userData && userData.id) {
         if (userData.role === 'USER') {
           setSelectedUser(userData);
-          
+
           // 회수 탭일 때 사용자의 SEAT권 목록 로드
           if (activeTab === 'retrieve') {
             loadUserTickets(userData.id);
           }
-          
+
           showAlert('success', '사용자를 찾았습니다.');
         } else {
           setSelectedUser(null);
@@ -177,7 +191,7 @@ const SeatManagementPage = () => {
     } catch (error) {
       console.error('사용자 검색 실패:', error);
       setSelectedUser(null);
-      
+
       // API 에러 응답 처리
       if (error.response?.data?.error) {
         showAlert('warning', error.response.data.error);
@@ -189,36 +203,26 @@ const SeatManagementPage = () => {
     }
   };
 
-  // 사용자의 SEAT권 목록 로드 (더미)
-  const loadUserTickets = (userId) => {
-    const dummyUserTickets = [
-      {
-        id: 'ticket_001',
-        tournament_id: 1,
-        tournament_name: '2024년 신년 토너먼트',
-        status: 'ACTIVE',
-        issued_at: '2024-01-08T14:30:00',
-        expires_at: null
-      },
-      {
-        id: 'ticket_002',
-        tournament_id: 1,
-        tournament_name: '2024년 신년 토너먼트',
-        status: 'ACTIVE',
-        issued_at: '2024-01-08T14:30:00',
-        expires_at: null
-      },
-      {
-        id: 'ticket_003',
-        tournament_id: 2,
-        tournament_name: '주말 스페셜 토너먼트',
-        status: 'ACTIVE',
-        issued_at: '2024-01-09T16:20:00',
-        expires_at: null
-      }
-    ];
-
-    setUserTickets(dummyUserTickets);
+  // 사용자의 SEAT권 목록 로드
+  const loadUserTickets = async (userId) => {
+    try {
+      console.log('🎫 사용자 SEAT권 목록 조회 시작:', userId);
+      
+      // 사용자의 활성 SEAT권만 조회
+      const response = await seatTicketAPI.getTicketsByTournament(null, {
+        user_id: userId,
+        status: 'ACTIVE'
+      });
+      
+      const ticketsData = response.data.results || response.data || [];
+      console.log('✅ 사용자 SEAT권 조회 완료:', ticketsData.length, '개');
+      
+      setUserTickets(ticketsData);
+    } catch (error) {
+      console.error('❌ 사용자 SEAT권 목록 조회 실패:', error);
+      setUserTickets([]);
+      showAlert('warning', '사용자의 SEAT권 정보를 불러오는데 실패했습니다.');
+    }
   };
 
   // SEAT권 전송 처리
@@ -249,25 +253,50 @@ const SeatManagementPage = () => {
     setConfirmModal(true);
   };
 
-  // 확인 후 실행
-  const confirmAction = () => {
+  // 확인 후 실행 (실제 API 호출)
+  const confirmAction = async () => {
     setLoading(true);
-    
-    setTimeout(() => {
-      const newTransaction = {
-        id: recentTransactions.length + 1,
-        type: activeTab === 'send' ? 'SEND' : 'RETRIEVE',
-        tournament_name: tournaments.find(t => t.id == selectedTournament)?.name || '',
-        user_name: selectedUser?.nickname || selectedUser?.username || '이름 없음',
-        user_phone: selectedUser?.phone || '',
-        quantity: activeTab === 'send' ? parseInt(quantity) : selectedTickets.length,
-        memo: memo,
-        created_at: new Date().toISOString(),
-        status: 'COMPLETED'
-      };
 
-      setRecentTransactions([newTransaction, ...recentTransactions]);
-      
+    try {
+      if (activeTab === 'send') {
+        // SEAT권 전송 API 호출
+        const grantData = {
+          tournament_id: selectedTournament,
+          user_id: selectedUser.id,
+          store_id: currentStore?.id,
+          quantity: parseInt(quantity),
+          source: source,
+          memo: memo || ''
+        };
+
+        console.log('🎫 SEAT권 전송 요청:', grantData);
+        const response = await seatTicketAPI.grantTickets(grantData);
+                  console.log('✅ SEAT권 전송 성공:', response.data);
+
+        // 성공 시 SEAT권 목록 다시 로드
+        fetchRecentTransactions();
+        showAlert('success', `SEAT권 ${quantity}개가 성공적으로 전송되었습니다.`);
+
+      } else if (activeTab === 'retrieve') {
+        // SEAT권 회수 API 호출
+        const retrieveData = {
+          operation: 'cancel',
+          ticket_ids: selectedTickets,
+          memo: memo || '관리자 회수'
+        };
+
+        console.log('🔄 SEAT권 회수 요청:', retrieveData);
+        const response = await seatTicketAPI.bulkOperation(retrieveData);
+                  console.log('✅ SEAT권 회수 성공:', response.data);
+
+        // 성공 시 SEAT권 목록 다시 로드
+        fetchRecentTransactions();
+        showAlert('success', `SEAT권 ${selectedTickets.length}개가 성공적으로 회수되었습니다.`);
+
+        // 사용자 SEAT권 목록 다시 로드
+        loadUserTickets(selectedUser.id);
+      }
+
       // 폼 초기화
       setSelectedTournament('');
       setSelectedUser(null);
@@ -278,12 +307,24 @@ const SeatManagementPage = () => {
       setSelectedTickets([]);
       setUserTickets([]);
 
+    } catch (error) {
+      console.error('❌ SEAT권 처리 실패:', error);
+      
+      // 에러 메시지 처리
+      let errorMessage = 'SEAT권 처리 중 오류가 발생했습니다.';
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      showAlert('danger', errorMessage);
+    } finally {
       setConfirmModal(false);
       setLoading(false);
-      
-      const actionType = activeTab === 'send' ? '전송' : '회수';
-      showAlert('success', `SEAT권 ${actionType}이 완료되었습니다.`);
-    }, 1500);
+    }
   };
 
   // 알림 표시
@@ -296,10 +337,10 @@ const SeatManagementPage = () => {
   const formatPhoneNumber = (value) => {
     // 숫자만 추출
     const phoneNumber = value.replace(/[^\d]/g, '');
-    
+
     // 11자리를 초과하지 않도록 제한
     const limitedPhoneNumber = phoneNumber.slice(0, 11);
-    
+
     // 자동 하이픈 삽입
     if (limitedPhoneNumber.length <= 3) {
       return limitedPhoneNumber;
@@ -325,7 +366,7 @@ const SeatManagementPage = () => {
       'CANCELLED': { color: 'danger', text: '취소됨' },
       'COMPLETED': { color: 'success', text: '완료' }
     };
-    
+
     const statusInfo = statusMap[status] || { color: 'secondary', text: status };
     return <Badge color={statusInfo.color}>{statusInfo.text}</Badge>;
   };
@@ -336,7 +377,7 @@ const SeatManagementPage = () => {
       'SEND': { color: 'primary', text: '전송', icon: <ArrowRight size={12} /> },
       'RETRIEVE': { color: 'warning', text: '회수', icon: <ArrowLeft size={12} /> }
     };
-    
+
     const typeInfo = typeMap[type] || { color: 'secondary', text: type, icon: null };
     return (
       <Badge color={typeInfo.color} className="d-flex align-items-center gap-1">
@@ -348,11 +389,182 @@ const SeatManagementPage = () => {
 
   // 체크박스 토글
   const toggleTicketSelection = (ticketId) => {
-    setSelectedTickets(prev => 
-      prev.includes(ticketId) 
+    setSelectedTickets(prev =>
+      prev.includes(ticketId)
         ? prev.filter(id => id !== ticketId)
         : [...prev, ticketId]
     );
+  };
+
+  // 거래 타입 한국어 매핑
+  const getTransactionTypeText = (type) => {
+    const typeMap = {
+      'GRANT': '지급',
+      'USE': '사용',
+      'CANCEL': '취소',
+      'EXPIRE': '만료',
+      'TRANSFER': '이전'
+    };
+    return typeMap[type] || type;
+  };
+
+  // SEAT권 내역 테이블 컬럼 정의 (TicketIssuePage.jsx와 동일한 데이터 구조)
+  const transactionColumns = useMemo(() => [
+    {
+      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>SEAT권 ID</span>,
+      selector: (row) => row.ticket_id || '정보 없음',
+      center: true,
+      width: '130px',
+      cell: (row) => (
+        <span className="text-monospace" style={{ fontSize: '10px' }}>
+          {row.ticket_id ? row.ticket_id.slice(-8) : '정보 없음'}
+        </span>
+      )
+    },
+    {
+      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>토너먼트</span>,
+      selector: (row) => row.tournament_name || '정보 없음',
+      center: true,
+      width: '200px',
+      cell: (row) => (
+        <div style={{ fontSize: '12px' }}>
+          {row.tournament_name || '정보 없음'}
+        </div>
+      )
+    },
+    {
+      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>사용자</span>,
+      selector: (row) => row.user_name || '정보 없음',
+      center: true,
+      width: '120px',
+      cell: (row) => (
+        <div style={{ fontSize: '12px' }}>
+          <div>{row.user_name || '정보 없음'}</div>
+          <div style={{ fontSize: '10px', color: '#666' }}>{row.user_phone || ''}</div>
+        </div>
+      )
+    },
+    {
+      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>상태</span>,
+      selector: (row) => row.status,
+      center: true,
+      width: '100px',
+      cell: (row) => {
+        const statusMap = {
+          'ACTIVE': { color: 'success', text: '활성', icon: <Award size={12} /> },
+          'USED': { color: 'secondary', text: '사용됨', icon: <Calendar size={12} /> },
+          'EXPIRED': { color: 'warning', text: '만료됨', icon: <Calendar size={12} /> },
+          'CANCELLED': { color: 'danger', text: '취소됨', icon: <ArrowLeft size={12} /> }
+        };
+        
+        const statusInfo = statusMap[row.status] || { color: 'secondary', text: row.status, icon: null };
+        return (
+          <Badge color={statusInfo.color} className="d-flex align-items-center gap-1" style={{ fontSize: '11px' }}>
+            {statusInfo.icon}
+            {statusInfo.text}
+          </Badge>
+        );
+      }
+    },
+    {
+      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>발급방법</span>,
+      selector: (row) => row.source,
+      center: true,
+      width: '100px',
+      cell: (row) => {
+        const sourceMap = {
+          'PURCHASE': { color: 'primary', text: '구매' },
+          'REWARD': { color: 'success', text: '보상' },
+          'GIFT': { color: 'info', text: '선물' },
+          'ADMIN': { color: 'warning', text: '관리자' },
+          'EVENT': { color: 'secondary', text: '이벤트' }
+        };
+        
+        const sourceInfo = sourceMap[row.source] || { color: 'secondary', text: row.source };
+        return (
+          <Badge color={sourceInfo.color} style={{ fontSize: '11px' }}>
+            {sourceInfo.text}
+          </Badge>
+        );
+      }
+    },
+    {
+      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>금액</span>,
+      selector: (row) => row.amount || 0,
+      center: true,
+      width: '80px',
+      cell: (row) => (
+        <span style={{ fontSize: '12px' }}>
+          {row.amount > 0 ? `${(row.amount || 0).toLocaleString()}원` : '-'}
+        </span>
+      )
+    },
+    {
+      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>매장</span>,
+      selector: (row) => row.store_name || '정보 없음',
+      center: true,
+      width: '120px',
+      cell: (row) => (
+        <span style={{ fontSize: '12px' }}>{row.store_name || '정보 없음'}</span>
+      )
+    },
+    {
+      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>발급일시</span>,
+      selector: (row) => row.created_at,
+      center: true,
+      width: '140px',
+      cell: (row) => (
+        <div style={{ fontSize: '11px' }}>
+          <div>{new Date(row.created_at).toLocaleDateString('ko-KR')}</div>
+          <div style={{ color: '#666' }}>{new Date(row.created_at).toLocaleTimeString('ko-KR')}</div>
+        </div>
+      )
+    },
+    {
+      name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>메모</span>,
+      selector: (row) => row.memo || '-',
+      center: false,
+      wrap: true,
+      cell: (row) => (
+        <div style={{ fontSize: '11px', color: '#666', maxWidth: '150px' }}>
+          {row.memo || '-'}
+        </div>
+      )
+    }
+  ], []);
+
+  // DataTable 커스텀 스타일 (StoreManagement.jsx 참고)
+  const customStyles = {
+    headRow: {
+      style: {
+        backgroundColor: '#f8f9fa',
+        minHeight: '50px'
+      }
+    },
+    headCells: {
+      style: {
+        paddingLeft: '12px',
+        paddingRight: '12px',
+        paddingTop: '8px',
+        paddingBottom: '8px',
+        backgroundColor: '#ffffff',
+        fontSize: '13px'
+      }
+    },
+    cells: {
+      style: {
+        paddingLeft: '12px',
+        paddingRight: '12px',
+        paddingTop: '8px',
+        paddingBottom: '8px',
+        fontSize: '12px'
+      }
+    },
+    rows: {
+      style: {
+        minHeight: '55px'  // 각 행의 최소 높이 설정
+      }
+    }
   };
 
   return (
@@ -563,17 +775,39 @@ const SeatManagementPage = () => {
                       <Col md={4}>
                         <FormGroup>
                           <Label for="store">현재 매장</Label>
-                          <Input
-                            type="text"
-                            id="store"
-                            value={currentStore ? currentStore.name : '매장 정보 로딩 중...'}
-                            disabled
-                            readOnly
-                          />
-                          {currentStore && (
-                            <small className="text-muted">
-                              {currentStore.address} | 최대 수용인원: {currentStore.max_capacity}명
-                            </small>
+                          {storesLoading ? (
+                            <Input
+                              type="text"
+                              id="store"
+                              value="매장 정보 로딩 중..."
+                              disabled
+                              readOnly
+                            />
+                          ) : stores.length > 0 ? (
+                            <Input
+                              type="select"
+                              id="store"
+                              value={currentStore ? currentStore.id : ''}
+                              onChange={(e) => {
+                                const selectedStore = stores.find(store => store.id === parseInt(e.target.value));
+                                setCurrentStore(selectedStore);
+                                console.log('매장 변경:', selectedStore);
+                              }}
+                            >
+                              {stores.map(store => (
+                                <option key={store.id} value={store.id}>
+                                  {store.name}
+                                </option>
+                              ))}
+                            </Input>
+                          ) : (
+                            <Input
+                              type="text"
+                              id="store"
+                              value="매장 정보를 불러올 수 없습니다"
+                              disabled
+                              readOnly
+                            />
                           )}
                         </FormGroup>
                       </Col>
@@ -716,19 +950,19 @@ const SeatManagementPage = () => {
                                       <td>
                                         <Input
                                           type="checkbox"
-                                          checked={selectedTickets.includes(ticket.id)}
-                                          onChange={() => toggleTicketSelection(ticket.id)}
+                                          checked={selectedTickets.includes(ticket.ticket_id)}
+                                          onChange={() => toggleTicketSelection(ticket.ticket_id)}
                                         />
                                       </td>
                                       <td>
                                         <span className="text-monospace">
-                                          {ticket.id}
+                                          {ticket.ticket_id}
                                         </span>
                                       </td>
-                                      <td>{ticket.tournament_name}</td>
+                                      <td>{ticket.tournament?.name || '토너먼트 정보 없음'}</td>
                                       <td>{getStatusBadge(ticket.status)}</td>
                                       <td>
-                                        {new Date(ticket.issued_at).toLocaleDateString()}
+                                        {new Date(ticket.created_at).toLocaleDateString()}
                                       </td>
                                     </tr>
                                   ))}
@@ -800,50 +1034,58 @@ const SeatManagementPage = () => {
       {/* 최근 거래 내역 */}
       <Row>
         <Col md={12}>
-          <Card className="form-section">
+          <Card className="form-section" style={{ minHeight: '750px' }}>
             <CardHeader>
-              <CardTitle tag="h5">최근 거래 내역</CardTitle>
+              <div className="d-flex justify-content-between align-items-center">
+                <CardTitle tag="h5" className="mb-0">최근 발급된 SEAT권</CardTitle>
+                <Button 
+                  color="outline-primary" 
+                  size="sm"
+                  onClick={() => fetchRecentTransactions()}
+                  disabled={transactionsLoading}
+                >
+                  {transactionsLoading ? (
+                    <>
+                      <Spinner size="sm" className="me-2" />
+                      새로고침 중...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw size={14} className="me-2" />
+                      새로고침
+                    </>
+                  )}
+                </Button>
+              </div>
+              <small className="text-muted">최근 발급된 SEAT권의 상태와 정보를 확인할 수 있습니다.</small>
             </CardHeader>
-            <CardBody>
-              <Table responsive className="recent-transactions-table">
-                <thead>
-                  <tr>
-                    <th>거래 타입</th>
-                    <th>토너먼트</th>
-                    <th>사용자</th>
-                    <th>전화번호</th>
-                    <th>수량</th>
-                    <th>상태</th>
-                    <th>메모</th>
-                    <th>거래일시</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentTransactions.map(transaction => (
-                    <tr key={transaction.id}>
-                      <td>{getTransactionTypeBadge(transaction.type)}</td>
-                      <td>{transaction.tournament_name}</td>
-                      <td>{transaction.user_name}</td>
-                      <td>{transaction.user_phone}</td>
-                      <td className="text-center">
-                        <Badge color="info">{transaction.quantity}개</Badge>
-                      </td>
-                      <td>{getStatusBadge(transaction.status)}</td>
-                      <td className="text-muted" style={{ maxWidth: '200px' }}>
-                        {transaction.memo || '-'}
-                      </td>
-                      <td>
-                        {new Date(transaction.created_at).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-              
-              {recentTransactions.length === 0 && (
-                <div className="text-center py-4 text-muted">
-                  거래 내역이 없습니다.
+            <CardBody style={{ minHeight: '650px' }}>
+              {transactionsLoading ? (
+                <div className="text-center p-5">
+                  <Spinner animation="border" variant="primary" />
+                  <p className="mt-3">SEAT권 목록을 불러오는 중입니다...</p>
                 </div>
+              ) : (
+                <DataTable
+                  columns={transactionColumns}
+                  data={recentTransactions}
+                  customStyles={customStyles}
+                  pagination
+                  paginationPerPage={10}
+                  paginationRowsPerPageOptions={[5, 10, 15, 20]}
+                  noDataComponent={
+                    <div className="text-center p-5">
+                      <div className="mb-3">
+                        <i className="fas fa-ticket-alt fa-3x text-muted"></i>
+                      </div>
+                      <h5 className="text-muted">발급된 SEAT권이 없습니다.</h5>
+                      <p className="text-muted mb-0">SEAT권 전송을 시작해보세요.</p>
+                    </div>
+                  }
+                  highlightOnHover
+                  striped
+                  dense
+                />
               )}
             </CardBody>
           </Card>
@@ -880,8 +1122,8 @@ const SeatManagementPage = () => {
           <Button color="secondary" onClick={() => setConfirmModal(false)}>
             취소
           </Button>
-          <Button 
-            color={activeTab === 'send' ? 'primary' : 'warning'} 
+          <Button
+            color={activeTab === 'send' ? 'primary' : 'warning'}
             onClick={confirmAction}
             disabled={loading}
           >
