@@ -406,6 +406,18 @@ const SeatManagementPage = () => {
     return typeMap[type] || type;
   };
 
+  // 상태 배지 클래스 반환 함수
+  const getStatusBadgeClass = (status) => {
+    const statusClassMap = {
+      'ACTIVE': 'badge-success',
+      'USED': 'badge-secondary',
+      'EXPIRED': 'badge-warning',
+      'CANCELLED': 'badge-danger',
+      'COMPLETED': 'badge-success'
+    };
+    return statusClassMap[status] || 'badge-secondary';
+  };
+
   // SEAT권 내역 테이블 컬럼 정의 (TicketIssuePage.jsx와 동일한 데이터 구조)
   const transactionColumns = useMemo(() => [
     {
@@ -445,13 +457,61 @@ const SeatManagementPage = () => {
     {
       name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>상태</span>,
       selector: (row) => row.status_display || row.status,
-      sortable: true,
+      center: true,
       width: '120px',
-      cell: (row) => (
-        <span className={`badge ${getStatusBadgeClass(row.status)}`}>
-          {row.status_display || row.status}
-        </span>
-      )
+      cell: (row) => {
+        const statusStyleMap = {
+          'ACTIVE': { 
+            backgroundColor: '#28a745', 
+            color: 'white', 
+            text: '활성' 
+          },
+          'USED': { 
+            backgroundColor: '#6c757d', 
+            color: 'white', 
+            text: '사용됨' 
+          },
+          'EXPIRED': { 
+            backgroundColor: '#ffc107', 
+            color: '#212529', 
+            text: '만료됨' 
+          },
+          'CANCELLED': { 
+            backgroundColor: '#dc3545', 
+            color: 'white', 
+            text: '취소됨' 
+          },
+          'COMPLETED': { 
+            backgroundColor: '#28a745', 
+            color: 'white', 
+            text: '완료' 
+          }
+        };
+        
+        const statusInfo = statusStyleMap[row.status] || { 
+          backgroundColor: '#6c757d', 
+          color: 'white', 
+          text: row.status_display || row.status 
+        };
+        
+        return (
+          <span 
+            className="badge"
+            style={{
+              backgroundColor: statusInfo.backgroundColor,
+              color: statusInfo.color,
+              fontSize: '11px',
+              fontWeight: '500',
+              padding: '6px 12px',
+              borderRadius: '15px',
+              border: 'none',
+              textTransform: 'none'
+            }}
+          >
+            {statusInfo.text}
+          </span>
+        );
+      }
     },
     {
       name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>발급방법</span>,
