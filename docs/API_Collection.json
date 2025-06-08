@@ -1428,62 +1428,28 @@
           "name": "사용자 정보 업데이트",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}",
+                "description": "관리자 액세스 토큰 (필수)"
+              }
+            ],
             "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "user_id",
-                  "value": "1",
-                  "type": "text",
-                  "description": "사용자 ID (필수)"
-                },
-                {
-                  "key": "email",
-                  "value": "updated@example.com",
-                  "type": "text",
-                  "description": "이메일 주소"
-                },
-                {
-                  "key": "first_name",
-                  "value": "Updated",
-                  "type": "text",
-                  "description": "이름"
-                },
-                {
-                  "key": "last_name",
-                  "value": "Name",
-                  "type": "text",
-                  "description": "성"
-                },
-                {
-                  "key": "phone",
-                  "value": "010-9876-5432",
-                  "type": "text",
-                  "description": "전화번호 (010-1234-5678 형식)"
-                },
-                {
-                  "key": "is_staff",
-                  "value": "true",
-                  "type": "text",
-                  "description": "스태프 권한 여부 (true/false)"
-                },
-                {
-                  "key": "is_superuser",
-                  "value": "true",
-                  "type": "text",
-                  "description": "관리자 권한 여부 (true/false)"
-                },
-                {
-                  "key": "is_active",
-                  "value": "true",
-                  "type": "text",
-                  "description": "계정 활성화 여부 (true/false)"
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"nickname\": \"수정된닉네임\",\n  \"email\": \"updated@example.com\",\n  \"phone\": \"010-9876-5432\",\n  \"role\": \"USER\",\n  \"is_active\": true,\n  \"is_verified\": true,\n  \"first_name\": \"수정된이름\",\n  \"last_name\": \"수정된성\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/accounts/users/update/",
+              "raw": "{{base_url}}/api/v1/accounts/users/update_user/",
               "host": [
                 "{{base_url}}"
               ],
@@ -1492,11 +1458,11 @@
                 "v1",
                 "accounts",
                 "users",
-                "update",
+                "update_user",
                 ""
               ]
             },
-            "description": "사용자 정보를 업데이트합니다.\n\n응답:\n- 200: 성공적으로 사용자 정보 업데이트\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청\n- 404: 사용자를 찾을 수 없음"
+            "description": "사용자 정보를 업데이트합니다.\n\n요청 본문:\n- user_id: 사용자 ID (필수)\n- nickname: 닉네임\n- email: 이메일 주소\n- phone: 전화번호\n- role: 사용자 역할 (ADMIN, STORE_OWNER, GUEST, USER)\n- is_active: 계정 활성화 여부\n- is_verified: 계정 인증 여부\n- first_name: 이름\n- last_name: 성\n\n응답:\n- 200: 성공적으로 사용자 정보 업데이트\n  - success: true\n  - message: 성공 메시지\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청\n- 404: 사용자를 찾을 수 없음\n- 500: 서버 내부 오류"
           },
           "response": []
         },
@@ -1504,20 +1470,28 @@
           "name": "사용자 삭제",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}",
+                "description": "관리자 액세스 토큰 (필수)"
+              }
+            ],
             "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "user_id",
-                  "value": "1",
-                  "type": "text",
-                  "description": "사용자 ID (필수)"
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
             "url": {
-              "raw": "{{base_url}}/api/v1/accounts/users/delete/",
+              "raw": "{{base_url}}/api/v1/accounts/users/delete_user/",
               "host": [
                 "{{base_url}}"
               ],
@@ -1526,11 +1500,11 @@
                 "v1",
                 "accounts",
                 "users",
-                "delete",
+                "delete_user",
                 ""
               ]
             },
-            "description": "사용자를 삭제합니다. (실제로는 비활성화)\n\n응답:\n- 200: 성공적으로 사용자 비활성화\n- 400: 잘못된 사용자 ID\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청\n- 404: 사용자를 찾을 수 없음"
+            "description": "사용자를 삭제합니다. (실제로는 비활성화)\n\n요청 본문:\n- user_id: 삭제할 사용자 ID (필수)\n\n응답:\n- 200: 성공적으로 사용자 비활성화\n  - success: true\n  - message: 성공 메시지\n- 400: 잘못된 사용자 ID\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청\n- 404: 사용자를 찾을 수 없음\n- 500: 서버 내부 오류"
           },
           "response": []
         },
@@ -1554,6 +1528,48 @@
               ]
             },
             "description": "모든 사용자 목록을 조회합니다. (관리자 전용)\n\n응답:\n- 200: 성공적으로 사용자 목록을 반환\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청"
+          },
+          "response": []
+        },
+        {
+          "name": "게스트 사용자 생성",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}",
+                "description": "관리자 액세스 토큰 (필수)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"게스트123\",\n  \"memo\": \"테스트용 게스트 계정\",\n  \"expires_days\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/users/create_guest_user/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "users",
+                "create_guest_user",
+                ""
+              ]
+            },
+            "description": "게스트 사용자를 생성합니다.\n\n요청 본문:\n- nickname: 게스트 닉네임 (선택사항, 비워두면 자동 생성)\n- memo: 메모 (선택사항)\n- expires_days: 만료일 (일 단위, 기본값: 30일)\n\n응답:\n- 201: 성공적으로 게스트 사용자 생성\n  - success: true\n  - message: 성공 메시지\n  - guest_user: 생성된 게스트 사용자 정보\n    - id: 사용자 ID\n    - nickname: 닉네임\n    - phone: 임시 전화번호\n    - email: 임시 이메일\n    - role: GUEST\n    - memo: 메모\n    - expires_days: 만료일\n    - created_at: 생성일\n    - temp_password: 임시 비밀번호 (개발용)\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청\n- 500: 서버 내부 오류"
           },
           "response": []
         },

@@ -20,4 +20,5 @@ urlpatterns = [
     path('users/get_user_stats/', UserViewSet.as_view({'get': 'get_user_stats'}), name='get_user_stats'),
     path('users/get_user_by_phone/', UserViewSet.as_view({'get': 'get_user_by_phone'}), name='get_user_by_phone'),
     path('users/check_phone/', UserViewSet.as_view({'get': 'check_phone'}), name='check_phone'),
+    path('users/create_guest_user/', UserViewSet.as_view({'post': 'create_guest_user'}), name='create_guest_user'),
 ] 

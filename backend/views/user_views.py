@@ -420,11 +420,21 @@ class UserViewSet(viewsets.ViewSet):
             serializer = UserSerializer(user, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    "success": True,
+                    "message": "사용자 정보가 성공적으로 수정되었습니다.",
+                    "user": serializer.data
+                })
+            return Response({
+                "success": False,
+                "error": "입력 데이터가 올바르지 않습니다.",
+                "details": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:
-            return Response({"error": "해당 사용자를 찾을 수 없습니다."}, 
-                          status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "success": False,
+                "error": "해당 사용자를 찾을 수 없습니다."
+            }, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=False, methods=['post'])
     def delete_user(self, request):
@@ -434,8 +444,10 @@ class UserViewSet(viewsets.ViewSet):
         """
         user_id = request.data.get('user_id')
         if not user_id:
-            return Response({"error": "사용자 ID가 필요합니다."}, 
-                           status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "success": False,
+                "error": "사용자 ID가 필요합니다."
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             user = User.objects.get(id=user_id)
@@ -444,11 +456,15 @@ class UserViewSet(viewsets.ViewSet):
             user.is_active = False
             user.save()
             
-            return Response({"message": f"사용자 {user.phone}가 비활성화되었습니다."}, 
-                          status=status.HTTP_200_OK)
+            return Response({
+                "success": True,
+                "message": f"사용자 {user.nickname or user.phone}가 비활성화되었습니다."
+            }, status=status.HTTP_200_OK)
         except User.DoesNotExist:
-            return Response({"error": "해당 사용자를 찾을 수 없습니다."}, 
-                          status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "success": False,
+                "error": "해당 사용자를 찾을 수 없습니다."
+            }, status=status.HTTP_404_NOT_FOUND)
                           
     @action(detail=False, methods=['get'])
     def get_all_users(self, request):
@@ -520,11 +536,125 @@ class UserViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'], url_path='check_phone')
     def check_phone(self, request):
         """
-        phone 중복 여부를 확인하는 API
-        쿼리 파라미터로 phone을 전달하면 사용 가능 여부를 반환
+        전화번호 중복 확인 API
         """
-        phone = request.query_params.get('phone')
-        if not phone:
-            return Response({'error': 'phone 파라미터가 필요합니다.'}, status=status.HTTP_400_BAD_REQUEST)
-        exists = User.objects.filter(phone=phone).exists()
-        return Response({'phone': phone, 'is_available': not exists}) 
+        try:
+            phone = request.GET.get('phone')
+            
+            if not phone:
+                return Response({
+                    'error': '전화번호가 필요합니다.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 전화번호 형식 검증 및 정규화
+            clean_phone = ''.join(filter(str.isdigit, phone))
+            if len(clean_phone) != 11 or not clean_phone.startswith('010'):
+                return Response({
+                    'error': '올바른 전화번호 형식이 아닙니다.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            formatted_phone = f"{clean_phone[:3]}-{clean_phone[3:7]}-{clean_phone[7:]}"
+            
+            # 사용자 존재 여부 확인
+            exists = User.objects.filter(phone=formatted_phone).exists()
+            
+            return Response({
+                'exists': exists,
+                'phone': formatted_phone
+            })
+            
+        except Exception as e:
+            api_logger.error(f"전화번호 확인 중 오류: {str(e)}")
+            return Response({
+                'error': f'전화번호 확인 중 오류가 발생했습니다: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'], url_path='create_guest_user')
+    def create_guest_user(self, request):
+        """
+        게스트 사용자 생성 API
+        - 최소한의 정보로 게스트 사용자를 생성합니다.
+        - 닉네임은 자동 생성되거나 사용자가 입력할 수 있습니다.
+        """
+        try:
+            # 요청 데이터 추출
+            nickname = request.data.get('nickname', '').strip()
+            memo = request.data.get('memo', '').strip()
+            expires_days = request.data.get('expires_days', 30)  # 기본 30일
+            
+            # 게스트 닉네임 자동 생성 (닉네임이 없는 경우)
+            if not nickname:
+                import random
+                import string
+                # "게스트_랜덤5자리" 형태로 생성
+                random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+                nickname = f"게스트_{random_suffix}"
+            
+            # 닉네임 중복 확인 (게스트 사용자 간)
+            counter = 1
+            original_nickname = nickname
+            while User.objects.filter(nickname=nickname, role='GUEST').exists():
+                nickname = f"{original_nickname}_{counter}"
+                counter += 1
+            
+            # 게스트 전용 임시 전화번호 생성 (중복되지 않는 임시번호)
+            import time
+            timestamp = str(int(time.time()))[-8:]  # 타임스탬프 뒤 8자리
+            guest_phone = f"999-{timestamp[:4]}-{timestamp[4:]}"
+            
+            # 전화번호 중복 확인
+            counter = 1
+            original_phone = guest_phone
+            while User.objects.filter(phone=guest_phone).exists():
+                guest_phone = f"999-{timestamp[:4]}-{str(int(timestamp[4:]) + counter).zfill(4)}"
+                counter += 1
+            
+            # 게스트 전용 임시 이메일 생성
+            guest_email = f"guest_{timestamp}@guest.temp"
+            
+            # 만료일 계산
+            from datetime import datetime, timedelta
+            expires_at = datetime.now() + timedelta(days=int(expires_days))
+            
+            # 게스트 사용자 생성
+            guest_user = User.objects.create(
+                phone=guest_phone,
+                nickname=nickname,
+                email=guest_email,
+                role='GUEST',
+                is_active=True,
+                is_verified=True,  # 게스트는 즉시 사용 가능
+                first_name=memo if memo else '게스트',  # 메모를 first_name에 임시 저장
+                # 게스트는 비밀번호 없이 생성 (필요시 임시 비밀번호 설정)
+            )
+            
+            # 임시 비밀번호 설정 (시스템에서 자동 생성)
+            temp_password = f"guest{timestamp}"
+            guest_user.set_password(temp_password)
+            guest_user.save()
+            
+            api_logger.info(f"게스트 사용자 생성 완료: {guest_user.nickname} (ID: {guest_user.id})")
+            
+            # 생성된 게스트 사용자 정보 반환
+            return Response({
+                'success': True,
+                'message': '게스트 사용자가 성공적으로 생성되었습니다.',
+                'guest_user': {
+                    'id': guest_user.id,
+                    'nickname': guest_user.nickname,
+                    'phone': guest_user.phone,
+                    'email': guest_user.email,
+                    'role': guest_user.role,
+                    'memo': memo,
+                    'expires_days': expires_days,
+                    'created_at': guest_user.created_at.isoformat(),
+                    'temp_password': temp_password  # 개발용 - 실제 운영시에는 제거 필요
+                }
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            api_logger.error(f"게스트 사용자 생성 중 오류: {str(e)}")
+            return Response({
+                'success': False,
+                'error': f'게스트 사용자 생성 중 오류가 발생했습니다: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Row, Col, Card, Form, Button, Spinner, Alert } from 'react-bootstrap';
+import { Row, Col, Card, Form, Button, Spinner, Alert, Modal } from 'react-bootstrap';
 import API from '../../utils/api';
 import { getToken } from '../../utils/auth';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -16,6 +16,41 @@ const UserInfoPage = () => {
     search: '',
     sort: 'name'
   });
+
+  // 게스트 사용자 추가 모달 관련 상태
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [guestForm, setGuestForm] = useState({
+    nickname: '',
+    memo: '',
+    expires_days: 30
+  });
+  const [guestLoading, setGuestLoading] = useState(false);
+  const [guestError, setGuestError] = useState(null);
+  const [guestSuccess, setGuestSuccess] = useState(null);
+
+  // 사용자 수정 모달 관련 상태
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({
+    nickname: '',
+    email: '',
+    phone: '',
+    role: '',
+    is_active: true,
+    is_verified: false,
+    first_name: '',
+    last_name: ''
+  });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState(null);
+  const [editSuccess, setEditSuccess] = useState(null);
+
+  // 사용자 삭제 모달 관련 상태
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deleteSuccess, setDeleteSuccess] = useState(null);
 
   // API 호출 중복 방지를 위한 ref
   const hasFetchedData = useRef(false);
@@ -194,6 +229,11 @@ const UserInfoPage = () => {
       return { type: 'STORE_MANAGER', display: '매장관리자', class: 'bg-primary' };
     }
     
+    // 게스트 사용자 확인
+    if (role === 'GUEST' || role === 'guest' || role === 'Guest') {
+      return { type: 'GUEST', display: '게스트', class: 'bg-warning text-dark' };
+    }
+    
     // 일반 사용자 (기본값)
     if (!role || role === 'USER' || role === 'user' || role === 'User') {
       return { type: 'USER', display: '일반사용자', class: 'bg-success' };
@@ -304,16 +344,317 @@ const UserInfoPage = () => {
     }
   ], [getUserRoleInfo]);
 
-  // 편집 핸들러 (추후 구현)
+  // 편집 핸들러 - 수정 모달 열기
   const handleEdit = (user) => {
     console.log('사용자 편집:', user);
-    // TODO: 사용자 편집 모달 또는 페이지 구현
+    setEditingUser(user);
+    setEditForm({
+      nickname: user.nickname || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      role: user.role || '',
+      is_active: user.is_active || false,
+      is_verified: user.is_verified || false,
+      first_name: user.first_name || '',
+      last_name: user.last_name || ''
+    });
+    setEditError(null);
+    setEditSuccess(null);
+    setShowEditModal(true);
   };
 
-  // 삭제 핸들러 (추후 구현)
+  // 삭제 핸들러 - 삭제 확인 모달 열기
   const handleDelete = (user) => {
     console.log('사용자 삭제:', user);
-    // TODO: 사용자 삭제 확인 모달 및 API 호출 구현
+    setDeletingUser(user);
+    setDeleteError(null);
+    setDeleteSuccess(null);
+    setShowDeleteModal(true);
+  };
+
+  // 수정 모달 닫기
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingUser(null);
+    setEditForm({
+      nickname: '',
+      email: '',
+      phone: '',
+      role: '',
+      is_active: true,
+      is_verified: false,
+      first_name: '',
+      last_name: ''
+    });
+    setEditError(null);
+    setEditSuccess(null);
+    setEditLoading(false);
+  };
+
+  // 삭제 모달 닫기
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeletingUser(null);
+    setDeleteError(null);
+    setDeleteSuccess(null);
+    setDeleteLoading(false);
+  };
+
+  // 수정 폼 입력 핸들러
+  const handleEditFormChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // 사용자 정보 수정 API 호출
+  const handleUpdateUser = async () => {
+    try {
+      setEditLoading(true);
+      setEditError(null);
+      setEditSuccess(null);
+
+      const token = getToken();
+      if (!token) {
+        setEditError('인증 토큰이 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+
+      if (!editingUser) {
+        setEditError('수정할 사용자 정보가 없습니다.');
+        return;
+      }
+
+      // 입력값 검증
+      if (!editForm.email || !editForm.email.includes('@')) {
+        setEditError('유효한 이메일 주소를 입력해주세요.');
+        return;
+      }
+
+      console.log('사용자 정보 수정 요청:', { user_id: editingUser.id, ...editForm });
+
+      const response = await API.post('/accounts/users/update_user/', {
+        user_id: editingUser.id,
+        nickname: editForm.nickname.trim(),
+        email: editForm.email.trim(),
+        phone: editForm.phone.trim(),
+        role: editForm.role,
+        is_active: editForm.is_active,
+        is_verified: editForm.is_verified,
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim()
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('사용자 정보 수정 응답:', response.data);
+      console.log('응답 상태 코드:', response.status);
+      console.log('success 필드:', response.data.success);
+
+      // 응답 성공 여부 확인 (백엔드 응답 형식에 맞게 수정)
+      if (response.data.success === true || (response.status === 200 && response.data.user)) {
+        const successMessage = response.data.message || `사용자 "${editForm.nickname || editingUser.username}" 정보가 성공적으로 수정되었습니다.`;
+        setEditSuccess(successMessage);
+        
+        // 사용자 목록 새로고침
+        setTimeout(() => {
+          handleRefresh();
+          handleCloseEditModal();
+        }, 2000);
+      } else {
+        // 오류 메시지 처리
+        const errorMessage = response.data.error || 
+                           response.data.message || 
+                           '사용자 정보 수정에 실패했습니다.';
+        setEditError(errorMessage);
+      }
+
+    } catch (err) {
+      console.error('❌ 사용자 정보 수정 오류:', err);
+      if (err.response) {
+        const errorMessage = err.response.data?.error || 
+                           err.response.data?.message || 
+                           err.response.data?.detail || 
+                           '알 수 없는 오류가 발생했습니다.';
+        setEditError(`서버 오류 (${err.response.status}): ${errorMessage}`);
+      } else if (err.request) {
+        setEditError('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.');
+      } else {
+        setEditError(`요청 오류: ${err.message}`);
+      }
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // 사용자 삭제 API 호출
+  const handleConfirmDelete = async () => {
+    try {
+      setDeleteLoading(true);
+      setDeleteError(null);
+      setDeleteSuccess(null);
+
+      const token = getToken();
+      if (!token) {
+        setDeleteError('인증 토큰이 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+
+      if (!deletingUser) {
+        setDeleteError('삭제할 사용자 정보가 없습니다.');
+        return;
+      }
+
+      console.log('사용자 삭제 요청:', { user_id: deletingUser.id });
+
+      const response = await API.post('/accounts/users/delete_user/', {
+        user_id: deletingUser.id
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('사용자 삭제 응답:', response.data);
+
+      // 응답 성공 여부 확인 (백엔드 응답 형식에 맞게 수정)
+      if (response.data.success === true || (response.status === 200 && response.data.message)) {
+        const successMessage = response.data.message || `사용자 "${deletingUser.nickname || deletingUser.username}"이 성공적으로 삭제(비활성화)되었습니다.`;
+        setDeleteSuccess(successMessage);
+        
+        // 사용자 목록 새로고침
+        setTimeout(() => {
+          handleRefresh();
+          handleCloseDeleteModal();
+        }, 2000);
+      } else {
+        // 오류 메시지 처리
+        const errorMessage = response.data.error || 
+                           response.data.message || 
+                           '사용자 삭제에 실패했습니다.';
+        setDeleteError(errorMessage);
+      }
+
+    } catch (err) {
+      console.error('❌ 사용자 삭제 오류:', err);
+      if (err.response) {
+        const errorMessage = err.response.data?.error || 
+                           err.response.data?.message || 
+                           err.response.data?.detail || 
+                           '알 수 없는 오류가 발생했습니다.';
+        setDeleteError(`서버 오류 (${err.response.status}): ${errorMessage}`);
+      } else if (err.request) {
+        setDeleteError('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.');
+      } else {
+        setDeleteError(`요청 오류: ${err.message}`);
+      }
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // 게스트 사용자 추가 모달 열기
+  const handleOpenGuestModal = () => {
+    setShowGuestModal(true);
+    setGuestError(null);
+    setGuestSuccess(null);
+    setGuestForm({
+      nickname: '',
+      memo: '',
+      expires_days: 30
+    });
+  };
+
+  // 게스트 사용자 추가 모달 닫기
+  const handleCloseGuestModal = () => {
+    setShowGuestModal(false);
+    setGuestError(null);
+    setGuestSuccess(null);
+    setGuestForm({
+      nickname: '',
+      memo: '',
+      expires_days: 30
+    });
+    setGuestLoading(false);
+  };
+
+  // 게스트 폼 입력 핸들러
+  const handleGuestFormChange = (e) => {
+    const { name, value } = e.target;
+    setGuestForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // 게스트 사용자 생성 API 호출
+  const handleCreateGuestUser = async () => {
+    try {
+      setGuestLoading(true);
+      setGuestError(null);
+      setGuestSuccess(null);
+
+      const token = getToken();
+      if (!token) {
+        setGuestError('인증 토큰이 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+
+      // 입력값 검증
+      if (guestForm.expires_days < 1 || guestForm.expires_days > 365) {
+        setGuestError('만료일은 1일 이상 365일 이하로 설정해주세요.');
+        return;
+      }
+
+      console.log('게스트 사용자 생성 요청:', guestForm);
+
+      const response = await API.post('/accounts/users/create_guest_user/', {
+        nickname: guestForm.nickname.trim(),
+        memo: guestForm.memo.trim(),
+        expires_days: parseInt(guestForm.expires_days)
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('게스트 사용자 생성 응답:', response.data);
+
+      if (response.data.success) {
+        setGuestSuccess(`게스트 사용자 "${response.data.guest_user.nickname}"이 성공적으로 생성되었습니다.`);
+        
+        // 사용자 목록 새로고침 (새로 생성된 게스트 사용자 포함)
+        setTimeout(() => {
+          handleRefresh();
+          handleCloseGuestModal();
+        }, 2000);
+      } else {
+        setGuestError(response.data.error || '게스트 사용자 생성에 실패했습니다.');
+      }
+
+    } catch (err) {
+      console.error('❌ 게스트 사용자 생성 오류:', err);
+      if (err.response) {
+        const errorMessage = err.response.data?.error || 
+                           err.response.data?.message || 
+                           err.response.data?.detail || 
+                           '알 수 없는 오류가 발생했습니다.';
+        setGuestError(`서버 오류 (${err.response.status}): ${errorMessage}`);
+      } else if (err.request) {
+        setGuestError('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.');
+      } else {
+        setGuestError(`요청 오류: ${err.message}`);
+      }
+    } finally {
+      setGuestLoading(false);
+    }
   };
 
   // DataTable 커스텀 스타일
@@ -345,10 +686,17 @@ const UserInfoPage = () => {
           </div>
           <div>
             <Button 
+              variant="success" 
+              onClick={handleOpenGuestModal}
+              className="me-2"
+            >
+              <i className="fas fa-user-plus me-2"></i>
+              게스트 사용자 추가
+            </Button>
+            <Button 
               variant="outline-primary" 
               onClick={handleRefresh}
               disabled={loading}
-              className="me-2"
             >
               {loading ? (
                 <>
@@ -372,6 +720,7 @@ const UserInfoPage = () => {
           const regularUsers = originalUsers.filter(user => getUserRoleInfo(user).type === 'USER');
           const storeManagers = originalUsers.filter(user => getUserRoleInfo(user).type === 'STORE_MANAGER');
           const admins = originalUsers.filter(user => getUserRoleInfo(user).type === 'ADMIN');
+          const guestUsers = originalUsers.filter(user => getUserRoleInfo(user).type === 'GUEST');
           
           // 매장 관리자 디버깅
           console.log('🔧 실시간 통계 디버깅:');
@@ -379,6 +728,7 @@ const UserInfoPage = () => {
           console.log('- 일반 사용자:', regularUsers.length, regularUsers.map(u => ({username: u.username, role: u.role})));
           console.log('- 매장 관리자:', storeManagers.length, storeManagers.map(u => ({username: u.username, role: u.role})));
           console.log('- 시스템 관리자:', admins.length, admins.map(u => ({username: u.username, role: u.role})));
+          console.log('- 게스트 사용자:', guestUsers.length, guestUsers.map(u => ({username: u.username, role: u.role})));
           
           // 모든 사용자의 역할 정보 상세 출력
           originalUsers.forEach(user => {
@@ -386,11 +736,14 @@ const UserInfoPage = () => {
             if (roleInfo.type === 'STORE_MANAGER') {
               console.log(`✅ 매장 관리자 발견: ${user.username} (원본 role: "${user.role}", 판별 결과: ${roleInfo.type})`);
             }
+            if (roleInfo.type === 'GUEST') {
+              console.log(`🎭 게스트 사용자 발견: ${user.username} (원본 role: "${user.role}", 판별 결과: ${roleInfo.type})`);
+            }
           });
           
           return (
             <Row className="mb-4">
-              <Col md={3} sm={6} xs={12}>
+              <Col md={2} sm={6} xs={12}>
                 <Card className="text-center">
                   <Card.Body>
                     <h5 className="text-primary">{totalUsers}</h5>
@@ -398,7 +751,7 @@ const UserInfoPage = () => {
                   </Card.Body>
                 </Card>
               </Col>
-              <Col md={3} sm={6} xs={12}>
+              <Col md={2} sm={6} xs={12}>
                 <Card className="text-center">
                   <Card.Body>
                     <h5 className="text-success">{regularUsers.length}</h5>
@@ -406,7 +759,7 @@ const UserInfoPage = () => {
                   </Card.Body>
                 </Card>
               </Col>
-              <Col md={3} sm={6} xs={12}>
+              <Col md={2} sm={6} xs={12}>
                 <Card className="text-center">
                   <Card.Body>
                     <h5 className="text-primary">{storeManagers.length}</h5>
@@ -414,11 +767,19 @@ const UserInfoPage = () => {
                   </Card.Body>
                 </Card>
               </Col>
-              <Col md={3} sm={6} xs={12}>
+              <Col md={2} sm={6} xs={12}>
                 <Card className="text-center">
                   <Card.Body>
                     <h5 className="text-danger">{admins.length}</h5>
                     <p className="mb-0">시스템 관리자</p>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={2} sm={6} xs={12}>
+                <Card className="text-center">
+                  <Card.Body>
+                    <h5 className="text-warning">{guestUsers.length}</h5>
+                    <p className="mb-0">게스트 사용자</p>
                   </Card.Body>
                 </Card>
               </Col>
@@ -536,6 +897,322 @@ const UserInfoPage = () => {
             )}
           </Card.Body>
         </Card>
+
+        {/* 게스트 사용자 추가 모달 */}
+        <Modal show={showGuestModal} onHide={handleCloseGuestModal} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>
+              <i className="fas fa-user-plus me-2 text-success"></i>
+              게스트 사용자 추가
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {guestError && (
+              <Alert variant="danger" className="mb-3">
+                {guestError}
+              </Alert>
+            )}
+            {guestSuccess && (
+              <Alert variant="success" className="mb-3">
+                {guestSuccess}
+              </Alert>
+            )}
+            
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>닉네임</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="nickname"
+                  value={guestForm.nickname}
+                  onChange={handleGuestFormChange}
+                  placeholder="비워두면 자동으로 생성됩니다 (예: 게스트_A12B3)"
+                  disabled={guestLoading}
+                />
+                <Form.Text className="text-muted">
+                  닉네임을 입력하지 않으면 시스템에서 자동으로 생성합니다.
+                </Form.Text>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>메모</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  name="memo"
+                  value={guestForm.memo}
+                  onChange={handleGuestFormChange}
+                  placeholder="게스트 사용자에 대한 간단한 메모를 입력하세요 (선택사항)"
+                  disabled={guestLoading}
+                />
+                <Form.Text className="text-muted">
+                  용도나 특이사항 등을 메모해두실 수 있습니다.
+                </Form.Text>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>만료일 (일)</Form.Label>
+                <Form.Control
+                  type="number"
+                  name="expires_days"
+                  value={guestForm.expires_days}
+                  onChange={handleGuestFormChange}
+                  min="1"
+                  max="365"
+                  disabled={guestLoading}
+                />
+                <Form.Text className="text-muted">
+                  게스트 계정의 유효 기간을 설정합니다 (1~365일). 현재는 참고용으로만 사용됩니다.
+                </Form.Text>
+              </Form.Group>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button 
+              variant="secondary" 
+              onClick={handleCloseGuestModal}
+              disabled={guestLoading}
+            >
+              취소
+            </Button>
+            <Button 
+              variant="success" 
+              onClick={handleCreateGuestUser}
+              disabled={guestLoading}
+            >
+              {guestLoading ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  생성 중...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-plus me-2"></i>
+                  게스트 생성
+                </>
+              )}
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* 사용자 수정 모달 */}
+        <Modal show={showEditModal} onHide={handleCloseEditModal} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>
+              <i className="fas fa-user-edit me-2 text-primary"></i>
+              사용자 정보 수정
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {editError && (
+              <Alert variant="danger" className="mb-3">
+                {editError}
+              </Alert>
+            )}
+            {editSuccess && (
+              <Alert variant="success" className="mb-3">
+                {editSuccess}
+              </Alert>
+            )}
+            
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>닉네임</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="nickname"
+                  value={editForm.nickname}
+                  onChange={handleEditFormChange}
+                  placeholder="닉네임을 입력하세요"
+                  disabled={editLoading}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>이메일</Form.Label>
+                <Form.Control
+                  type="email"
+                  name="email"
+                  value={editForm.email}
+                  onChange={handleEditFormChange}
+                  placeholder="이메일을 입력하세요"
+                  disabled={editLoading}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>전화번호</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="phone"
+                  value={editForm.phone}
+                  onChange={handleEditFormChange}
+                  placeholder="전화번호를 입력하세요"
+                  disabled={editLoading}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>역할</Form.Label>
+                <Form.Select
+                  name="role"
+                  value={editForm.role}
+                  onChange={handleEditFormChange}
+                  disabled={editLoading}
+                >
+                  <option value="">역할을 선택하세요</option>
+                  <option value="ADMIN">관리자</option>
+                  <option value="STORE_MANAGER">매장관리자</option>
+                  <option value="GUEST">게스트</option>
+                  <option value="USER">일반사용자</option>
+                </Form.Select>
+              </Form.Group>
+
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Check
+                      type="checkbox"
+                      name="is_active"
+                      label="계정 활성화"
+                      checked={editForm.is_active}
+                      onChange={handleEditFormChange}
+                      disabled={editLoading}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Check
+                      type="checkbox"
+                      name="is_verified"
+                      label="계정 인증"
+                      checked={editForm.is_verified}
+                      onChange={handleEditFormChange}
+                      disabled={editLoading}
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>이름</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="first_name"
+                      value={editForm.first_name}
+                      onChange={handleEditFormChange}
+                      placeholder="이름을 입력하세요"
+                      disabled={editLoading}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>성</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="last_name"
+                      value={editForm.last_name}
+                      onChange={handleEditFormChange}
+                      placeholder="성을 입력하세요"
+                      disabled={editLoading}
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button 
+              variant="secondary" 
+              onClick={handleCloseEditModal}
+              disabled={editLoading}
+            >
+              취소
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleUpdateUser}
+              disabled={editLoading}
+            >
+              {editLoading ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  수정 중...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-check me-2"></i>
+                  수정
+                </>
+              )}
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* 사용자 삭제 모달 */}
+        <Modal show={showDeleteModal} onHide={handleCloseDeleteModal} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>
+              <i className="fas fa-trash-alt me-2 text-danger"></i>
+              사용자 삭제 확인
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {deleteError && (
+              <Alert variant="danger" className="mb-3">
+                {deleteError}
+              </Alert>
+            )}
+            {deleteSuccess && (
+              <Alert variant="success" className="mb-3">
+                {deleteSuccess}
+              </Alert>
+            )}
+            
+            <div className="text-center">
+              <i className="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+              <h5>정말로 삭제하시겠습니까?</h5>
+              <p className="mb-0">
+                사용자 <strong>"{deletingUser?.nickname || deletingUser?.username}"</strong>을(를) 삭제하면
+                <br />
+                <span className="text-danger">계정이 비활성화되어 로그인할 수 없게 됩니다.</span>
+              </p>
+              <p className="text-muted mt-2">
+                <small>이 작업은 되돌릴 수 있습니다.</small>
+              </p>
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button 
+              variant="secondary" 
+              onClick={handleCloseDeleteModal}
+              disabled={deleteLoading}
+            >
+              취소
+            </Button>
+            <Button 
+              variant="danger" 
+              onClick={handleConfirmDelete}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  삭제 중...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-trash-alt me-2"></i>
+                  삭제
+                </>
+              )}
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </div>
     </ErrorBoundary>
   );
