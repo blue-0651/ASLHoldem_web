@@ -4,6 +4,135 @@ import { tournamentAPI, dashboardAPI, distributionAPI, seatTicketAPI, storeAPI }
 
 // third party
 import DataTable from 'react-data-table-component';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { ko } from 'date-fns/locale';
+
+// Custom DatePicker styles
+const datePickerCustomStyles = `
+  .react-datepicker-wrapper {
+    width: 100%;
+  }
+  .react-datepicker__input-container {
+    width: 100%;
+  }
+  .react-datepicker__input-container input {
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-image: none;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  .react-datepicker__input-container input:focus {
+    color: #212529;
+    background-color: #fff;
+    border-color: #8B4513;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(139, 69, 19, 0.25);
+  }
+  .react-datepicker {
+    font-family: inherit;
+  }
+  .react-datepicker__header {
+    background-color: #8B4513;
+    border-bottom: 1px solid #8B4513;
+  }
+  .react-datepicker__current-month {
+    color: white;
+    font-weight: bold;
+  }
+  .react-datepicker__day-name {
+    color: white;
+  }
+  .react-datepicker__day--selected {
+    background-color: #8B4513;
+    color: white;
+  }
+  .react-datepicker__day--selected:hover {
+    background-color: #6F4E37;
+  }
+  .react-datepicker__day:hover {
+    background-color: #F5F5DC;
+  }
+  .react-datepicker__day--keyboard-selected {
+    background-color: #CD853F;
+    color: white;
+  }
+  .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected {
+    background-color: #8B4513;
+    color: white;
+  }
+  .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected:hover {
+    background-color: #6F4E37;
+  }
+  .react-datepicker__today-button {
+    background-color: #8B4513;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin: 5px;
+  }
+  .react-datepicker__today-button:hover {
+    background-color: #6F4E37;
+  }
+  .react-datepicker__navigation--previous:hover,
+  .react-datepicker__navigation--next:hover {
+    border-color: #8B4513;
+  }
+  .react-datepicker__month-dropdown-container--scroll,
+  .react-datepicker__year-dropdown-container--scroll {
+    background-color: #FDF5E6;
+  }
+  .react-datepicker__month-option:hover,
+  .react-datepicker__year-option:hover {
+    background-color: #F5DEB3;
+  }
+  .react-datepicker__month-option--selected_month,
+  .react-datepicker__year-option--selected_year {
+    background-color: #8B4513;
+    color: white;
+  }
+  .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
+    border-left: 1px solid #8B4513;
+  }
+  .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box .react-datepicker__time-header {
+    color: #8B4513;
+    font-weight: bold;
+  }
+  .react-datepicker__day--today {
+    background-color: #F5DEB3;
+    color: #8B4513;
+    font-weight: bold;
+  }
+  .react-datepicker__day--today:hover {
+    background-color: #DEB887;
+  }
+  .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
+    background-color: #F5DEB3;
+    color: #8B4513;
+  }
+  .react-datepicker__triangle {
+    border-bottom-color: #8B4513 !important;
+  }
+  .react-datepicker__day--weekend {
+    color: #A0522D;
+  }
+  .react-datepicker__day--outside-month {
+    color: #D2B48C;
+  }
+  .react-datepicker__day--disabled {
+    color: #DDD;
+    background-color: #FDF5E6;
+  }
+`;
 
 /**
  * 🚀 TournamentManagement 성능 최적화 완료
@@ -28,6 +157,17 @@ import DataTable from 'react-data-table-component';
  * 5. GraphQL 도입 (필요한 필드만 요청)
  */
 const TournamentManagement = () => {
+  // Custom styles를 head에 추가
+  React.useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = datePickerCustomStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -69,8 +209,7 @@ const TournamentManagement = () => {
   const [editFormData, setEditFormData] = useState({
     id: null,
     name: '',
-    start_date: '',
-    start_time: '',
+    startDateTime: new Date(),
     buy_in: '',
     ticket_quantity: '',
     description: '',
@@ -88,8 +227,7 @@ const TournamentManagement = () => {
   // 폼 상태 - 매장 관련 필드 제거
   const [formData, setFormData] = useState({
     name: '',
-    start_date: '',
-    start_time: '',
+    startDateTime: new Date(),
     buy_in: '',
     ticket_quantity: '',
     description: '',
@@ -748,14 +886,14 @@ const TournamentManagement = () => {
       setError(null);
 
       // 필수 필드 검증
-      if (!formData.name || !formData.start_date || !formData.start_time || !formData.buy_in || !formData.ticket_quantity) {
+      if (!formData.name || !formData.startDateTime || !formData.buy_in || !formData.ticket_quantity) {
         setError('모든 필수 필드를 입력해주세요.');
         setLoading(false);
         return;
       }
 
-      // 날짜 & 시간 결합
-      const startDateTime = `${formData.start_date}T${formData.start_time}:00`;
+      // 날짜 & 시간 포맷
+      const startDateTime = formData.startDateTime.toISOString();
 
       // 폼 데이터 준비 (현재 백엔드는 단일 매장만 지원하므로 첫 번째 매장 사용)
       const tournamentData = {
@@ -774,8 +912,7 @@ const TournamentManagement = () => {
       // 폼 초기화
       setFormData({
         name: '',
-        start_date: '',
-        start_time: '',
+        startDateTime: new Date(),
         buy_in: '',
         ticket_quantity: '',
         description: '',
@@ -851,7 +988,20 @@ const TournamentManagement = () => {
       return true;
     });
 
-    return filtered;
+    // 현재 시간에 가까운 순서로 정렬
+    const now = new Date();
+    const sortedFiltered = filtered.sort((a, b) => {
+      const dateA = new Date(a.start_time);
+      const dateB = new Date(b.start_time);
+      
+      // 현재 시간과의 절댓값 차이 계산
+      const diffA = Math.abs(dateA.getTime() - now.getTime());
+      const diffB = Math.abs(dateB.getTime() - now.getTime());
+      
+      return diffA - diffB; // 차이가 적은 순서로 정렬
+    });
+
+    return sortedFiltered;
   };  // 토너먼트 테이블 컬럼 정의
   const tournamentColumns = useMemo(() => [
     {
@@ -935,6 +1085,49 @@ const TournamentManagement = () => {
             transition: 'all 0.3s ease'
           }}>
             {storeAllocated}
+          </span>
+        );
+      }
+    },
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>시작 시간</span>,
+      selector: (row) => row.start_time,
+      sortable: true,
+      center: true,
+      style: (row) => ({
+        fontSize: expandedRowId === row.id ? '18px' : '14px',
+        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      }),
+             cell: (row) => {
+         const formatStartTime = (dateTimeString) => {
+           if (!dateTimeString) return '-';
+           
+           try {
+             const date = new Date(dateTimeString);
+             const dateStr = date.toLocaleDateString('ko-KR', { 
+               year: 'numeric',
+               month: 'short', 
+               day: 'numeric' 
+             });
+             const timeStr = date.toLocaleTimeString('ko-KR', { 
+               hour: '2-digit', 
+               minute: '2-digit',
+               hour12: false 
+             });
+             return `${dateStr} ${timeStr}`;
+           } catch (error) {
+             return dateTimeString;
+           }
+         };
+        
+        return (
+          <span style={{ 
+            fontSize: expandedRowId === row.id ? '18px' : '14px',
+            fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+            transition: 'all 0.3s ease'
+          }}>
+            {formatStartTime(row.start_time)}
           </span>
         );
       }
@@ -1452,13 +1645,10 @@ const TournamentManagement = () => {
   const openCreateModal = () => {
     // 현재 날짜와 시간 설정
     const now = new Date();
-    const currentDate = now.toISOString().split('T')[0];
-    const currentTime = now.toTimeString().slice(0, 5); // HH:mm 형식
 
     setFormData({
       name: '',
-      start_date: currentDate,
-      start_time: currentTime,
+      startDateTime: now,
       buy_in: '',
       ticket_quantity: '',
       description: '',
@@ -1472,17 +1662,14 @@ const TournamentManagement = () => {
   const handleOpenEditModal = (tournament) => {
     console.log('토너먼트 수정 모달 열기:', tournament);
     
-    // start_time을 date와 time으로 분리
+    // start_time을 Date 객체로 변환
     const startDateTime = new Date(tournament.start_time);
-    const startDate = startDateTime.toISOString().split('T')[0];
-    const startTime = startDateTime.toTimeString().slice(0, 5);
     
     setEditingTournament(tournament);
     setEditFormData({
       id: tournament.id,
       name: tournament.name || '',
-      start_date: startDate,
-      start_time: startTime,
+      startDateTime: startDateTime,
       buy_in: tournament.buy_in || '',
       ticket_quantity: tournament.ticket_quantity || '',
       description: tournament.description || '',
@@ -1510,15 +1697,15 @@ const TournamentManagement = () => {
       setError(null);
 
       // 필수 필드 검증
-      if (!editFormData.name || !editFormData.start_date || !editFormData.start_time || 
+      if (!editFormData.name || !editFormData.startDateTime || 
           !editFormData.buy_in || !editFormData.ticket_quantity) {
         setError('모든 필수 필드를 입력해주세요.');
         setEditModalLoading(false);
         return;
       }
 
-      // 날짜 & 시간 결합
-      const startDateTime = `${editFormData.start_date}T${editFormData.start_time}:00`;
+      // 날짜 & 시간 포맷
+      const startDateTime = editFormData.startDateTime.toISOString();
 
       // 수정할 토너먼트 데이터 준비
       const updateData = {
@@ -1792,36 +1979,43 @@ const TournamentManagement = () => {
             </Row>
 
             <Row>
-              <Col md={6}>
+              <Col md={12}>
                 <Form.Group className="mb-3">
                   <Form.Label>
-                    시작 날짜 <span className="text-danger">*</span>
+                    시작 날짜 및 시간 <span className="text-danger">*</span>
                   </Form.Label>
-                  <Form.Control
-                    type="date"
-                    name="start_date"
-                    value={formData.start_date}
-                    onChange={handleFormChange}
-                    required
-                    min={new Date().toISOString().split('T')[0]}
-                  />
+                  <div className="w-100">
+                    <DatePicker
+                      selected={formData.startDateTime}
+                      onChange={(date) => setFormData({...formData, startDateTime: date})}
+                      showTimeSelect
+                      timeFormat="HH:mm"
+                      timeIntervals={15}
+                      dateFormat="yyyy년 MM월 dd일 HH:mm"
+                      locale={ko}
+                      minDate={new Date()}
+                      maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
+                      className="form-control w-100"
+                      placeholderText="날짜와 시간을 선택해주세요"
+                      required
+                      autoComplete="off"
+                      showPopperArrow={false}
+                      popperPlacement="bottom-start"
+                      todayButton="오늘"
+                      timeCaption="시간"
+                      calendarStartDay={0}
+                      shouldCloseOnSelect={false}
+                      showMonthDropdown
+                      showYearDropdown
+                      dropdownMode="select"
+                    />
+                  </div>
                   <Form.Text className="text-muted">
-                    오늘 이후 날짜만 선택 가능합니다.
+                    <i className="fas fa-info-circle me-1"></i>
+                    토너먼트 시작 날짜와 시간을 선택해주세요. (오늘 이후만 선택 가능)
+                    <br />
+                    <small>💡 15분 단위로 시간 선택이 가능합니다.</small>
                   </Form.Text>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    시작 시간 <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="time"
-                    name="start_time"
-                    value={formData.start_time}
-                    onChange={handleFormChange}
-                    required
-                  />
                 </Form.Group>
               </Col>
             </Row>
@@ -2137,35 +2331,42 @@ const TournamentManagement = () => {
                 </Row>
 
                 <Row>
-                  <Col md={6}>
+                  <Col md={12}>
                     <Form.Group className="mb-3">
                       <Form.Label>
-                        시작 날짜 <span className="text-danger">*</span>
+                        시작 날짜 및 시간 <span className="text-danger">*</span>
                       </Form.Label>
-                      <Form.Control
-                        type="date"
-                        name="start_date"
-                        value={editFormData.start_date}
-                        onChange={handleEditFormChange}
-                        required
-                      />
-                      <Form.Text className="text-muted">
-                        토너먼트 시작 날짜를 선택해주세요.
-                      </Form.Text>
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>
-                        시작 시간 <span className="text-danger">*</span>
-                      </Form.Label>
-                      <Form.Control
-                        type="time"
-                        name="start_time"
-                        value={editFormData.start_time}
-                        onChange={handleEditFormChange}
-                        required
-                      />
+                                             <div className="w-100">
+                         <DatePicker
+                           selected={editFormData.startDateTime}
+                           onChange={(date) => setEditFormData({...editFormData, startDateTime: date})}
+                           showTimeSelect
+                           timeFormat="HH:mm"
+                           timeIntervals={15}
+                           dateFormat="yyyy년 MM월 dd일 HH:mm"
+                           locale={ko}
+                           maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
+                           className="form-control w-100"
+                           placeholderText="날짜와 시간을 선택해주세요"
+                           required
+                           autoComplete="off"
+                           showPopperArrow={false}
+                           popperPlacement="bottom-start"
+                           todayButton="오늘"
+                           timeCaption="시간"
+                           calendarStartDay={0}
+                           shouldCloseOnSelect={false}
+                           showMonthDropdown
+                           showYearDropdown
+                           dropdownMode="select"
+                         />
+                       </div>
+                                             <Form.Text className="text-muted">
+                         <i className="fas fa-info-circle me-1"></i>
+                         토너먼트 시작 날짜와 시간을 선택해주세요.
+                         <br />
+                         <small>💡 15분 단위로 시간 선택이 가능합니다.</small>
+                       </Form.Text>
                     </Form.Group>
                   </Col>
                 </Row>
