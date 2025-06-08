@@ -28,6 +28,46 @@ class TournamentTicketDistributionViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'updated_at', 'allocated_quantity']
     ordering = ['-created_at']
 
+    def handle_exception(self, exc):
+        """예외 처리를 개선하여 더 명확한 오류 메시지 제공"""
+        from django.core.exceptions import ValidationError
+        from rest_framework.views import exception_handler
+        
+        if isinstance(exc, ValidationError):
+            # Django ValidationError를 DRF 형식으로 변환
+            if hasattr(exc, 'error_dict'):
+                # 필드별 오류인 경우
+                errors = {}
+                for field, error_list in exc.error_dict.items():
+                    if field == '__all__':
+                        # 전체 모델 검증 오류
+                        error_message = ' '.join([str(e) for e in error_list])
+                        return Response({
+                            'success': False,
+                            'error': error_message,
+                            'error_type': 'validation_error'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                    else:
+                        errors[field] = [str(e) for e in error_list]
+                
+                return Response({
+                    'success': False,
+                    'errors': errors,
+                    'error_type': 'field_validation_error'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            elif hasattr(exc, 'error_list'):
+                # 단순 오류 리스트인 경우
+                error_message = ' '.join([str(e) for e in exc.error_list])
+                return Response({
+                    'success': False,
+                    'error': error_message,
+                    'error_type': 'validation_error'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 기본 DRF 예외 처리로 위임
+        return super().handle_exception(exc)
+
     def get_serializer_class(self):
         if self.action == 'create':
             return TournamentTicketDistributionCreateSerializer

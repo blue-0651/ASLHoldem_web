@@ -833,12 +833,38 @@ const TournamentManagement = () => {
 
     } catch (err) {
       console.error('SEAT권 수량 조정 오류:', err);
-      if (err.response && err.response.data) {
-        setError(`SEAT권 수량 조정 중 오류가 발생했습니다: ${JSON.stringify(err.response.data)}`);
-      } else {
-        setError('SEAT권 수량 조정 중 오류가 발생했습니다.');
-      }
       setSeatEditModalLoading(false);
+      
+      if (err.response && err.response.data) {
+        // 서버에서 ValidationError가 발생한 경우 처리
+        if (err.response.status === 500) {
+          // 500 에러인 경우 더 자세한 오류 정보 추출
+          const errorMessage = err.response.data.error || err.response.data.message || '알 수 없는 오류가 발생했습니다.';
+          
+          // ValidationError 메시지에서 핵심 정보 추출
+          if (errorMessage.includes('전체 분배량') && errorMessage.includes('초과할 수 없습니다')) {
+            const match = errorMessage.match(/전체 분배량\((\d+)\)이 토너먼트 좌석권 수량\((\d+)\)을 초과할 수 없습니다/);
+            if (match) {
+              const [, totalAllocated, tournamentTotal] = match;
+              setError(`❌ SEAT권 분배 한도 초과\n\n현재 입력한 수량으로 인해 전체 분배량이 ${totalAllocated}개가 되어 토너먼트 총 좌석권 수량(${tournamentTotal}개)을 초과하게 됩니다.\n\n다른 매장에 이미 분배된 좌석권을 고려하여 더 적은 수량을 입력해주세요.`);
+            } else {
+              setError(`❌ SEAT권 분배 한도 초과\n\n${errorMessage}\n\n다른 매장에 이미 분배된 좌석권 수량을 확인하고 적절한 수량을 입력해주세요.`);
+            }
+          } else if (errorMessage.includes('분배량은 보유수량과 배포수량의 합과 같아야 합니다')) {
+            setError('❌ 수량 계산 오류\n\n분배량은 보유수량과 배포수량의 합과 같아야 합니다.\n현재 배포된 수량을 고려하여 올바른 총 수량을 입력해주세요.');
+          } else {
+            setError(`SEAT권 수량 조정 중 오류가 발생했습니다:\n${errorMessage}`);
+          }
+        } else {
+          // 다른 HTTP 오류 코드인 경우
+          const errorMessage = err.response.data.error || err.response.data.message || JSON.stringify(err.response.data);
+          setError(`SEAT권 수량 조정 중 오류가 발생했습니다: ${errorMessage}`);
+        }
+      } else if (err.message) {
+        setError(`SEAT권 수량 조정 중 네트워크 오류가 발생했습니다: ${err.message}`);
+      } else {
+        setError('SEAT권 수량 조정 중 알 수 없는 오류가 발생했습니다.');
+      }
     }
   };
 
@@ -2145,6 +2171,57 @@ const TournamentManagement = () => {
 
           {selectedStoreForSeatEdit && (
             <>
+              {/* 토너먼트 전체 정보 */}
+              {(() => {
+                const cachedTournamentDetails = tournamentDetailsCache.get(selectedStoreForSeatEdit.tournamentId);
+                if (cachedTournamentDetails) {
+                  const { totalTicketQuantity, distributedTicketQuantity } = cachedTournamentDetails;
+                  const totalAllocated = cachedTournamentDetails.storeDetails ? 
+                    cachedTournamentDetails.storeDetails.reduce((sum, store) => sum + (store.ticketQuantity || 0), 0) : 0;
+                  const remainingToAllocate = totalTicketQuantity - totalAllocated;
+                  
+                  return (
+                    <Alert variant="info" className="mb-4">
+                      <Alert.Heading className="h6 mb-3">
+                        <i className="fas fa-info-circle me-2"></i>
+                        토너먼트 전체 SEAT권 현황
+                      </Alert.Heading>
+                      <Row className="text-center">
+                        <Col md={3}>
+                          <div className="d-flex flex-column">
+                            <span className="text-muted small">총 좌석권</span>
+                            <strong className="fs-5 text-dark">{totalTicketQuantity.toLocaleString()}매</strong>
+                          </div>
+                        </Col>
+                        <Col md={3}>
+                          <div className="d-flex flex-column">
+                            <span className="text-muted small">총 분배량</span>
+                            <strong className="fs-5 text-primary">{totalAllocated.toLocaleString()}매</strong>
+                          </div>
+                        </Col>
+                        <Col md={3}>
+                          <div className="d-flex flex-column">
+                            <span className="text-muted small">미분배량</span>
+                            <strong className={`fs-5 ${remainingToAllocate > 0 ? 'text-success' : 'text-danger'}`}>
+                              {remainingToAllocate.toLocaleString()}매
+                            </strong>
+                          </div>
+                        </Col>
+                        <Col md={3}>
+                          <div className="d-flex flex-column">
+                            <span className="text-muted small">분배율</span>
+                            <strong className="fs-5 text-info">
+                              {totalTicketQuantity > 0 ? Math.round((totalAllocated / totalTicketQuantity) * 100) : 0}%
+                            </strong>
+                          </div>
+                        </Col>
+                      </Row>
+                    </Alert>
+                  );
+                }
+                return null;
+              })()}
+
               <Card className="mb-4">
                 <Card.Header>
                   <h5 className="mb-0">
@@ -2200,29 +2277,88 @@ const TournamentManagement = () => {
                   </Col>
                   
                   <Col md={6}>
-                    {seatEditFormData.quantity !== '' && !isNaN(parseInt(seatEditFormData.quantity)) && selectedStoreForSeatEdit && (
-                      <div className="mb-3 p-3 border rounded bg-light">
-                        <h6 className="fw-bold text-center mb-2">변경 후 예상 정보</h6>
-                        <div className="d-flex justify-content-between align-items-center mb-1">
-                          <span className="text-muted">변경 전 총 수량:</span>
-                          <strong className="fs-5">{selectedStoreForSeatEdit.currentQuantity}매</strong>
+                    {seatEditFormData.quantity !== '' && !isNaN(parseInt(seatEditFormData.quantity)) && selectedStoreForSeatEdit && (() => {
+                      const newQuantity = parseInt(seatEditFormData.quantity);
+                      const cachedTournamentDetails = tournamentDetailsCache.get(selectedStoreForSeatEdit.tournamentId);
+                      let isOverLimit = false;
+                      let limitInfo = null;
+                      
+                      if (cachedTournamentDetails) {
+                        const { totalTicketQuantity } = cachedTournamentDetails;
+                        const currentAllocated = cachedTournamentDetails.storeDetails ? 
+                          cachedTournamentDetails.storeDetails.reduce((sum, store) => {
+                            // 현재 편집 중인 매장은 제외하고 계산
+                            if (store.storeId === selectedStoreForSeatEdit.storeId) {
+                              return sum;
+                            }
+                            return sum + (store.ticketQuantity || 0);
+                          }, 0) : 0;
+                        
+                        const newTotalAllocated = currentAllocated + newQuantity;
+                        isOverLimit = newTotalAllocated > totalTicketQuantity;
+                        
+                        limitInfo = {
+                          totalTicketQuantity,
+                          currentAllocated,
+                          newTotalAllocated,
+                          remaining: totalTicketQuantity - newTotalAllocated
+                        };
+                      }
+
+                      return (
+                        <div className={`mb-3 p-3 border rounded ${isOverLimit ? 'bg-danger-subtle border-danger' : 'bg-light'}`}>
+                          <h6 className="fw-bold text-center mb-2">
+                            {isOverLimit ? '⚠️ 분배 한도 초과' : '변경 후 예상 정보'}
+                          </h6>
+                          
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <span className="text-muted">변경 전 총 수량:</span>
+                            <strong className="fs-5">{selectedStoreForSeatEdit.currentQuantity}매</strong>
+                          </div>
+                          
+                          <div className={`d-flex justify-content-between align-items-center mb-1 ${newQuantity >= selectedStoreForSeatEdit.currentQuantity ? 'text-success' : 'text-danger'}`}>
+                            <span>수량 변화:</span>
+                            <strong className="fs-5">
+                              {newQuantity - selectedStoreForSeatEdit.currentQuantity >= 0 ? '+' : ''}
+                              {newQuantity - selectedStoreForSeatEdit.currentQuantity}매
+                            </strong>
+                          </div>
+                          
+                          <hr className="my-1" />
+                          
+                          <div className={`d-flex justify-content-between align-items-center ${isOverLimit ? 'text-danger' : 'text-primary'}`}>
+                            <span className="fw-bold">변경 후 총 수량:</span>
+                            <strong className="fs-4 fw-bold">{newQuantity}매</strong>
+                          </div>
+                          
+                          {limitInfo && (
+                            <>
+                              <hr className="my-2" />
+                              <div className="small">
+                                <div className="d-flex justify-content-between mb-1">
+                                  <span className="text-muted">토너먼트 총 좌석권:</span>
+                                  <strong>{limitInfo.totalTicketQuantity.toLocaleString()}매</strong>
+                                </div>
+                                <div className="d-flex justify-content-between mb-1">
+                                  <span className="text-muted">다른 매장 분배합계:</span>
+                                  <strong>{limitInfo.currentAllocated.toLocaleString()}매</strong>
+                                </div>
+                                <div className={`d-flex justify-content-between ${isOverLimit ? 'text-danger fw-bold' : 'text-success'}`}>
+                                  <span>변경 후 전체 분배량:</span>
+                                  <strong>{limitInfo.newTotalAllocated.toLocaleString()}매</strong>
+                                </div>
+                                {isOverLimit && (
+                                  <div className="text-danger small fw-bold mt-2">
+                                    <i className="fas fa-exclamation-triangle me-1"></i>
+                                    {Math.abs(limitInfo.remaining)}매 초과! 최대 {limitInfo.totalTicketQuantity - limitInfo.currentAllocated}매까지 가능합니다.
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <div className={`d-flex justify-content-between align-items-center mb-1 ${parseInt(seatEditFormData.quantity) >= selectedStoreForSeatEdit.currentQuantity ? 'text-success' : 'text-danger'}`}>
-                          <span>수량 변화:</span>
-                          <strong className="fs-5">
-                            {parseInt(seatEditFormData.quantity) - selectedStoreForSeatEdit.currentQuantity >= 0 ? '+' : ''}
-                            {parseInt(seatEditFormData.quantity) - selectedStoreForSeatEdit.currentQuantity}매
-                          </strong>
-                        </div>
-                        <hr className="my-1" />
-                        <div className="d-flex justify-content-between align-items-center text-primary">
-                          <span className="fw-bold">변경 후 총 수량:</span>
-                          <strong className="fs-4 fw-bold">
-                            {parseInt(seatEditFormData.quantity)}매
-                          </strong>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </Col>
                 </Row>
 
@@ -2251,7 +2387,34 @@ const TournamentManagement = () => {
                     <Button
                       variant='success'
                       type="submit"
-                      disabled={seatEditModalLoading || seatEditFormData.quantity === '' || isNaN(parseInt(seatEditFormData.quantity)) || parseInt(seatEditFormData.quantity) < 0}
+                      disabled={(() => {
+                        // 기본 유효성 검사
+                        if (seatEditModalLoading || seatEditFormData.quantity === '' || isNaN(parseInt(seatEditFormData.quantity)) || parseInt(seatEditFormData.quantity) < 0) {
+                          return true;
+                        }
+                        
+                        // 분배 한도 초과 검사
+                        const newQuantity = parseInt(seatEditFormData.quantity);
+                        const cachedTournamentDetails = tournamentDetailsCache.get(selectedStoreForSeatEdit?.tournamentId);
+                        if (cachedTournamentDetails && selectedStoreForSeatEdit) {
+                          const { totalTicketQuantity } = cachedTournamentDetails;
+                          const currentAllocated = cachedTournamentDetails.storeDetails ? 
+                            cachedTournamentDetails.storeDetails.reduce((sum, store) => {
+                              // 현재 편집 중인 매장은 제외하고 계산
+                              if (store.storeId === selectedStoreForSeatEdit.storeId) {
+                                return sum;
+                              }
+                              return sum + (store.ticketQuantity || 0);
+                            }, 0) : 0;
+                          
+                          const newTotalAllocated = currentAllocated + newQuantity;
+                          if (newTotalAllocated > totalTicketQuantity) {
+                            return true; // 한도 초과 시 비활성화
+                          }
+                        }
+                        
+                        return false;
+                      })()}
                       size="lg"
                     >
                       {seatEditModalLoading ? (
