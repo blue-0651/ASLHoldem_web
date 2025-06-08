@@ -4,7 +4,6 @@ import API from '../../utils/api';
 import { getToken } from '../../utils/auth';
 import ErrorBoundary from '../components/ErrorBoundary';
 
-// th햣ird party
 import DataTable from 'react-data-table-component';
 
 const UserInfoPage = () => {
@@ -171,28 +170,32 @@ const UserInfoPage = () => {
 
 
 
-  // 필터 적용
+
+
+  // 필터 적용 (활성 사용자만 + 역할 필터)
   const applyFilters = () => {
     try {
-      let filteredUsers = [...originalUsers]; // 원본 데이터에서 필터링
+      // 먼저 활성 사용자만 필터링
+      let filteredUsers = originalUsers.filter(user => user.is_active === true);
+      console.log('🔍 활성 사용자 필터링:', `${filteredUsers.length}/${originalUsers.length}명`);
 
       // 역할 필터 적용
       const selectedRoles = Object.keys(filters.roleFilters).filter(role => filters.roleFilters[role]);
-      console.log('🔍 필터 디버깅:');
+      console.log('🔍 역할 필터 디버깅:');
       console.log('- 선택된 역할들:', selectedRoles);
       console.log('- 현재 roleFilters 상태:', filters.roleFilters);
       
       if (selectedRoles.length > 0) { // 선택된 역할이 있는 경우만 필터링
-        console.log('📋 필터링 전 사용자 수:', filteredUsers.length);
+        console.log('📋 역할 필터링 전 사용자 수:', filteredUsers.length);
         filteredUsers = filteredUsers.filter(user => {
           const userRoleInfo = getUserRoleInfo(user);
           const shouldInclude = selectedRoles.includes(userRoleInfo.type);
           console.log(`- ${user.username}: 원본 role="${user.role}", 판별된 type="${userRoleInfo.type}", 포함여부=${shouldInclude}`);
           return shouldInclude;
         });
-        console.log('📋 필터링 후 사용자 수:', filteredUsers.length);
+        console.log('📋 역할 필터링 후 사용자 수:', filteredUsers.length);
       } else {
-        console.log('⚠️ 필터링 건너뜀 - 선택된 역할 없음');
+        console.log('⚠️ 역할 필터링 건너뜀 - 선택된 역할 없음');
       }
 
       // 기본 정렬 (닉네임 순)
@@ -205,7 +208,7 @@ const UserInfoPage = () => {
       return filteredUsers;
     } catch (err) {
       console.error('필터 적용 중 오류:', err);
-      return originalUsers;
+      return originalUsers.filter(user => user.is_active === true);
     }
   };
 
@@ -330,6 +333,7 @@ const UserInfoPage = () => {
         fontWeight: 'normal'
       }
     },
+
     {
       name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>액션</span>,
       center: true,
@@ -732,12 +736,13 @@ const UserInfoPage = () => {
 
         {/* 사용자 통계 카드 */}
         {!loading && users.length > 0 && (() => {
-          // 실시간 통계 계산 및 디버깅
-          const totalUsers = originalUsers.length;
-          const regularUsers = originalUsers.filter(user => getUserRoleInfo(user).type === 'USER');
-          const storeManagers = originalUsers.filter(user => getUserRoleInfo(user).type === 'STORE_MANAGER');
-          const admins = originalUsers.filter(user => getUserRoleInfo(user).type === 'ADMIN');
-          const guestUsers = originalUsers.filter(user => getUserRoleInfo(user).type === 'GUEST');
+          // 실시간 통계 계산 및 디버깅 (활성 사용자만)
+          const activeUsers = originalUsers.filter(user => user.is_active === true);
+          const totalUsers = activeUsers.length; // 활성 사용자만 집계
+          const regularUsers = activeUsers.filter(user => getUserRoleInfo(user).type === 'USER');
+          const storeManagers = activeUsers.filter(user => getUserRoleInfo(user).type === 'STORE_MANAGER');
+          const admins = activeUsers.filter(user => getUserRoleInfo(user).type === 'ADMIN');
+          const guestUsers = activeUsers.filter(user => getUserRoleInfo(user).type === 'GUEST');
           
           // 매장 관리자 디버깅
           console.log('🔧 실시간 통계 디버깅:');
@@ -779,7 +784,7 @@ const UserInfoPage = () => {
               <Col md={2} sm={6} xs={12}>
                 <Card className="text-center">
                   <Card.Body>
-                    <h5 className="text-primary">{storeManagers.length}</h5>
+                    <h5 className="text-info">{storeManagers.length}</h5>
                     <p className="mb-0">매장 관리자</p>
                   </Card.Body>
                 </Card>
@@ -930,17 +935,17 @@ const UserInfoPage = () => {
                 paginationPerPage={10}
                 paginationRowsPerPageOptions={[5, 10, 15, 20, 25]}
                 noDataComponent={
-                                      <div className="text-center p-5">
-                      <div className="mb-3">
-                        <i className="fas fa-users fa-3x text-muted"></i>
-                      </div>
-                      <h5 className="text-muted">
-                        선택된 조건에 맞는 사용자가 없습니다.
-                      </h5>
-                      <p className="text-muted mb-0">
-                        다른 역할 필터를 선택해보세요.
-                      </p>
+                  <div className="text-center p-5">
+                    <div className="mb-3">
+                      <i className="fas fa-users fa-3x text-muted"></i>
                     </div>
+                    <h5 className="text-muted">
+                      선택된 조건에 맞는 사용자가 없습니다.
+                    </h5>
+                    <p className="text-muted mb-0">
+                      다른 역할 필터를 선택해보세요.
+                    </p>
+                  </div>
                 }
                 highlightOnHover
                 striped
