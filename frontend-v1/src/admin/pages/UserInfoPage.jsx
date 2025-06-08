@@ -4,7 +4,7 @@ import API from '../../utils/api';
 import { getToken } from '../../utils/auth';
 import ErrorBoundary from '../components/ErrorBoundary';
 
-// third party
+// th햣ird party
 import DataTable from 'react-data-table-component';
 
 const UserInfoPage = () => {
@@ -13,8 +13,12 @@ const UserInfoPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
-    search: '',
-    sort: 'name'
+    roleFilters: {
+      USER: false,
+      STORE_MANAGER: false,
+      ADMIN: false,
+      GUEST: false
+    }
   });
 
   // 게스트 사용자 추가 모달 관련 상태
@@ -145,48 +149,57 @@ const UserInfoPage = () => {
     }
   }, []);
 
-  // 필터 변경 핸들러
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+
+  // 역할 필터 변경 핸들러
+  const handleRoleFilterChange = (role) => {
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        roleFilters: {
+          ...prev.roleFilters,
+          [role]: !prev.roleFilters[role]
+        }
+      };
+      console.log('🎯 역할 필터 변경:', role, '→', !prev.roleFilters[role]);
+      console.log('🎯 새로운 필터 상태:', newFilters.roleFilters);
+      return newFilters;
+    });
   };
 
-  // 검색 실행
-  const handleSearch = () => {
-    const filteredUsers = applyFilters();
-    setUsers(filteredUsers);
-  };
+
+
+
 
   // 필터 적용
   const applyFilters = () => {
     try {
       let filteredUsers = [...originalUsers]; // 원본 데이터에서 필터링
+
+      // 역할 필터 적용
+      const selectedRoles = Object.keys(filters.roleFilters).filter(role => filters.roleFilters[role]);
+      console.log('🔍 필터 디버깅:');
+      console.log('- 선택된 역할들:', selectedRoles);
+      console.log('- 현재 roleFilters 상태:', filters.roleFilters);
       
-      if (filters.search) {
-        filteredUsers = filteredUsers.filter(user => 
-          (user.nickname && user.nickname.toLowerCase().includes(filters.search.toLowerCase())) ||
-          user.username.toLowerCase().includes(filters.search.toLowerCase()) ||
-          user.email.toLowerCase().includes(filters.search.toLowerCase()) ||
-          (user.phone_number && user.phone_number.includes(filters.search)) ||
-          (user.phone && user.phone.includes(filters.search)) ||
-          (user.mobile && user.mobile.includes(filters.search))
-        );
+      if (selectedRoles.length > 0) { // 선택된 역할이 있는 경우만 필터링
+        console.log('📋 필터링 전 사용자 수:', filteredUsers.length);
+        filteredUsers = filteredUsers.filter(user => {
+          const userRoleInfo = getUserRoleInfo(user);
+          const shouldInclude = selectedRoles.includes(userRoleInfo.type);
+          console.log(`- ${user.username}: 원본 role="${user.role}", 판별된 type="${userRoleInfo.type}", 포함여부=${shouldInclude}`);
+          return shouldInclude;
+        });
+        console.log('📋 필터링 후 사용자 수:', filteredUsers.length);
+      } else {
+        console.log('⚠️ 필터링 건너뜀 - 선택된 역할 없음');
       }
 
+      // 기본 정렬 (닉네임 순)
       filteredUsers.sort((a, b) => {
-        if (filters.sort === 'name') {
-          const nameA = a.nickname || a.username || '';
-          const nameB = b.nickname || b.username || '';
-          return nameA.localeCompare(nameB);
-        } else if (filters.sort === '-name') {
-          const nameA = a.nickname || a.username || '';
-          const nameB = b.nickname || b.username || '';
-          return nameB.localeCompare(nameA);
-        }
-        return 0;
+        const nameA = a.nickname || a.username || '';
+        const nameB = b.nickname || b.username || '';
+        return nameA.localeCompare(nameB);
       });
 
       return filteredUsers;
@@ -196,11 +209,7 @@ const UserInfoPage = () => {
     }
   };
 
-  // 필터 초기화
-  const handleReset = () => {
-    setFilters({ search: '', sort: 'name' });
-    setUsers(originalUsers); // 원본 데이터로 복원
-  };
+
 
   // 새로고침 핸들러 (수동 새로고침 시에는 중복 방지 해제)
   const handleRefresh = () => {
@@ -242,6 +251,14 @@ const UserInfoPage = () => {
     // 알 수 없는 역할
     return { type: role, display: role, class: 'bg-secondary' };
   }, []);
+
+  // 필터 상태 변경을 감지하여 자동으로 필터 적용
+  useEffect(() => {
+    if (originalUsers.length > 0) {
+      const filteredUsers = applyFilters();
+      setUsers(filteredUsers);
+    }
+  }, [filters.roleFilters, originalUsers]);
 
   // 사용자 테이블 컬럼 정의
   const userColumns = useMemo(() => [
@@ -787,64 +804,7 @@ const UserInfoPage = () => {
           );
         })()}
 
-        {/* 필터 섹션 */}
-        <Card className="mb-4">
-          <Card.Body>
-            <Row>
-              <Col md={6} sm={12}>
-                <Form.Group className="mb-3">
-                  <Form.Label>검색</Form.Label>
-                  <div className="d-flex">
-                    <Form.Control 
-                      type="text" 
-                      name="search"
-                      placeholder="닉네임, 이메일 또는 전화번호로 검색..." 
-                      value={filters.search}
-                      onChange={handleFilterChange}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                      className="me-2"
-                    />
-                    <Button 
-                      variant="primary" 
-                      onClick={handleSearch}
-                      style={{ minWidth: '80px' }}
-                    >
-                      검색
-                    </Button>
-                  </div>
-                </Form.Group>
-              </Col>
-              <Col md={6} sm={12}>
-                <Form.Group className="mb-3">
-                  <Form.Label>정렬</Form.Label>
-                  <Form.Select 
-                    name="sort"
-                    value={filters.sort}
-                    onChange={(e) => {
-                      handleFilterChange(e);
-                      // 정렬 변경 시 자동으로 필터 적용
-                      setTimeout(() => {
-                        const filteredUsers = applyFilters();
-                        setUsers(filteredUsers);
-                      }, 0);
-                    }}
-                  >
-                    <option value="name">닉네임 (오름차순)</option>
-                    <option value="-name">닉네임 (내림차순)</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <div className="text-end">
-              <Button variant="secondary" className="me-2" onClick={handleReset}>
-                초기화
-              </Button>
-              <Button variant="primary" onClick={handleSearch}>
-                필터 적용
-              </Button>
-            </div>
-          </Card.Body>
-        </Card>
+
 
         {/* 에러 메시지 */}
         {error && (
@@ -855,9 +815,105 @@ const UserInfoPage = () => {
 
         {/* 사용자 목록 */}
         <Card>
-          <Card.Header>
-            <h5>사용자 목록</h5>
-            <small>정렬 가능하고 검색 가능한 사용자 테이블입니다. 필터를 사용하여 원하는 사용자를 찾을 수 있습니다.</small>
+          <Card.Header style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h5 className="mb-1" style={{ color: '#721c24', fontWeight: 'bold' }}>
+                  <i className="fas fa-users me-2"></i>
+                  사용자 목록
+                </h5>
+                                 <small className="text-muted">
+                   역할별 필터링을 통해 원하는 사용자를 쉽게 찾을 수 있습니다.
+                 </small>
+              </div>
+            </div>
+            
+            {/* 사용자 역할 필터 */}
+            <div className="role-filter-section">
+              <div className="d-flex align-items-center mb-2">
+                <i className="fas fa-filter me-2 text-primary"></i>
+                <span className="fw-bold text-dark">사용자 역할 필터</span>
+                <small className="text-muted ms-2">원하는 역할을 선택해주세요</small>
+              </div>
+              <div className="d-flex flex-wrap gap-2">
+                <div 
+                  className={`filter-chip ${filters.roleFilters.USER ? 'active' : ''}`}
+                  onClick={() => handleRoleFilterChange('USER')}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    border: '2px solid #28a745',
+                    backgroundColor: filters.roleFilters.USER ? '#28a745' : 'white',
+                    color: filters.roleFilters.USER ? 'white' : '#28a745',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease',
+                    userSelect: 'none'
+                  }}
+                >
+                  <i className="fas fa-user me-1"></i>
+                  일반 사용자
+                </div>
+                <div 
+                  className={`filter-chip ${filters.roleFilters.STORE_MANAGER ? 'active' : ''}`}
+                  onClick={() => handleRoleFilterChange('STORE_MANAGER')}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    border: '2px solid #007bff',
+                    backgroundColor: filters.roleFilters.STORE_MANAGER ? '#007bff' : 'white',
+                    color: filters.roleFilters.STORE_MANAGER ? 'white' : '#007bff',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease',
+                    userSelect: 'none'
+                  }}
+                >
+                  <i className="fas fa-store me-1"></i>
+                  매장 관리자
+                </div>
+                <div 
+                  className={`filter-chip ${filters.roleFilters.ADMIN ? 'active' : ''}`}
+                  onClick={() => handleRoleFilterChange('ADMIN')}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    border: '2px solid #dc3545',
+                    backgroundColor: filters.roleFilters.ADMIN ? '#dc3545' : 'white',
+                    color: filters.roleFilters.ADMIN ? 'white' : '#dc3545',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease',
+                    userSelect: 'none'
+                  }}
+                >
+                  <i className="fas fa-crown me-1"></i>
+                  시스템 관리자
+                </div>
+                <div 
+                  className={`filter-chip ${filters.roleFilters.GUEST ? 'active' : ''}`}
+                  onClick={() => handleRoleFilterChange('GUEST')}
+                  style={{
+                    cursor: 'pointer',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    border: '2px solid #ffc107',
+                    backgroundColor: filters.roleFilters.GUEST ? '#ffc107' : 'white',
+                    color: filters.roleFilters.GUEST ? 'white' : '#ffc107',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    transition: 'all 0.3s ease',
+                    userSelect: 'none'
+                  }}
+                >
+                  <i className="fas fa-user-clock me-1"></i>
+                  게스트 사용자
+                </div>
+              </div>
+            </div>
           </Card.Header>
           <Card.Body>
             {loading ? (
@@ -874,21 +930,17 @@ const UserInfoPage = () => {
                 paginationPerPage={10}
                 paginationRowsPerPageOptions={[5, 10, 15, 20, 25]}
                 noDataComponent={
-                  <div className="text-center p-5">
-                    <div className="mb-3">
-                      <i className="fas fa-users fa-3x text-muted"></i>
+                                      <div className="text-center p-5">
+                      <div className="mb-3">
+                        <i className="fas fa-users fa-3x text-muted"></i>
+                      </div>
+                      <h5 className="text-muted">
+                        선택된 조건에 맞는 사용자가 없습니다.
+                      </h5>
+                      <p className="text-muted mb-0">
+                        다른 역할 필터를 선택해보세요.
+                      </p>
                     </div>
-                    <h5 className="text-muted">
-                      {filters.search
-                        ? '검색 조건에 맞는 사용자가 없습니다.' 
-                        : '등록된 사용자가 없습니다.'}
-                    </h5>
-                    <p className="text-muted mb-0">
-                      {filters.search 
-                        ? '다른 검색어를 시도해보세요.' 
-                        : '새로운 사용자를 등록해보세요.'}
-                    </p>
-                  </div>
                 }
                 highlightOnHover
                 striped
