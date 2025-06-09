@@ -135,6 +135,11 @@ const MobileLogin = () => {
                     className={`asl-mobile-user-toggle-btn ${formData.userType === 'user' ? 'active' : ''}`}
                     onClick={() => setFormData({...formData, userType: 'user'})}
                     type="button"
+                    style={{
+                      color: formData.userType === 'user' ? 'white' : '#2c3e50',
+                      backgroundColor: formData.userType === 'user' ? '#b5002e' : 'rgba(44, 62, 80, 0.1)',
+                      fontWeight: '600'
+                    }}
                   >
                     일반 사용자
                   </Button>
@@ -142,6 +147,11 @@ const MobileLogin = () => {
                     className={`asl-mobile-user-toggle-btn ${formData.userType === 'store' ? 'active' : ''}`}
                     onClick={() => setFormData({...formData, userType: 'store'})}
                     type="button"
+                    style={{
+                      color: formData.userType === 'store' ? 'white' : '#2c3e50',
+                      backgroundColor: formData.userType === 'store' ? '#b5002e' : 'rgba(44, 62, 80, 0.1)',
+                      fontWeight: '600'
+                    }}
                   >
                     매장 관리자
                   </Button>

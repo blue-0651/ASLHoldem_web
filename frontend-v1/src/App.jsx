@@ -37,6 +37,7 @@ import TournamentsList from './mobile/pages/common/tournaments-list/TournamentsL
 import Reservations from './mobile/pages/common/reservations/Reservations';
 import StoreSearchPage from './mobile/pages/common/store-search/StoreSearchPage';
 import StoreDetailPage from './mobile/pages/common/store-search/StoreDetailPage';
+import AdvertisementPage from './mobile/pages/common/AdvertisementPage';
 import Settings from './mobile/pages/common/Settings';
 import UnderConstruction from './mobile/pages/common/UnderConstruction';
 
@@ -102,6 +103,7 @@ function App() {
         {/* 모바일 라우트 */}
         <Route path="/mobile" element={<NavigationLayout />}>
           <Route path="login" element={<MobileLogin />} />
+          <Route path="advertisement" element={<AdvertisementPage />} />
           <Route path="store" element={<ProtectedRoute userType="store" />}>
             <Route path="dashboard" element={<StoreDashboard />} />
             <Route path="tournament" element={<Tournament />} />
@@ -126,6 +128,9 @@ function App() {
 
         {/* 모바일 회원가입 */}
         <Route path="/mobile/signup" element={<MobileSignup />} />
+
+        {/* 광고 페이지 - 로그인 없이 접근 가능 */}
+        <Route path="/mobile/advertisement" element={<AdvertisementPage />} />
 
         {/* 일반 사용자 라우트 */}
         <Route path="/mobile/common/tournaments-list" element={<TournamentsList />} />
