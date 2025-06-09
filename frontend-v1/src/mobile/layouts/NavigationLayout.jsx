@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import MobileFooter from '../components/MobileFooter';
 
 /**
  * 모바일 페이지의 기본 레이아웃 컴포넌트
@@ -16,7 +17,10 @@ const NavigationLayout = () => {
   
   return (
     <div className="asl-mobile-layout">
-      <Outlet />
+      <div className="asl-mobile-content-wrapper">
+        <Outlet />
+      </div>
+      <MobileFooter />
     </div>
   );
 };

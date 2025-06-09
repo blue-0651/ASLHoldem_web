@@ -1079,3 +1079,88 @@ body {
     font-size: 16px;
   }
 }
+
+/* 모바일 Footer 스타일 */
+.asl-mobile-footer {
+  background-color: #2c3e50;
+  color: #ecf0f1;
+  padding: 10px 0;
+  margin-top: 18px;
+  border-top: 1px solid #34495e;
+  
+  .footer-content {
+    padding: 3px 0;
+  }
+  
+  .company-name {
+    font-size: 13px;
+    margin-bottom: 5px;
+    color: #3498db;
+    
+    strong {
+      font-weight: 600;
+    }
+  }
+  
+  .business-info {
+    margin-bottom: 7px;
+    
+    p {
+      margin-bottom: 1px;
+      line-height: 1.2;
+      
+      small {
+        font-size: 10px;
+        color: #bdc3c7;
+      }
+    }
+  }
+  
+  .copyright {
+    border-top: 1px solid #34495e;
+    padding-top: 5px;
+    
+    small {
+      font-size: 9px;
+      color: #95a5a6;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    padding: 5px 0;
+    margin-top: 10px;
+    
+    .company-name {
+      font-size: 11px;
+      margin-bottom: 3px;
+    }
+    
+    .business-info p {
+      margin-bottom: 0;
+      line-height: 1.15;
+    }
+    
+    .business-info p small {
+      font-size: 8px;
+    }
+    
+    .copyright {
+      padding-top: 3px;
+    }
+    
+    .copyright small {
+      font-size: 8px;
+    }
+  }
+}
+
+/* 모바일 레이아웃 조정 */
+.asl-mobile-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.asl-mobile-content-wrapper {
+  flex: 1;
+}

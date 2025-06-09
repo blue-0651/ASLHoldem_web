@@ -122,8 +122,8 @@ function App() {
             <Route path="store/:id" element={<StoreDetailPage />} />
             <Route path="settings" element={<Settings />} />
           </Route>
-          <Route index element={<Navigate to="/mobile/login" replace />} />
-          <Route path="*" element={<Navigate to="/mobile/login" replace />} />
+          <Route index element={<Navigate to="/mobile/advertisement" replace />} />
+          <Route path="*" element={<Navigate to="/mobile/advertisement" replace />} />
         </Route>
 
         {/* 모바일 회원가입 */}
@@ -173,8 +173,8 @@ function App() {
         )}
 
         {/* 기본 리다이렉트 - 모바일 디바이스면 모바일 경로로 */}
-        <Route path="/" element={isMobile ? <Navigate to="/mobile/user/dashboard" replace /> : <Navigate to="/dashboard" replace />} />
-        <Route path="*" element={isMobile ? <Navigate to="/mobile/user/dashboard" replace /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/" element={isMobile ? <Navigate to="/mobile/advertisement" replace /> : <Navigate to="/dashboard" replace />} />
+        <Route path="*" element={isMobile ? <Navigate to="/mobile/advertisement" replace /> : <Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );
