@@ -55,13 +55,13 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'django_filters',
-    'drf_yasg',
-    # Local apps
+    'drf_yasg',    # Local apps
     'accounts',
     'tournaments',
     'stores',
     'notices',
     'seats',
+    'banners',
 ]
 
 MIDDLEWARE = [

@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/v1/stores/', include('stores.urls')),
     path('api/v1/notices/', include('notices.urls')),  # 공지사항 API 경로 추가
     path('api/v1/seats/', include('seats.urls')),  # 좌석권 API 경로 추가
+    path('api/v1/banners/', include('banners.urls')),  # 배너 API 경로 추가
 
     path('api/v1/store/info/', StoreViewSet.as_view({'get': 'current_store', 'put': 'update_current_store'})),
     path('api/v1/store/debug/', StoreViewSet.as_view({'get': 'debug_user'})),
