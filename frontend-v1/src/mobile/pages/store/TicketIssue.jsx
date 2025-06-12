@@ -75,7 +75,7 @@ const TicketIssue = () => {
             
             setCurrentStore(storeData);
             showAlert('success', `${storeData.name} 매장으로 로그인되었습니다.`);
-            return;
+              return;
           } else {
             console.warn('⚠️ 사용자 소유 매장 조회 실패:', storeResponse.status, storeResponse.statusText);
             const errorData = await storeResponse.json().catch(() => ({}));

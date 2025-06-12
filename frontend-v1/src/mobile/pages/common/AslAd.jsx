@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Container, Card, Button } from 'react-bootstrap';
 import './AslAd.scss';
 
 // 이미지 import
@@ -17,12 +18,14 @@ import galleryImg3 from '../../../assets/images/gallery-grid/img-grd-gal-3.jpg';
 /**
  * ASL 광고 화면 페이지 컴포넌트
  * - 대회 로고 이미지 표시
- * - 매장 리스트 부페이저
+ * - 매장 리스트 부페이저 (2초마다 자동 슬라이딩)
  * - 협력사 배너 이미지 리스트
  */
 const AslAd = () => {
   const navigate = useNavigate();
-  const [currentStoreIndex, setCurrentStoreIndex] = useState(0);
+  
+  // 매장 슬라이더 상태 관리
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   // 매장 데이터 (8개로 확장)
   const stores = [
@@ -76,13 +79,23 @@ const AslAd = () => {
     'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v9/icons/samsung.svg',
   ];
 
-  // 매장 갤러리 자동 슬라이딩 (2초마다)
+  // 2초마다 자동 슬라이딩
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentStoreIndex(prev => (prev + 1) % stores.length);
-    }, 2000);
-    return () => clearInterval(interval);
+      setCurrentSlide(prev => {
+        // 4개씩 보여주므로, 총 슬라이드 수는 stores.length - 3
+        const maxSlide = stores.length - 4;
+        return prev >= maxSlide ? 0 : prev + 1;
+      });
+    }, 2000); // 2초마다 실행
+
+    return () => clearInterval(interval); // 컴포넌트 언마운트 시 정리
   }, [stores.length]);
+
+  // 현재 슬라이드에 따른 매장 4개 선택
+  const getCurrentStores = () => {
+    return stores.slice(currentSlide, currentSlide + 4);
+  };
 
   const handleLogin = () => {
     navigate('/mobile/login');
@@ -94,25 +107,46 @@ const AslAd = () => {
   };
 
   return (
-    <div className="asl-ad-container">
-      {/* 헤더 */}
-      <header className="asl-ad-header">
-        <div className="asl-ad-header-content">
-          <div className="asl-ad-logo-section">
-            <img src={aslLogo} alt="ASL Logo" className="asl-ad-logo" />
-            <span className="asl-ad-title">ASL 광고 화면 페이지</span>
-          </div>
-          <button className="asl-ad-login-btn" onClick={handleLogin}>
-            로그인
-          </button>
-        </div>
-      </header>
+    <div className="asl-mobile-container">
+      {/* 로고 섹션 */}
+      {/* <div className="asl-mobile-logo-container">
+        <img src={aslLogo} alt="ASL Logo" className="asl-mobile-logo" />
+      </div> */}
 
-      {/* 메인 컨텐츠 */}
-      <main className="asl-ad-main">
-        {/* 대회 로고 이미지 섹션 */}
-        <section className="asl-ad-tournament-section">
-          <div className="asl-ad-tournament-content">
+      <Container className="asl-ad-content-container">
+        {/* 헤더 카드 */}
+        <Card className="asl-mobile-card mb-3">
+          <Card.Body>
+            <div className="asl-ad-header-content">
+              <div className="text-center">
+                <h3 className="mb-2" style={{ color: '#333', fontWeight: '700' }}>Asian Sports League</h3>
+                <p className="text-muted mb-3">최고의 홀덤 경험을 만나보세요</p>
+              </div>
+              <div className="text-center">
+                <Button 
+                  className="asl-mobile-login-btn asl-user-btn"
+                  onClick={handleLogin}
+                  style={{
+                    backgroundColor: '#8B4513',
+                    borderColor: '#8B4513',
+                    width: 'auto',
+                    padding: '10px 30px'
+                  }}
+                >
+                  로그인
+                </Button>
+              </div>
+            </div>
+          </Card.Body>
+        </Card>
+
+        {/* 대회 로고 이미지 카드 */}
+        <Card className="asl-mobile-card mb-3">
+          <Card.Body>
+            <div className="text-center mb-3">
+              <h5 style={{ color: '#333', fontWeight: '600' }}>토너먼트 정보</h5>
+              <p className="text-muted small">최신 대회 소식을 확인하세요</p>
+            </div>
             <div className="asl-ad-tournament-image-container">
               <img 
                 src={tournamentImage} 
@@ -120,17 +154,21 @@ const AslAd = () => {
                 className="asl-ad-tournament-image"
               />
             </div>
-          </div>
-        </section>
+          </Card.Body>
+        </Card>
 
-        {/* 매장 리스트 부페이저 섹션 */}
-        <section className="asl-ad-stores-section">
-          <div className="asl-ad-stores-content">          
+        {/* 매장 리스트 카드 */}
+        <Card className="asl-mobile-card mb-3">
+          <Card.Body>
+            <div className="text-center mb-3">
+              <h5 style={{ color: '#333', fontWeight: '600' }}>인기 매장</h5>
+              <p className="text-muted small">다양한 테마의 홀덤 매장을 둘러보세요</p>
+            </div>
             <div className="asl-ad-stores-gallery">
-              {stores.map((store, index) => (
+              {getCurrentStores().map((store, index) => (
                 <div 
-                  key={index}
-                  className={`asl-ad-store-item ${index === currentStoreIndex ? 'active' : ''}`}
+                  key={`${currentSlide}-${index}`}
+                  className="asl-ad-store-item asl-ad-store-slide-in"
                   onClick={() => handleStoreClick(store)}
                 >
                   <div className="asl-ad-store-image-wrapper">
@@ -139,10 +177,10 @@ const AslAd = () => {
                       alt={store.name}
                       className="asl-ad-store-image"
                     />
-                                  <div className="asl-ad-store-overlay">
-                <span className="asl-ad-store-name">{store.name}</span>
-                <p className="asl-ad-store-description">{store.description}</p>
-              </div>
+                    <div className="asl-ad-store-overlay">
+                      <span className="asl-ad-store-name">{store.name}</span>
+                      <p className="asl-ad-store-description">{store.description}</p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -150,20 +188,24 @@ const AslAd = () => {
 
             {/* 페이지 인디케이터 */}
             <div className="asl-ad-stores-indicators">
-              {stores.map((_, index) => (
-                <button
+              {Array.from({ length: stores.length - 3 }, (_, index) => (
+                <div 
                   key={index}
-                  className={`asl-ad-indicator ${index === currentStoreIndex ? 'active' : ''}`}
-                  onClick={() => setCurrentStoreIndex(index)}
+                  className={`asl-ad-indicator ${currentSlide === index ? 'active' : ''}`}
+                  onClick={() => setCurrentSlide(index)}
                 />
               ))}
             </div>
-          </div>
-        </section>
+          </Card.Body>
+        </Card>
 
-        {/* 협력사 배너 섹션 */}
-        <section className="asl-ad-partners-section">
-          <div className="asl-ad-partners-content">
+        {/* 협력사 배너 카드 */}
+        <Card className="asl-mobile-card mb-4">
+          <Card.Body>
+            <div className="text-center mb-3">
+              <h5 style={{ color: '#333', fontWeight: '600' }}>협력사</h5>
+              <p className="text-muted small">신뢰할 수 있는 파트너들과 함께합니다</p>
+            </div>
             <div className="asl-ad-partners-gallery">
               {partnerLogos.map((logo, index) => (
                 <div key={index} className="asl-ad-partner-item">
@@ -180,9 +222,9 @@ const AslAd = () => {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-      </main>
+          </Card.Body>
+        </Card>
+      </Container>
 
       {/* Footer - 사업자 정보 */}
       <footer className="asl-mobile-footer">

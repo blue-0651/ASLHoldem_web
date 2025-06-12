@@ -208,21 +208,21 @@ const DashAnalytics = () => {
                   <Row>
                     <Col sm="auto" className="text-center">
                       <img src={imgGrid1} alt="img" className="img-fluid wid-100" />
-                      <h6 className="m-t-15 m-b-0">Old Scooter</h6>
+                      <h6 className="m-t-15 m-b-0">바둑판</h6>
                       <p className="text-muted m-b-0">
                         <small>PNG-100KB</small>
                       </p>
                     </Col>
                     <Col sm="auto" className="text-center">
                       <img src={imgGrid2} alt="img" className="img-fluid wid-100" />
-                      <h6 className="m-t-15 m-b-0">Wall Art</h6>
+                      <h6 className="m-t-15 m-b-0">골프클럽</h6>
                       <p className="text-muted m-b-0">
                         <small>PNG-150KB</small>
                       </p>
                     </Col>
                     <Col sm="auto" className="text-center">
                       <img src={imgGrid3} alt="img" className="img-fluid wid-100" />
-                      <h6 className="m-t-15 m-b-0">Microphone</h6>
+                      <h6 className="m-t-15 m-b-0">골프공</h6>
                       <p className="text-muted m-b-0">
                         <small>PNG-150KB</small>
                       </p>

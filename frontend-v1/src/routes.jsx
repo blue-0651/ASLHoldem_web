@@ -53,11 +53,21 @@ export const routes = [
     element: lazy(() => import('./views/maintenance/Maintenance'))
   },
   // ------------------------------------------------------------------------------------
-  // 모바일 로그인 페이지 ------------------------------------------------------------------
+  // 모바일 페이지들 ------------------------------------------------------------------
   {
     exact: 'true',
     path: '/mobile/login',
     element: lazy(() => import('./views/mobile/AslLogin'))
+  },
+  {
+    exact: 'true',
+    path: '/mobile/advertisement',
+    element: lazy(() => import('./mobile/pages/common/AslAd'))
+  },
+  {
+    exact: 'true',
+    path: '/mobile/asl-ad',
+    element: lazy(() => import('./mobile/pages/common/AslAd'))
   },
   // ------------------------------------------------------------------------------------
   {

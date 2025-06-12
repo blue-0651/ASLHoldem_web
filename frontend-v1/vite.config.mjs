@@ -8,6 +8,15 @@ export default defineConfig(({ mode }) => {
   const PORT = `${'3000'}`;
 
   return {
+    build: {
+      target: 'es2015',
+      minify: 'terser',
+      rollupOptions: {
+        output: {
+          manualChunks: undefined,
+        }
+      }
+    },
     server: {
       // this ensures that the browser opens upon server start
       open: true,
@@ -70,6 +79,9 @@ export default defineConfig(({ mode }) => {
       }
     },
     base: API_URL,
-    plugins: [react(), jsconfigPaths()]
+    plugins: [
+      react(), 
+      jsconfigPaths()
+    ]
   };
 });

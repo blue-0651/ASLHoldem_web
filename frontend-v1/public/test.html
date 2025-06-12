@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebView Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        p {
+            font-size: 1.2em;
+            margin: 10px 0;
+            opacity: 0.9;
+        }
+        
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+            font-size: 1.5em;
+            margin-top: 20px;
+        }
+        
+        .info {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .animated {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        button {
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container animated">
+        <h1>🚀 WebView 연결 성공!</h1>
+        <p>ASL Holdem Android 앱에서</p>
+        <p>WebView가 정상적으로 작동하고 있습니다.</p>
+        
+        <div class="success">✅ 모든 시스템 정상</div>
+        
+        <div class="info">
+            <p><strong>현재 시간:</strong> <span id="currentTime"></span></p>
+            <p><strong>화면 크기:</strong> <span id="screenSize"></span></p>
+            <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
+        </div>
+        
+        <button onclick="testFeatures()">기능 테스트</button>
+        <button onclick="goToMain()">메인 페이지로</button>
+    </div>
+
+    <script>
+        // 현재 시간 업데이트
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleString('ko-KR');
+        }
+        
+        // 화면 정보 업데이트
+        function updateScreenInfo() {
+            document.getElementById('screenSize').textContent = 
+                `${window.innerWidth} x ${window.innerHeight}`;
+            document.getElementById('userAgent').textContent = 
+                navigator.userAgent.substring(0, 50) + '...';
+        }
+        
+        // 기능 테스트
+        function testFeatures() {
+            alert('JavaScript Alert 테스트 성공!');
+            console.log('Console log 테스트 성공!');
+            
+            // 로컬 스토리지 테스트
+            try {
+                localStorage.setItem('webview-test', 'success');
+                const stored = localStorage.getItem('webview-test');
+                console.log('Local Storage 테스트:', stored);
+            } catch (e) {
+                console.error('Local Storage 에러:', e);
+            }
+        }
+        
+        // 메인 페이지로 이동
+        function goToMain() {
+            window.location.href = '/mobile/advertisement';
+        }
+        
+        // 초기화
+        updateTime();
+        updateScreenInfo();
+        setInterval(updateTime, 1000);
+        
+        // 윈도우 리사이즈 이벤트
+        window.addEventListener('resize', updateScreenInfo);
+        
+        // 페이지 로드 완료 로그
+        console.log('WebView 테스트 페이지 로드 완료!');
+        console.log('현재 URL:', window.location.href);
+        console.log('문서 준비 상태:', document.readyState);
+    </script>
+</body>
+</html> 

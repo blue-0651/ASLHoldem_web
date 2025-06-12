@@ -1,3 +1,10 @@
+/* WebView 높이 문제 해결을 위한 전역 스타일 추가 */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 // eslint-disable-next-line
 @import 'assets/scss/style.scss';
 // 중복 삭제
