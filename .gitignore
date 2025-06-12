@@ -151,3 +151,4 @@ yarn-error.log*
 
 # cursor rules
 *.mdc
+android/.gradle/
