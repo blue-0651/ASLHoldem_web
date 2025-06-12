@@ -1,0 +1,1 @@
+# Banners app initialization

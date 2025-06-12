@@ -439,12 +439,116 @@ export const noticeAPI = {
   }
 };
 
+// 배너(Banner) 관련 API
+export const bannerAPI = {
+  // 모든 배너 조회 (인증 필요)
+  getAllBanners: (params = {}) => API.get('/banners/', { params }),
+
+  // 활성 배너만 조회 (로그인 불필요)
+  getActiveBanners: (params = {}) => API.get('/banners/active/', { params }),
+
+  // 특정 배너 상세 조회
+  getBannerById: (id) => API.get(`/banners/${id}/`),
+
+  // 매장별 배너 조회
+  getBannersByStore: (storeId) => 
+    API.get('/banners/by_store/', { params: { store_id: storeId } }),
+
+  // 내 매장 배너 조회 (매장 관리자용)
+  getMyBanners: () => API.get('/banners/my_banners/'),
+
+  // 배너 생성
+  createBanner: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
+        formData.append(key, data[key]);
+      }
+    });
+    
+    // 디버깅을 위한 FormData 내용 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📤 배너 생성 - 전송할 FormData:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+    }
+    
+    return API.post('/banners/', formData);
+  },
+
+  // 배너 수정
+  updateBanner: (id, data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
+        formData.append(key, data[key]);
+      }
+    });
+    
+    // 디버깅을 위한 FormData 내용 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📤 배너 수정 (ID: ${id}) - 전송할 FormData:`);
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+    }
+    
+    return API.put(`/banners/${id}/`, formData);
+  },
+
+  // 배너 삭제
+  deleteBanner: (id) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📤 배너 삭제 (ID: ${id})`);
+    }
+    
+    return API.delete(`/banners/${id}/`);
+  },
+
+  // 배너 활성화/비활성화 토글
+  toggleBannerActive: (id) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📤 배너 상태 토글 (ID: ${id})`);
+    }
+    
+    return API.post(`/banners/${id}/toggle_active/`);
+  },
+
+  // 필터링된 배너 조회 (다양한 옵션 지원)
+  getBannersWithFilters: (filters = {}) => {
+    const params = {};
+    
+    // 매장별 필터링
+    if (filters.storeId) {
+      params.store_id = filters.storeId;
+    }
+    
+    // 활성 상태 필터링
+    if (filters.isActive !== undefined) {
+      params.is_active = filters.isActive;
+    }
+    
+    // 기간별 필터링
+    if (filters.startDate) {
+      params.start_date = filters.startDate;
+    }
+    
+    if (filters.endDate) {
+      params.end_date = filters.endDate;
+    }
+    
+    return API.get('/banners/', { params });
+  }
+};
+
 // API 모듈을 변수에 할당 후 내보내기
 // const apiModule = {
 //   tournament: tournamentAPI,
 //   store: storeAPI,
 //   registration: registrationAPI,
-//   dashboard: dashboardAPI
+//   dashboard: dashboardAPI,
+//   banner: bannerAPI
 // };
 
 export default API;
