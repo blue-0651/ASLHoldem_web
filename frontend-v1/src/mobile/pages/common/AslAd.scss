@@ -1,0 +1,531 @@
+@import '../../../assets/scss/mobile/mobile-commons';
+
+// ASL 광고 페이지 전용 변수
+$asl-ad-border-color: #333333;
+$asl-ad-text-color: #333333;
+$asl-ad-bg-color: #FDF5E6;
+$asl-ad-header-bg: #fef8ed;
+$asl-ad-button-color: #007bff;
+
+// 메인 컨테이너
+.asl-ad-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: $asl-ad-bg-color;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  padding-bottom: 120px; // footer 높이만큼 하단 패딩 추가
+  box-sizing: border-box;
+}
+
+// 헤더 스타일
+.asl-ad-header {
+  width: 100%;
+  background-color: $asl-ad-header-bg;
+  border: 2px solid $asl-ad-border-color;
+  border-bottom: 3px solid $asl-ad-border-color;
+  padding: 15px 20px;
+  box-sizing: border-box;
+
+  .asl-ad-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 100%;
+  }
+
+  .asl-ad-logo-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .asl-ad-logo {
+    width: 40px;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .asl-ad-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: $asl-ad-text-color;
+    margin: 0;
+  }
+
+  .asl-ad-login-btn {
+    padding: 8px 16px;
+    background-color: $asl-ad-button-color;
+    color: white;
+    border: 2px solid $asl-ad-border-color;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: darken($asl-ad-button-color, 10%);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+
+// 메인 컨텐츠
+.asl-ad-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+// 대회 로고 이미지 섹션
+.asl-ad-tournament-section {
+  border: 2px solid $asl-ad-border-color;
+  border-top: none;
+  background-color: $asl-ad-bg-color;
+  padding: 20px;
+  text-align: center;
+
+  .asl-ad-tournament-content {
+    max-width: 100%;
+  }
+
+  .asl-ad-tournament-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: $asl-ad-text-color;
+    margin: 0 0 15px 0;
+    line-height: 1.4;
+
+    .asl-ad-tournament-subtitle {
+      display: block;
+      font-size: 14px;
+      font-weight: normal;
+      color: lighten($asl-ad-text-color, 20%);
+      margin-top: 5px;
+    }
+  }
+
+  .asl-ad-tournament-image-container {
+    width: 100%;
+    height: 200px;
+    border: 2px solid $asl-ad-border-color;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fef8ed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .asl-ad-tournament-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+// 매장 리스트 섹션
+.asl-ad-stores-section {
+  border: 2px solid $asl-ad-border-color;
+  border-top: none;
+  background-color: $asl-ad-bg-color;
+  padding: 20px;
+
+  .asl-ad-stores-content {
+    text-align: center;
+  }
+
+  .asl-ad-section-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: $asl-ad-text-color;
+    margin: 0 0 5px 0;
+  }
+
+  .asl-ad-section-subtitle {
+    font-size: 12px;
+    color: lighten($asl-ad-text-color, 20%);
+    margin: 0 0 20px 0;
+  }
+
+  .asl-ad-stores-gallery {
+    position: relative;
+    width: 100%;
+    height: 225px; // 150px에서 50% 증가 (150 * 1.5 = 225)
+    margin-bottom: 20px;
+    overflow: hidden;
+    border: 2px solid $asl-ad-border-color;
+    border-radius: 8px;
+    background-color: #fef8ed;
+  }
+
+  .asl-ad-store-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+
+    &.active {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    &.prev {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+
+    &:hover {
+      .asl-ad-store-image-wrapper {
+        transform: scale(1.02);
+      }
+    }
+  }
+
+  .asl-ad-store-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+    overflow: hidden;
+    background-color: #fef8ed;
+    transition: transform 0.3s ease;
+  }
+
+  .asl-ad-store-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .asl-ad-store-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    color: white;
+    padding: 15px 10px 10px;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .asl-ad-store-name {
+    display: block;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+
+  .asl-ad-store-description {
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+    margin: 0;
+    line-height: 1.3;
+    text-align: center;
+  }
+
+  // 페이지 인디케이터
+  .asl-ad-stores-indicators {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 15px;
+  }
+
+  .asl-ad-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid $asl-ad-border-color;
+    background-color: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.active {
+      background-color: $asl-ad-button-color;
+      border-color: $asl-ad-button-color;
+    }
+
+    &:hover {
+      background-color: lighten($asl-ad-button-color, 20%);
+    }
+  }
+}
+
+// 협력사 배너 섹션
+.asl-ad-partners-section {
+  border: 2px solid $asl-ad-border-color;
+  border-top: none;
+  background-color: $asl-ad-bg-color;
+  padding: 20px;
+
+  .asl-ad-partners-content {
+    text-align: center;
+  }
+
+  .asl-ad-section-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: $asl-ad-text-color;
+    margin: 0 0 5px 0;
+  }
+
+  .asl-ad-section-subtitle {
+    font-size: 12px;
+    color: lighten($asl-ad-text-color, 20%);
+    margin: 0 0 20px 0;
+  }
+
+  .asl-ad-partners-gallery {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .asl-ad-partner-item {
+    flex-shrink: 0;
+  }
+
+  .asl-ad-partner-logo-wrapper {
+    width: 60px;
+    height: 60px;
+    border: 2px solid $asl-ad-border-color;
+    border-radius: 8px;
+    background-color: #fef8ed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .asl-ad-partner-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    filter: grayscale(20%);
+    transition: filter 0.3s ease;
+
+    &:hover {
+      filter: grayscale(0%);
+    }
+  }
+}
+
+// 반응형 디자인
+@media (max-width: 768px) {
+  .asl-ad-header {
+    padding: 12px 15px;
+
+    .asl-ad-title {
+      font-size: 16px;
+    }
+
+    .asl-ad-login-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+  }
+
+  .asl-ad-tournament-section {
+    padding: 15px;
+
+    .asl-ad-tournament-title {
+      font-size: 18px;
+    }
+
+    .asl-ad-tournament-image-container {
+      height: 150px;
+    }
+  }
+
+  .asl-ad-stores-section {
+    padding: 15px;
+
+    .asl-ad-stores-gallery {
+      height: 180px; // 120px에서 50% 증가 (120 * 1.5 = 180)
+    }
+
+    .asl-ad-store-overlay {
+      padding: 10px 8px 8px;
+      font-size: 14px;
+    }
+
+    .asl-ad-store-description {
+      font-size: 10px;
+    }
+  }
+
+  .asl-ad-partners-section {
+    padding: 15px;
+
+    .asl-ad-partners-gallery {
+      gap: 15px;
+    }
+
+    .asl-ad-partner-logo-wrapper {
+      width: 50px;
+      height: 50px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .asl-ad-header {
+    .asl-ad-logo-section {
+      gap: 8px;
+    }
+
+    .asl-ad-logo {
+      width: 32px;
+    }
+
+    .asl-ad-title {
+      font-size: 14px;
+    }
+  }
+
+  .asl-ad-stores-section {
+    .asl-ad-stores-gallery {
+      height: 150px; // 100px에서 50% 증가 (100 * 1.5 = 150)
+    }
+
+    .asl-ad-store-overlay {
+      padding: 8px 6px 6px;
+      font-size: 12px;
+    }
+  }
+
+  .asl-ad-partners-gallery {
+    gap: 12px;
+  }
+
+  .asl-ad-partner-logo-wrapper {
+    width: 45px;
+    height: 45px;
+  }
+}
+
+// Footer 스타일
+.asl-mobile-footer {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background-color: #f0ead6; // 더 진한 beige 색상
+  border-top: 1px solid #e0d5c0;
+  margin-top: auto; // 자동으로 상단 여백을 최대화하여 하단에 위치
+  padding: 0.75rem 0.5rem;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+
+  .footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+
+    .company-name {
+      margin-bottom: 0.5rem;
+      
+      strong {
+        color: #5d4e37; // 진한 갈색
+        font-size: 1rem;
+        font-weight: 600;
+      }
+    }
+
+    .business-info {
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+
+      p {
+        margin: 0.15rem 0;
+        color: #6b5b47; // 중간 갈색
+
+        small {
+          font-size: 0.8rem;
+        }
+      }
+    }
+
+    .copyright {
+      padding-top: 0.5rem;
+      border-top: 1px solid #e0d5c0;
+      color: #8b7d6b; // 연한 갈색
+
+      small {
+        font-size: 0.75rem;
+        font-style: italic;
+      }
+    }
+  }
+
+  // 모바일 반응형
+  @media (max-width: 768px) {
+    padding: 0.5rem 0.25rem;
+
+    .footer-content {
+      .company-name strong {
+        font-size: 0.9rem;
+      }
+
+      .business-info p small {
+        font-size: 0.75rem;
+      }
+
+      .copyright small {
+        font-size: 0.7rem;
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    .footer-content {
+      .company-name strong {
+        font-size: 0.85rem;
+      }
+
+      .business-info p {
+        margin: 0.2rem 0;
+        
+        small {
+          font-size: 0.7rem;
+          line-height: 1.3;
+        }
+      }
+    }
+  }
+} 
