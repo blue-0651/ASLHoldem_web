@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme -->
+    <style name="Theme.ASLHoldem" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/asl_primary</item>
+        <item name="colorPrimaryDark">@color/asl_primary</item>
+        <item name="colorAccent">@color/asl_secondary</item>
+        <item name="android:colorBackground">@color/asl_background</item>
+        <item name="android:textColorPrimary">@color/asl_on_background</item>
+        
+        <!-- Status bar - 투명하게 설정 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        
+        <!-- Navigation bar -->
+        <item name="android:navigationBarColor">@color/asl_surface</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        
+        <!-- 전체화면 모드 -->
+        <item name="android:fitsSystemWindows">false</item>
+    </style>
+    
+    <!-- Splash screen theme -->
+    <style name="Theme.ASLHoldem.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/asl_primary</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimationDuration">2000</item>
+        <item name="postSplashScreenTheme">@style/Theme.ASLHoldem</item>
+    </style>
+</resources> 

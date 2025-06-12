@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ASL HOLDEM</string>
+    
+    <!-- 사용자 타입 관련 -->
+    <string name="user_type_customer">일반 사용자</string>
+    <string name="user_type_store_manager">매장 관리자</string>
+    <string name="user_type_select_title">사용자 타입을 선택해주세요</string>
+    <string name="user_type_customer_desc">토너먼트 참가, 예약 관리, 게임 참여</string>
+    <string name="user_type_store_manager_desc">매장 관리, 토너먼트 개설, 좌석 관리</string>
+    <string name="user_type_change_info">언제든지 설정에서 변경할 수 있습니다</string>
+    
+    <!-- 스플래시 화면 -->
+    <string name="splash_loading">로딩중...</string>
+    
+    <!-- 권한 관련 -->
+    <string name="permission_required_title">권한이 필요합니다</string>
+    <string name="permission_required_desc">앱을 사용하기 위해 인터넷 접근 권한이 필요합니다.</string>
+    <string name="permission_allow">권한 허용</string>
+    
+    <!-- 네트워크 오류 -->
+    <string name="network_error_title">네트워크 연결 오류</string>
+    <string name="network_error_desc">인터넷 연결을 확인해주세요.</string>
+    <string name="retry">다시 시도</string>
+    
+    <!-- WebView 관련 -->
+    <string name="page_loading">페이지 로딩중...</string>
+    <string name="page_load_error">페이지 로드 오류: %s</string>
+    <string name="http_error">HTTP 오류: %d</string>
+    
+    <!-- 메뉴 및 버튼 -->
+    <string name="refresh">새로고침</string>
+    <string name="select_user_type">사용자 타입 선택</string>
+    <string name="close">닫기</string>
+    <string name="confirm">확인</string>
+    <string name="cancel">취소</string>
+    
+    <!-- 오류 메시지 -->
+    <string name="error_unknown">알 수 없는 오류가 발생했습니다.</string>
+    <string name="error_connection">연결에 실패했습니다.</string>
+    <string name="error_timeout">요청 시간이 초과되었습니다.</string>
+    
+    <!-- API 엔드포인트 -->
+    <string name="api_login">/auth/login</string>
+    <string name="api_register">/auth/register</string>
+    <string name="api_tournaments">/tournaments</string>
+    <string name="api_stores">/stores</string>
+    <string name="api_seats">/seats</string>
+    <string name="api_reservations">/reservations</string>
+    <string name="api_profile">/user/profile</string>
+    
+    <!-- 네트워크 설정 -->
+    <string name="default_user_agent">ASL-Holdem-Android/1.0</string>
+</resources> 

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 외부 저장소의 공용 디렉토리 -->
+    <external-path name="external_files" path="."/>
+    
+    <!-- 앱별 외부 저장소 -->
+    <external-files-path name="external_app_files" path="."/>
+    
+    <!-- 앱별 외부 캐시 -->
+    <external-cache-path name="external_cache" path="."/>
+    
+    <!-- 내부 저장소 -->
+    <files-path name="internal_files" path="."/>
+    
+    <!-- 내부 캐시 -->
+    <cache-path name="internal_cache" path="."/>
+</paths> 

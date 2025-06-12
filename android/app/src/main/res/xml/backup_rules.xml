@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- 백업에서 제외할 파일들 -->
+    <exclude domain="database" path="temp.db" />
+    <exclude domain="database" path="cache.db" />
+    <exclude domain="sharedpref" path="temp_prefs.xml" />
+    <exclude domain="external" path="cache" />
+    <exclude domain="file" path="temp/" />
+</full-backup-content> 

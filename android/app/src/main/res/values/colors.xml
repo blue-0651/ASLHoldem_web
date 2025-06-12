@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ASL Holdem Brand Colors -->
+    <color name="asl_primary">#1B5E20</color>          <!-- 포커 그린 -->
+    <color name="asl_primary_variant">#388E3C</color>   <!-- 연한 그린 -->
+    <color name="asl_on_primary">#FFFFFF</color>        <!-- 흰색 -->
+    
+    <color name="asl_secondary">#FF8F00</color>         <!-- 골드 -->
+    <color name="asl_secondary_variant">#FFB74D</color> <!-- 연한 골드 -->
+    <color name="asl_on_secondary">#000000</color>      <!-- 검은색 -->
+    
+    <color name="asl_background">#FFFBFE</color>        <!-- 배경색 -->
+    <color name="asl_on_background">#1C1B1F</color>     <!-- 배경 위 텍스트 -->
+    <color name="asl_surface">#FFFBFE</color>           <!-- 서페이스 -->
+    <color name="asl_on_surface">#1C1B1F</color>        <!-- 서페이스 위 텍스트 -->
+    
+    <color name="asl_error">#B00020</color>             <!-- 에러 컬러 -->
+    <color name="asl_on_error">#FFFFFF</color>          <!-- 에러 위 텍스트 -->
+    
+    <!-- Additional Game Colors -->
+    <color name="asl_poker_green">#1B5E20</color>       <!-- 포커 테이블 색 -->
+    <color name="asl_chip_gold">#FF8F00</color>         <!-- 칩 색 -->
+    <color name="asl_card_red">#D32F2F</color>          <!-- 카드 레드 -->
+    <color name="asl_card_black">#000000</color>        <!-- 카드 블랙 -->
+    
+    <!-- Common Colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+    
+    <!-- Status Colors -->
+    <color name="success">#4CAF50</color>
+    <color name="warning">#FF9800</color>
+    <color name="info">#2196F3</color>
+    
+    <!-- Gray Scale -->
+    <color name="gray_100">#F5F5F5</color>
+    <color name="gray_200">#EEEEEE</color>
+    <color name="gray_300">#E0E0E0</color>
+    <color name="gray_400">#BDBDBD</color>
+    <color name="gray_500">#9E9E9E</color>
+    <color name="gray_600">#757575</color>
+    <color name="gray_700">#616161</color>
+    <color name="gray_800">#424242</color>
+    <color name="gray_900">#212121</color>
+</resources> 
