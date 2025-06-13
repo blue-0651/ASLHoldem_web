@@ -13,6 +13,7 @@ import ProtectedRoute from './admin/components/ProtectedRoute';
 import UserInfoPage from './admin/pages/UserInfoPage';
 import PlayerRegistrationPage from './admin/pages/PlayerRegistrationPage';
 import LogoutPage from './admin/pages/LogoutPage';
+import BannerManagementPage from './admin/pages/BannerManagementPage';
 
 // 모바일 페이지 컴포넌트
 import {
@@ -51,8 +52,7 @@ import SamplePage from './views/extra/SamplePage';
 import BoardManagementPage from './admin/pages/BoardManagementPage';
 import DashAnalytics from './views/dashboard/index';
 
-// 테이블 컴포넌트
-import ReactTable from './views/tables/datatable/React';
+
 
 function App() {
   // 모바일 디바이스 체크
@@ -167,7 +167,7 @@ function App() {
               <Route path="/dash-analytics" element={<DashAnalytics />} />
               <Route path="/logout" element={<LogoutPage />} />
 
-              <Route path="/react/table" element={<ReactTable />} />
+              <Route path="/banners" element={<BannerManagementPage />} />
             </Route>
           </Route>
         )}

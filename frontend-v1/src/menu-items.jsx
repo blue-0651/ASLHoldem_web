@@ -21,6 +21,13 @@ const menuItems = {
           url: '/board'
         },
         {
+          id: 'dashboard-banner',
+          title: '배너 관리',
+          type: 'item',
+          icon: 'feather icon-image',
+          url: '/banners'
+        },
+        {
           id: 'dashboard-logout',
           title: '로그아웃',
           type: 'item',
