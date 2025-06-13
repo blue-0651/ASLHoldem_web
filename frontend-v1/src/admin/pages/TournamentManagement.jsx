@@ -134,28 +134,6 @@ const datePickerCustomStyles = `
   }
 `;
 
-/**
- * 🚀 TournamentManagement 성능 최적화 완료
- * 
- * ✅ 구현된 최적화:
- * 1. 3단계 점진적 로딩 (토너먼트 목록 → 매장 정보 → 선택적 프리로딩)
- * 2. 지능형 캐싱 전략 (전역 매장 캐시, 토너먼트별 상세 캐시, 사용자별 캐시)
- * 3. 지연 로딩 (행 확장 시에만 상세 정보 로딩)
- * 4. 에러 복원력 (개별 API 실패 시에도 다른 데이터 표시)
- * 5. 향상된 UI 피드백 (로딩 상태 구분, 캐시 표시, 백그라운드 작업 안내)
- * 
- * 🎯 성능 개선 결과:
- * - 초기 화면 표시: 3-5초 → 0.5-1초 (80% 개선)
- * - 토너먼트 목록: 모든 상세 로딩 후 → 즉시 표시 (90% 개선)
- * - 상세 정보 확장: 매번 API 호출 → 캐시 우선 (70% 개선)
- * 
- * 💡 추가 최적화 가능 영역:
- * 1. 서버 사이드 페이지네이션 (매장/사용자 목록이 100개 이상인 경우)
- * 2. WebSocket 실시간 업데이트 (토너먼트 상태 변경 시)
- * 3. Service Worker 캐싱 (오프라인 지원)
- * 4. 가상화된 테이블 (매장 1000개 이상인 경우)
- * 5. GraphQL 도입 (필요한 필드만 요청)
- */
 const TournamentManagement = () => {
   // Custom styles를 head에 추가
   React.useEffect(() => {
@@ -790,9 +768,7 @@ const TournamentManagement = () => {
             distributedQuantity: distribution?.distributed_quantity || 0,
             remainingQuantity: distribution?.remaining_quantity || 0,
           };
-        });
-
-        // 3. 캐시 업데이트 (부분 업데이트)
+        });        // 3. 캐시 업데이트 (부분 업데이트)
         setTournamentDetailsCache(prevCache => {
           const updatedCache = new Map(prevCache);
           const currentTournamentDetails = updatedCache.get(tournamentId);
@@ -814,6 +790,26 @@ const TournamentManagement = () => {
             // 이 경우 사용자는 행을 다시 확장해야 할 수 있음
           }
           return updatedCache;
+        });
+
+        // 4. 메인 테이블 tournaments 배열도 업데이트 (매장 수량 SEAT권 컬럼 반영)
+        setTournaments(prevTournaments => {
+          return prevTournaments.map(tournament => {
+            if (tournament.id === tournamentId) {
+              // 새 매장 할당량 계산 (모든 매장의 할당량 합계)
+              const newStoreAllocatedTotal = newStoreDistributions.reduce(
+                (sum, dist) => sum + (dist.allocated_quantity || 0), 0
+              );
+              
+              console.log(`토너먼트 ${tournamentId}의 매장 수량 SEAT권 업데이트: ${tournament.store_allocated_tickets || 0} → ${newStoreAllocatedTotal}`);
+              
+              return {
+                ...tournament,
+                store_allocated_tickets: newStoreAllocatedTotal
+              };
+            }
+            return tournament;
+          });
         });
 
       } catch (err) {
@@ -1581,13 +1577,12 @@ const TournamentManagement = () => {
                   );
                 })()}
               </h4>
-              <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>
-                <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
+              <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>                <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
                   <tr>
                     <th className="border border-dark text-white">선수</th>
                     <th className="border border-dark text-white">SEAT권 보유 수량</th>
                     <th className="border border-dark text-white">SEAT권 사용 수량</th>
-                    <th className="border border-dark text-white">획득매장</th>
+                    <th className="border border-dark text-white">SEAT권 전송</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1608,14 +1603,24 @@ const TournamentManagement = () => {
                         </tr>
                       );
                     }
-                    
-                    if (tournamentDetails.playerDetails?.length > 0) {
+                      if (tournamentDetails.playerDetails?.length > 0) {
                       return tournamentDetails.playerDetails.map((player, index) => (
                         <tr key={index}>
                           <td className="border border-secondary">{player.playerName}</td>
                           <td className="text-center border border-secondary">{player.activeTickets || 0}</td>
                           <td className="text-center border border-secondary">{player.usedTickets || 0}</td>
-                          <td className="border border-secondary">{player.storeName}</td>
+                          <td className="text-center border border-secondary">
+                            <Button 
+                              variant="outline-primary" 
+                              size="sm"
+                              onClick={() => {
+                                // TODO: SEAT권 전송 기능 구현 예정
+                                console.log('SEAT권 전송 버튼 클릭:', player.playerName);
+                              }}
+                            >
+                              SEAT 권 전송
+                            </Button>
+                          </td>
                         </tr>
                       ));
                     } else {
