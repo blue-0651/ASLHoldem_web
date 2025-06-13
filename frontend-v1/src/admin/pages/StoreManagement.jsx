@@ -100,27 +100,60 @@ const StoreManagement = () => {
     }
   };
 
+  // 매장 데이터 새로고침 함수 추가
+  const refreshStoreData = () => {
+    // 캐시 초기화
+    setStoreUsers({});
+    setStoreTournaments({});
+    setLoadingUsers({});
+    setLoadingTournaments({});
+    setActiveTab({});
+    setExpandedRowId(null);
+    
+    // 데이터 재조회
+    hasFetchedData.current = false;
+    fetchStores();
+  };
+
   // 매장 방문 사용자 목록 조회 - 수정된 버전
   const fetchStoreUsers = async (storeId) => {
+    // 이미 로딩 중이거나 데이터가 있는 경우(빈 배열 포함) 중복 요청 방지
+    if (loadingUsers[storeId] || storeId in storeUsers) {
+      console.log(`매장 ${storeId} 사용자 목록: 캐시된 데이터 사용 또는 로딩 중.`);
+      return;
+    }
+
     try {
       setLoadingUsers(prev => ({ ...prev, [storeId]: true }));
       console.log(`매장 ${storeId} 사용자 목록 조회 시작...`);
 
-      // TODO: 매장별 사용자 API 구현 후 연동 필요
       try {
-        // 실제 매장별 사용자 목록 조회 API 호출
-        // const response = await storeAPI.getStoreUsers(storeId);
-        // setStoreUsers(prev => ({ ...prev, [storeId]: response.data }));
-        
-        // 임시로 빈 배열 설정
-        setStoreUsers(prev => ({ ...prev, [storeId]: [] }));
-        console.log(`매장 ${storeId} 사용자 목록: 구현 대기 중`);
+        // 새로운 seatTicketAPI.getStoreUsers 메서드 사용
+        const response = await seatTicketAPI.getStoreUsers(storeId);
+        // 백엔드 응답이 객체이고 내부에 사용자 목록이 있을 수 있음 (e.g., response.data.users)
+        const data = response.data;
+        const users = Array.isArray(data)
+          ? data
+          : data && Array.isArray(data.users) // 'users' 속성 확인
+          ? data.users
+          : data && Array.isArray(data.results)
+          ? data.results
+          : [];
+
+        setStoreUsers(prev => ({ ...prev, [storeId]: users }));
+        console.log(`매장 ${storeId} 사용자 목록:`, users);
       } catch (apiError) {
         console.error('매장별 사용자 목록 조회 실패:', apiError);
+        // API 호출 실패 시 빈 배열로 설정
         setStoreUsers(prev => ({ ...prev, [storeId]: [] }));
+        
+        // 404 오류가 아닌 경우에만 에러 메시지 표시
+        if (apiError.response?.status !== 404) {
+          console.warn(`매장 ${storeId}의 사용자 목록을 불러올 수 없습니다.`);
+        }
+      } finally {
+        setLoadingUsers(prev => ({ ...prev, [storeId]: false }));
       }
-      
-      setLoadingUsers(prev => ({ ...prev, [storeId]: false }));
     } catch (error) {
       console.error(`매장 ${storeId} 사용자 목록 로드 오류:`, error);
       setStoreUsers(prev => ({ ...prev, [storeId]: [] }));
@@ -128,8 +161,14 @@ const StoreManagement = () => {
     }
   };
 
-  // 매장별 토너먼트 목록 조회 - 새로 추가
+  // 매장별 토너먼트 목록 조회 - 수정된 버전
   const fetchStoreTournaments = async (storeId) => {
+    // 이미 로딩 중이거나 데이터가 있는 경우(빈 배열 포함) 중복 요청 방지
+    if (loadingTournaments[storeId] || storeId in storeTournaments) {
+      console.log(`매장 ${storeId} 토너먼트 목록: 캐시된 데이터 사용 또는 로딩 중.`);
+      return;
+    }
+
     try {
       setLoadingTournaments(prev => ({ ...prev, [storeId]: true }));
       console.log(`매장 ${storeId} 토너먼트 목록 조회 시작...`);
@@ -138,14 +177,16 @@ const StoreManagement = () => {
       const response = await distributionAPI.getSummaryByStore(storeId);
       console.log(`매장 ${storeId} 토너먼트 응답:`, response.data);
 
-      // 응답 데이터에서 토너먼트 목록 추출
-      const tournaments = response.data?.tournaments || [];
+      // 응답 데이터에서 토너먼트 목록 추출 - 올바른 필드명 사용
+      const tournaments = response.data?.tournament_distributions || [];
+      console.log(`매장 ${storeId} 토너먼트 목록:`, tournaments);
+      
       setStoreTournaments(prev => ({ ...prev, [storeId]: tournaments }));
       
-      setLoadingTournaments(prev => ({ ...prev, [storeId]: false }));
     } catch (error) {
       console.error(`매장 ${storeId} 토너먼트 목록 로드 오류:`, error);
       setStoreTournaments(prev => ({ ...prev, [storeId]: [] }));
+    } finally {
       setLoadingTournaments(prev => ({ ...prev, [storeId]: false }));
     }
   };
@@ -160,16 +201,16 @@ const StoreManagement = () => {
 
   // 행 확장/축소 핸들러
   const handleRowExpandToggled = (expanded, row) => {
+    const newExpandedRowId = expanded ? row.id : null;
+    setExpandedRowId(newExpandedRowId);
+
     if (expanded) {
-      setExpandedRowId(row.id);
-      // 기본 탭을 'tournaments'로 설정
+      // 확장될 때 항상 기본 탭을 'tournaments'로 설정
       setActiveTab(prev => ({ ...prev, [row.id]: 'tournaments' }));
-      // 확장 시 해당 매장의 토너먼트 목록을 먼저 가져옴
-      if (!storeTournaments[row.id]) {
-        fetchStoreTournaments(row.id);
-      }
-    } else {
-      setExpandedRowId(null);
+      
+      // 확장 시 해당 매장의 토너먼트 목록과 방문자 목록을 모두 가져옴 (캐싱 체크 포함)
+      fetchStoreTournaments(row.id);
+      fetchStoreUsers(row.id);
     }
   };
 
@@ -177,9 +218,14 @@ const StoreManagement = () => {
   const handleTabChange = (storeId, tabKey) => {
     setActiveTab(prev => ({ ...prev, [storeId]: tabKey }));
     
-    // 토너먼트 탭으로 변경 시 토너먼트 목록 로드
-    if (tabKey === 'tournaments' && !storeTournaments[storeId]) {
+    // 토너먼트 탭으로 변경 시 토너먼트 목록 로드 (캐싱 체크 포함)
+    if (tabKey === 'tournaments') {
       fetchStoreTournaments(storeId);
+    }
+    
+    // 사용자 탭으로 변경 시 사용자 목록 로드 (캐싱 체크 포함)
+    if (tabKey === 'users') {
+      fetchStoreUsers(storeId);
     }
   };
 
@@ -213,41 +259,13 @@ const StoreManagement = () => {
     return filteredStores;
   };
 
-  // 토너먼트 테이블 컬럼 정의
+  // 토너먼트 테이블 컬럼 정의 - 백엔드 응답 필드에 맞게 수정
   const tournamentColumns = useMemo(() => [
     {
       name: <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#721c24' }}>토너먼트명</span>,
-      selector: (row) => row.tournament_name || row.name,
+      selector: (row) => row.tournament_name,
       sortable: true,
       center: true,
-      style: {
-        fontSize: '14px',
-        fontWeight: 'normal'
-      }
-    },
-    {
-      name: <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#721c24' }}>시작일시</span>,
-      selector: (row) => row.tournament_start_time || row.start_time,
-      sortable: true,
-      center: true,
-      cell: (row) => {
-        const startTime = row.tournament_start_time || row.start_time;
-        return startTime ? new Date(startTime).toLocaleString('ko-KR') : '-';
-      },
-      style: {
-        fontSize: '14px',
-        fontWeight: 'normal'
-      }
-    },
-    {
-      name: <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#721c24' }}>참가비</span>,
-      selector: (row) => row.tournament_buy_in || row.buy_in,
-      sortable: true,
-      center: true,
-      cell: (row) => {
-        const buyIn = row.tournament_buy_in || row.buy_in;
-        return buyIn ? `${parseInt(buyIn).toLocaleString()}원` : '-';
-      },
       style: {
         fontSize: '14px',
         fontWeight: 'normal'
@@ -284,38 +302,30 @@ const StoreManagement = () => {
       }
     },
     {
-      name: <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#721c24' }}>상태</span>,
-      selector: (row) => row.tournament_status || row.status,
+      name: <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#721c24' }}>분배된 좌석권</span>,
+      selector: (row) => row.distributed_quantity || 0,
       sortable: true,
       center: true,
-      cell: (row) => {
-        const status = row.tournament_status || row.status;
-        let badgeClass = 'bg-secondary';
-        let statusText = status;
-        
-        switch (status) {
-          case 'UPCOMING':
-            badgeClass = 'bg-info';
-            statusText = '예정';
-            break;
-          case 'ONGOING':
-            badgeClass = 'bg-success';
-            statusText = '진행중';
-            break;
-          case 'COMPLETED':
-            badgeClass = 'bg-primary';
-            statusText = '완료';
-            break;
-          case 'CANCELLED':
-            badgeClass = 'bg-danger';
-            statusText = '취소';
-            break;
-          default:
-            statusText = status || '-';
-        }
-        
-        return <span className={`badge ${badgeClass}`}>{statusText}</span>;
-      },
+      cell: (row) => (
+        <span className="badge bg-info">
+          {row.distributed_quantity || 0}매
+        </span>
+      ),
+      style: {
+        fontSize: '14px',
+        fontWeight: 'normal'
+      }
+    },
+    {
+      name: <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#721c24' }}>분배율</span>,
+      selector: (row) => row.distribution_rate || 0,
+      sortable: true,
+      center: true,
+      cell: (row) => (
+        <span className={`badge ${(row.distribution_rate || 0) >= 80 ? 'bg-success' : (row.distribution_rate || 0) >= 50 ? 'bg-warning' : 'bg-danger'}`}>
+          {(row.distribution_rate || 0).toFixed(1)}%
+        </span>
+      ),
       style: {
         fontSize: '14px',
         fontWeight: 'normal'
@@ -324,16 +334,16 @@ const StoreManagement = () => {
   ], []);
 
   // 확장된 행에 표시될 탭 컴포넌트 - 수정된 버전
-  const ExpandedStoreComponent = ({ data }) => {
-    const users = Array.isArray(storeUsers[data.id]) ? storeUsers[data.id] : [];
-    const tournaments = Array.isArray(storeTournaments[data.id]) ? storeTournaments[data.id] : [];
-    const isLoadingUsers = loadingUsers[data.id] || false;
-    const isLoadingTournaments = loadingTournaments[data.id] || false;
-    const currentTab = activeTab[data.id] || 'tournaments';
+  const ExpandedStoreComponent = ({ data: store }) => {
+    const users = Array.isArray(storeUsers[store.id]) ? storeUsers[store.id] : [];
+    const tournaments = Array.isArray(storeTournaments[store.id]) ? storeTournaments[store.id] : [];
+    const isLoadingUsers = loadingUsers[store.id] || false;
+    const isLoadingTournaments = loadingTournaments[store.id] || false;
+    const currentTab = activeTab[store.id] || 'tournaments';
 
     return (
       <div className="p-4 border border-primary rounded" style={{ backgroundColor: '#f8f9fa' }}>
-        <Tab.Container activeKey={currentTab} onSelect={(k) => handleTabChange(data.id, k)}>
+        <Tab.Container activeKey={currentTab} onSelect={(k) => handleTabChange(store.id, k)}>
           <Nav variant="tabs" className="mb-3">
             <Nav.Item>
               <Nav.Link eventKey="tournaments">
@@ -363,24 +373,30 @@ const StoreManagement = () => {
                     <Table bordered hover responsive className="mb-0">
                       <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
                         <tr>
-                          <th className="text-center">닉네임</th>
+                          <th className="text-center">사용자명</th>
                           <th className="text-center">전화번호</th>
                           <th className="text-center">이메일</th>
-                          <th className="text-center">토너먼트 참가 횟수</th>
-                          <th className="text-center">마지막 방문</th>
+                          <th className="text-center">보유 좌석권</th>
+                          <th className="text-center">사용 좌석권</th>
+                          <th className="text-center">티켓 보유 여부</th>
                         </tr>
                       </thead>
                       <tbody>
                         {users.map((user, index) => (
-                          <tr key={user.id || index}>
-                            <td className="text-center">{user.nickname || '-'}</td>
-                            <td className="text-center">{user.phone || '-'}</td>
+                          <tr key={user.userId || user.user_id || user.id || index}>
+                            <td className="text-center">{user.playerName || user.user_name || user.username || user.nickname || '-'}</td>
+                            <td className="text-center">{user.playerPhone || user.phone_number || user.phone || '-'}</td>
                             <td className="text-center">{user.email || '-'}</td>
                             <td className="text-center">
-                              <span className="badge bg-info">{user.tournament_count || 0}회</span>
+                              <span className="badge bg-info">{user.activeTickets || user.granted_quantity || user.total_granted || 0}매</span>
                             </td>
                             <td className="text-center">
-                              {user.last_visit ? new Date(user.last_visit).toLocaleString('ko-KR') : '-'}
+                              <span className="badge bg-success">{user.usedTickets || user.used_quantity || user.total_used || 0}매</span>
+                            </td>
+                            <td className="text-center">
+                              <span className={`badge ${user.hasTicket === 'Y' ? 'bg-success' : 'bg-secondary'}`}>
+                                {user.hasTicket === 'Y' ? '보유' : '없음'}
+                              </span>
                             </td>
                           </tr>
                         ))}
@@ -398,34 +414,28 @@ const StoreManagement = () => {
                       <div className="text-white p-3 rounded border" style={{ backgroundColor: '#6c757d' }}>
                         <div className="row text-center">
                           <div className="col-md-3">
-                            <h6 className="text-white">총 방문자 수</h6>
+                            <h6 className="text-white">총 등록 사용자 수</h6>
                             <h4 className="text-white">{users.length}명</h4>
                           </div>
                           <div className="col-md-3">
-                            <h6 className="text-white">평균 참가 횟수</h6>
+                            <h6 className="text-white">평균 보유 좌석권</h6>
                             <h4 className="text-white">
                               {users.length > 0
-                                ? Math.round(users.reduce((sum, user) => sum + (user.tournament_count || 0), 0) / users.length * 10) / 10
+                                ? (users.reduce((sum, user) => sum + (user.activeTickets || user.granted_quantity || 0), 0) / users.length).toFixed(1)
                                 : 0
-                              }회
+                              }매
                             </h4>
                           </div>
                           <div className="col-md-3">
-                            <h6 className="text-white">활성 사용자</h6>
+                            <h6 className="text-white">티켓 보유 사용자</h6>
                             <h4 className="text-white">
-                              {users.filter(user => user.tournament_count > 0).length}명
+                              {users.filter(user => user.hasTicket === 'Y').length}명
                             </h4>
                           </div>
                           <div className="col-md-3">
-                            <h6 className="text-white">최근 방문자</h6>
+                            <h6 className="text-white">총 보유 좌석권</h6>
                             <h4 className="text-white">
-                              {users.filter(user => {
-                                if (!user.last_visit) return false;
-                                const lastVisit = new Date(user.last_visit);
-                                const oneWeekAgo = new Date();
-                                oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                                return lastVisit > oneWeekAgo;
-                              }).length}명
+                              {users.reduce((sum, user) => sum + (user.activeTickets || user.granted_quantity || 0), 0)}매
                             </h4>
                           </div>
                         </div>
@@ -514,11 +524,9 @@ const StoreManagement = () => {
                               </h4>
                             </div>
                             <div className="col-md-3">
-                              <h6 className="text-white">진행중 토너먼트</h6>
+                              <h6 className="text-white">총 분배된 좌석권</h6>
                               <h4 className="text-white">
-                                {tournaments.filter(t => 
-                                  (t.tournament_status || t.status) === 'ONGOING'
-                                ).length}개
+                                {tournaments.reduce((sum, t) => sum + (t.distributed_quantity || 0), 0)}매
                               </h4>
                             </div>
                           </div>
@@ -617,10 +625,7 @@ const StoreManagement = () => {
         <div>
           <Button 
             variant="outline-primary" 
-            onClick={() => {
-              hasFetchedData.current = false;
-              fetchStores();
-            }}
+            onClick={refreshStoreData}
             disabled={loading}
             className="me-2"
           >
