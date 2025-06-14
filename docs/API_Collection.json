@@ -1628,6 +1628,196 @@
             "description": "전화번호를 사용하여 사용자 정보를 조회합니다.\n\n응답:\n- 200: 성공적으로 사용자 정보를 반환\n- 400: 잘못된 전화번호 형식\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청\n- 404: 사용자를 찾을 수 없음"
           },
           "response": []
+        },
+        {
+          "name": "내 QR 코드 조회",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "사용자 인증 토큰"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/user/my-qr-code/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "user",
+                "my-qr-code",
+                ""
+              ]
+            },
+            "description": "현재 로그인한 사용자의 QR 코드 정보를 조회합니다.\n\n인증 필요: Bearer Token\n\n응답 데이터:\n- success: 성공 여부 (boolean)\n- user_info: 사용자 정보 객체\n  - id: 사용자 ID\n  - phone: 전화번호\n  - nickname: 닉네임\n  - email: 이메일\n  - qr_code_uuid: QR 코드 고유 식별자\n  - qr_code_url: QR 코드 이미지 URL\n\n응답:\n- 200: 성공적으로 QR 코드 정보를 반환\n- 401: 인증되지 않은 요청\n- 500: 서버 내부 오류"
+          },
+          "response": [
+            {
+              "name": "성공 응답",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/user/my-qr-code/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "user",
+                    "my-qr-code",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"user_info\": {\n    \"id\": 13,\n    \"phone\": \"010-1111-2222\",\n    \"nickname\": \"테스트유저\",\n    \"email\": \"testuser@example.com\",\n    \"qr_code_uuid\": \"abc123-def456-ghi789\",\n    \"qr_code_url\": \"http://localhost:8000/media/qr_codes/qr_code_abc123-def456-ghi789.png\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "QR 코드 스캔",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{store_manager_token}}",
+                "description": "매장관리자 인증 토큰"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qr_data\": \"user_id:13,uuid:abc123-def456-ghi789\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/user/scan-qr-code/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "user",
+                "scan-qr-code",
+                ""
+              ]
+            },
+            "description": "QR 코드를 스캔하여 사용자 정보를 조회합니다.\n매장관리자만 사용할 수 있는 API입니다.\n\n인증 필요: Bearer Token (매장관리자)\n\n요청 본문:\n- qr_data: QR 코드에서 읽은 데이터 (예: \"user_id:13,uuid:abc123...\")\n\n응답 데이터:\n- success: 성공 여부 (boolean)\n- user_info: 사용자 정보 객체\n  - id: 사용자 ID\n  - phone: 전화번호\n  - nickname: 닉네임\n  - email: 이메일\n  - role: 사용자 역할\n  - is_active: 활성 상태\n  - created_at: 계정 생성일\n\n응답:\n- 200: 성공적으로 사용자 정보를 반환\n- 400: 잘못된 QR 코드 형식\n- 401: 인증되지 않은 요청\n- 403: 매장관리자 권한 필요\n- 404: 유효하지 않은 QR 코드\n- 500: 서버 내부 오류"
+          },
+          "response": [
+            {
+              "name": "성공 응답",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{store_manager_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"qr_data\": \"user_id:13,uuid:abc123-def456-ghi789\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/user/scan-qr-code/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "user",
+                    "scan-qr-code",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"user_info\": {\n    \"id\": 13,\n    \"phone\": \"010-1111-2222\",\n    \"nickname\": \"테스트유저\",\n    \"email\": \"testuser@example.com\",\n    \"role\": \"USER\",\n    \"is_active\": true,\n    \"created_at\": \"2024-12-07T10:30:00Z\"\n  }\n}"
+            },
+            {
+              "name": "잘못된 QR 코드",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{store_manager_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"qr_data\": \"invalid_qr_data\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/user/scan-qr-code/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "user",
+                    "scan-qr-code",
+                    ""
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"올바르지 않은 QR 코드 형식입니다.\"\n}"
+            }
+          ]
         }
       ]
     },

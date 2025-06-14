@@ -91,38 +91,53 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
         phone = attrs.get('phone')
         password = attrs.get('password')
         
+        print(f"[USER LOGIN] 일반사용자 로그인 시도 - 전화번호: {phone}")
+        
         if not phone or not password:
+            print(f"[USER LOGIN] 전화번호 또는 비밀번호 누락")
             raise serializers.ValidationError("전화번호와 비밀번호가 필요합니다.")
         
         # 전화번호 형식 정규화
         # 하이픈 제거하고 숫자만 추출
         clean_phone = ''.join(filter(str.isdigit, phone))
+        print(f"[USER LOGIN] 정규화된 전화번호: {clean_phone}")
         
         # 11자리 숫자인지 확인
         if len(clean_phone) != 11 or not clean_phone.startswith('010'):
+            print(f"[USER LOGIN] 전화번호 형식 오류 - 길이: {len(clean_phone)}, 시작: {clean_phone[:3] if clean_phone else 'None'}")
             raise serializers.ValidationError("올바른 전화번호 형식이 아닙니다.")
         
         # 하이픈 포함 형식으로 변환 (데이터베이스 저장 형식)
         formatted_phone = f"{clean_phone[:3]}-{clean_phone[3:7]}-{clean_phone[7:]}"
+        print(f"[USER LOGIN] 포맷된 전화번호: {formatted_phone}")
         
         try:
             user = User.objects.get(phone=formatted_phone)
+            print(f"[USER LOGIN] 사용자 찾음 - ID: {user.id}, 닉네임: {user.nickname}")
+            print(f"[USER LOGIN] 사용자 상태 - 활성: {user.is_active}, 매장관리자: {user.is_store_owner}, 스태프: {user.is_staff}")
         except User.DoesNotExist:
+            print(f"[USER LOGIN] 사용자 없음 - {formatted_phone}")
             raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
         
         if not user.check_password(password):
+            print(f"[USER LOGIN] 비밀번호 불일치")
             raise serializers.ValidationError("전화번호 또는 비밀번호가 올바르지 않습니다.")
         
         if not user.is_active:
+            print(f"[USER LOGIN] 비활성화된 계정")
             raise serializers.ValidationError("비활성화된 계정입니다.")
         
         # 매장관리자 계정은 일반사용자 API로 로그인 불가
         if user.is_store_owner:
+            print(f"[USER LOGIN] 매장관리자 계정으로 일반사용자 로그인 시도")
             raise serializers.ValidationError("매장관리자 계정입니다. 매장관리자 로그인을 이용해주세요.")
         
         # 관리자 계정은 일반사용자 API로 로그인 불가  
         if user.is_staff or user.is_superuser:
+            print(f"[USER LOGIN] 관리자 계정으로 일반사용자 로그인 시도")
             raise serializers.ValidationError("관리자 계정입니다. 관리자 로그인을 이용해주세요.")
+        
+        print(f"[USER LOGIN] 로그인 성공!")
         
         # 직접 토큰 생성
         refresh = self.get_token(user)
@@ -657,4 +672,116 @@ class UserViewSet(viewsets.ViewSet):
             return Response({
                 'success': False,
                 'error': f'게스트 사용자 생성 중 오류가 발생했습니다: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], url_path='my_qr_code')
+    def get_my_qr_code(self, request):
+        """
+        현재 로그인한 사용자의 QR 코드를 조회합니다.
+        """
+        try:
+            user = request.user
+            
+            if not user.is_authenticated:
+                return Response({
+                    'error': '로그인이 필요합니다.'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # QR 코드가 없으면 생성
+            if not user.qr_code:
+                user.generate_qr_code()
+            
+            # QR 코드 URL 생성
+            qr_code_url = request.build_absolute_uri(user.qr_code.url) if user.qr_code else None
+            
+            return Response({
+                'success': True,
+                'user_info': {
+                    'id': user.id,
+                    'phone': user.phone,
+                    'nickname': user.nickname,
+                    'email': user.email,
+                    'qr_code_uuid': str(user.qr_code_uuid),
+                    'qr_code_url': qr_code_url
+                }
+            })
+            
+        except Exception as e:
+            api_logger.error(f"QR 코드 조회 중 오류: {str(e)}")
+            return Response({
+                'error': f'QR 코드 조회 중 오류가 발생했습니다: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'], url_path='scan_qr_code')
+    def scan_qr_code(self, request):
+        """
+        QR 코드를 스캔하여 사용자 정보를 조회합니다.
+        매장관리자가 사용하는 API입니다.
+        """
+        try:
+            # 매장관리자 권한 확인
+            if not request.user.is_authenticated:
+                return Response({
+                    'error': '로그인이 필요합니다.'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            if not request.user.is_store_owner:
+                return Response({
+                    'error': '매장관리자 권한이 필요합니다.'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # QR 코드 데이터 추출
+            qr_data = request.data.get('qr_data', '').strip()
+            
+            if not qr_data:
+                return Response({
+                    'error': 'QR 코드 데이터가 필요합니다.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # QR 코드 데이터 파싱 (예: "user_id:13,uuid:abc123...")
+            try:
+                parts = qr_data.split(',')
+                user_id = None
+                uuid_str = None
+                
+                for part in parts:
+                    if part.startswith('user_id:'):
+                        user_id = int(part.split(':')[1])
+                    elif part.startswith('uuid:'):
+                        uuid_str = part.split(':')[1]
+                
+                if not user_id or not uuid_str:
+                    raise ValueError("Invalid QR code format")
+                    
+            except (ValueError, IndexError) as e:
+                return Response({
+                    'error': '올바르지 않은 QR 코드 형식입니다.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 사용자 조회
+            try:
+                user = User.objects.get(id=user_id, qr_code_uuid=uuid_str)
+            except User.DoesNotExist:
+                return Response({
+                    'error': '유효하지 않은 QR 코드입니다.'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # 사용자 정보 반환
+            return Response({
+                'success': True,
+                'user_info': {
+                    'id': user.id,
+                    'phone': user.phone,
+                    'nickname': user.nickname,
+                    'email': user.email,
+                    'role': user.role,
+                    'is_active': user.is_active,
+                    'created_at': user.created_at.isoformat()
+                }
+            })
+            
+        except Exception as e:
+            api_logger.error(f"QR 코드 스캔 중 오류: {str(e)}")
+            return Response({
+                'error': f'QR 코드 스캔 중 오류가 발생했습니다: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

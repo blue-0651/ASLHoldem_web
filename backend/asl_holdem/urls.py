@@ -7,6 +7,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from views.store_views import StoreViewSet, search_user_by_phone, register_player_to_tournament, grant_seat_ticket, get_user_ticket_status
 from views.tournament_views import TournamentViewSet
+from views.user_views import UserViewSet
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -29,6 +30,10 @@ urlpatterns = [
     path('api/v1/notices/', include('notices.urls')),  # 공지사항 API 경로 추가
     path('api/v1/seats/', include('seats.urls')),  # 좌석권 API 경로 추가
     path('api/v1/banners/', include('banners.urls')),  # 배너 API 경로 추가
+
+    # QR 코드 관련 API
+    path('api/v1/user/my-qr-code/', UserViewSet.as_view({'get': 'get_my_qr_code'}), name='user_my_qr_code'),  # 내 QR 코드 조회
+    path('api/v1/user/scan-qr-code/', UserViewSet.as_view({'post': 'scan_qr_code'}), name='user_scan_qr_code'),  # QR 코드 스캔
 
     path('api/v1/store/info/', StoreViewSet.as_view({'get': 'current_store', 'put': 'update_current_store'})),
     path('api/v1/store/debug/', StoreViewSet.as_view({'get': 'debug_user'})),
