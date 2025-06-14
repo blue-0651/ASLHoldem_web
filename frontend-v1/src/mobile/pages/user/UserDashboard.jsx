@@ -56,6 +56,14 @@ const UserDashboard = () => {
             </Card>
           </Col>
           <Col xs={6} className="mb-3">
+            <Card className="asl-action-card" onClick={() => navigate('/mobile/user/qr-code')}>
+              <Card.Body className="text-center">
+                <i className="fas fa-qrcode fa-2x mb-2"></i>
+                <Card.Title>QR 코드</Card.Title>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col xs={6} className="mb-3">
             <Card className="asl-action-card" onClick={() => navigate('/mobile/common/store-search')}>
               <Card.Body className="text-center">
                 <i className="fas fa-search-location fa-2x mb-2"></i>

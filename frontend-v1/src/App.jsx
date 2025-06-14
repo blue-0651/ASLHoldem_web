@@ -25,6 +25,9 @@ import {
   UserDashboard
 } from './mobile/pages';
 
+// 사용자 QR 코드 페이지
+import QRCode from './mobile/pages/user/QRCode';
+
 // 토너먼트 상세 페이지 추가
 import TournamentDetail from './mobile/pages/store/TournamentDetail';
 
@@ -117,6 +120,7 @@ function App() {
           </Route>
           <Route path="user" element={<ProtectedRoute userType="user" />}>
             <Route path="dashboard" element={<UserDashboard />} />
+            <Route path="qr-code" element={<QRCode />} />
           </Route>
           <Route path="common" element={<ProtectedRoute />}>
             <Route path="tournaments-list" element={<TournamentsList />} />
