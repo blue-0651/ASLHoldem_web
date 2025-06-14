@@ -115,7 +115,7 @@ const StoreManagement = () => {
     fetchStores();
   };
 
-  // 매장 방문 사용자 목록 조회 - 수정된 버전
+  // 매장 선수 목록 조회 - 수정된 버전
   const fetchStoreUsers = async (storeId) => {
     // 이미 로딩 중이거나 데이터가 있는 경우(빈 배열 포함) 중복 요청 방지
     if (loadingUsers[storeId] || storeId in storeUsers) {
@@ -354,20 +354,20 @@ const StoreManagement = () => {
             <Nav.Item>
               <Nav.Link eventKey="users">
                 <i className="fas fa-users me-2"></i>
-                방문 사용자 ({users.length})
+                매장선수 목록 ({users.length})
               </Nav.Link>
             </Nav.Item>
           </Nav>
 
           <Tab.Content>
-            {/* 방문 사용자 탭 */}
+            {/* 매장선수 목록 탭 */}
             <Tab.Pane eventKey="users">
               <div className="row">
                 <div className="col-12">
                   {isLoadingUsers ? (
                     <div className="text-center p-4">
                       <Spinner animation="border" variant="primary" />
-                      <p className="mt-2">사용자 목록을 불러오는 중입니다...</p>
+                      <p className="mt-2">매장선수 목록을 불러오는 중입니다...</p>
                     </div>
                   ) : users.length > 0 ? (
                     <Table bordered hover responsive className="mb-0">
@@ -404,7 +404,7 @@ const StoreManagement = () => {
                     </Table>
                   ) : (
                     <div className="text-center p-4 border rounded" style={{ backgroundColor: '#ffffff' }}>
-                      <p className="mb-0 text-muted">이 매장에 방문한 사용자가 없습니다.</p>
+                      <p className="mb-0 text-muted">이 매장에 등록된 선수가 없습니다.</p>
                     </div>
                   )}
 
@@ -414,7 +414,7 @@ const StoreManagement = () => {
                       <div className="text-white p-3 rounded border" style={{ backgroundColor: '#6c757d' }}>
                         <div className="row text-center">
                           <div className="col-md-3">
-                            <h6 className="text-white">총 등록 사용자 수</h6>
+                            <h6 className="text-white">총 등록 선수 수</h6>
                             <h4 className="text-white">{users.length}명</h4>
                           </div>
                           <div className="col-md-3">
@@ -427,7 +427,7 @@ const StoreManagement = () => {
                             </h4>
                           </div>
                           <div className="col-md-3">
-                            <h6 className="text-white">티켓 보유 사용자</h6>
+                            <h6 className="text-white">티켓 보유 선수</h6>
                             <h4 className="text-white">
                               {users.filter(user => user.hasTicket === 'Y').length}명
                             </h4>
