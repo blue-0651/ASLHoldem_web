@@ -72,7 +72,12 @@ const MobileLogin = () => {
     }
 
     try {
-      console.log(`로그인 시도: ${formData.userType}`);
+      console.log(`로그인 시도: ${formData.userType}`, JSON.stringify({
+        phone: formData.phone,
+        userType: formData.userType,
+        hostname: window.location.hostname,
+        href: window.location.href
+      }));
       
       // auth.jsx의 login 함수 사용
       const result = await login(formData.phone, formData.password, formData.userType);
@@ -96,7 +101,12 @@ const MobileLogin = () => {
       }
       
     } catch (err) {
-      console.error('로그인 오류:', err);
+      console.error('로그인 오류:', JSON.stringify({
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        toString: err.toString()
+      }));
       setError(err.message || '로그인에 실패했습니다. 전화번호와 비밀번호를 확인해주세요.');
     } finally {
       setLoading(false);

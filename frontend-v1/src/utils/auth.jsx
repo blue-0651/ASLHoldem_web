@@ -7,8 +7,18 @@ const USER_INFO_KEY = 'asl_holdem_user_info';
 const USER_TYPE_KEY = 'user_type';
 const IS_STORE_OWNER_KEY = 'is_store_owner';
 
-// API 기본 URL 설정
-const BASE_URL = 'http://localhost:8000';
+// API 기본 URL 설정 - 환경에 따라 동적으로 설정
+const getBaseURL = () => {
+  // 개발 환경에서 현재 호스트의 IP를 사용
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    // 모바일 환경에서는 현재 호스트의 IP를 사용하되 포트는 8000으로 변경
+    return `http://${window.location.hostname}:8000`;
+  }
+  // 로컬 개발 환경
+  return 'http://localhost:8000';
+};
+
+const BASE_URL = getBaseURL();
 const baseURL = BASE_URL + '/api/v1';
 
 // 모바일 기기 확인 헬퍼 함수
@@ -52,12 +62,15 @@ export const login = async (phone, password, userType = 'store') => {
     // 전화번호 형식 정리 (하이픈 제거)
     const cleanPhone = phone.replace(/-/g, '');
 
-    console.log('Login attempt:', {
+    console.log('Login attempt:', JSON.stringify({
       phone: cleanPhone,
       passwordLength: password.length,
       userType,
-      endpoint
-    });
+      endpoint,
+      baseURL: baseURL,
+      fullURL: baseURL + endpoint,
+      hostname: window.location.hostname
+    }));
 
     const response = await axios.post(baseURL + endpoint, {
       phone: cleanPhone,
@@ -101,12 +114,24 @@ export const login = async (phone, password, userType = 'store') => {
       user: userInfo
     };
   } catch (error) {
-    console.error('로그인 실패:', error);
+    console.error('로그인 실패:', JSON.stringify({
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url,
+      method: error.config?.method
+    }));
     
     // 에러 메시지 처리
     let errorMessage = '로그인에 실패했습니다.';
     
     if (error.response) {
+      console.error('서버 응답 오류:', JSON.stringify({
+        status: error.response.status,
+        data: error.response.data
+      }));
+      
       if (error.response.data.non_field_errors) {
         errorMessage = error.response.data.non_field_errors[0];
       } else if (error.response.data.detail) {
@@ -117,7 +142,25 @@ export const login = async (phone, password, userType = 'store') => {
         errorMessage = '인증에 실패했습니다. 다시 로그인해주세요.';
       } else if (error.response.status === 403) {
         errorMessage = '접근 권한이 없습니다.';
+      } else if (error.response.status === 500) {
+        errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
       }
+    } else if (error.request) {
+      console.error('네트워크 오류:', JSON.stringify({
+        readyState: error.request.readyState,
+        status: error.request.status,
+        responseText: error.request.responseText
+      }));
+      
+      // 안드로이드에서 HTTP 요청이 차단되는 경우
+      if (error.message.includes('Network Error') || error.message.includes('ERR_CLEARTEXT_NOT_PERMITTED')) {
+        errorMessage = '네트워크 보안 정책으로 인해 연결할 수 없습니다. 앱 설정을 확인해주세요.';
+      } else {
+        errorMessage = '네트워크 연결을 확인해주세요.';
+      }
+    } else {
+      console.error('요청 설정 오류:', error.message);
+      errorMessage = '요청 처리 중 오류가 발생했습니다.';
     }
     
     return {
@@ -150,12 +193,12 @@ export const reqLoginWithPhone = async (phone, password, userType = 'user') => {
     });
 
     // 로그 출력
-    console.log('Login attempt:', {
+    console.log('Login attempt:', JSON.stringify({
       phone,
       passwordLength: password.length,
       userType,
       endpoint: getLoginEndpoint(userType)
-    });
+    }));
 
     const { access, refresh } = response.data || {};
     if (!access || !refresh) {
@@ -197,7 +240,14 @@ export const reqLoginWithPhone = async (phone, password, userType = 'user') => {
       response: response.data
     };
   } catch (error) {
-    console.log('로그인 실패:', error);
+    console.error('로그인 실패:', JSON.stringify({
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url,
+      method: error.config?.method
+    }));
 
     // 로그인 실패 시 로컬 스토리지에서 토큰 제거
     logout();
