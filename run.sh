@@ -8,6 +8,23 @@ log_with_prefix() {
   done
 }
 
+# 현재 IP 주소 감지 (안드로이드 접속용)
+get_local_ip() {
+  # macOS/Linux에서 로컬 IP 주소 가져오기
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    LOCAL_IP=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | head -1)
+  else
+    # Linux
+    LOCAL_IP=$(hostname -I | awk '{print $1}')
+  fi
+  echo $LOCAL_IP
+}
+
+LOCAL_IP=$(get_local_ip)
+echo "감지된 로컬 IP: $LOCAL_IP"
+echo "안드로이드에서 접속할 때는 http://$LOCAL_IP:3000 을 사용하세요"
+
 # 포트 8000이 사용중인지 확인하고 사용중이면 종료
 echo "포트 8000 사용 여부 확인 중..."
 PORT_PID=$(lsof -ti:8000)
@@ -20,13 +37,16 @@ fi
 # 백엔드 실행
 cd backend
 source .venv/bin/activate
-# 백엔드 실행 및 로그에 [BACKEND] 접두사 추가
-python manage.py runserver 2>&1 | log_with_prefix "BACKEND" &
+# 백엔드 실행 및 로그에 [BACKEND] 접두사 추가 (모든 IP에서 접근 가능하도록 0.0.0.0:8000으로 실행)
+python manage.py runserver 0.0.0.0:8000 2>&1 | log_with_prefix "BACKEND" &
 BACKEND_PID=$!
 echo "백엔드가 PID $BACKEND_PID로 실행되었습니다."
 
 # 프론트엔드 실행
 cd ../frontend-v1
+# 환경 변수 설정 (안드로이드 접속 지원)
+export VITE_API_URL="http://$LOCAL_IP:8000"
+echo "API URL 설정: $VITE_API_URL"
 # 프론트엔드 실행 및 로그에 [FRONTEND] 접두사 추가
 npm start 2>&1 | log_with_prefix "FRONTEND" &
 FRONTEND_PID=$!
