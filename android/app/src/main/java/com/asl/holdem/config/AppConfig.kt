@@ -9,8 +9,11 @@ import com.asl.holdem.BuildConfig
 object AppConfig {
     
     // 서버 URL 설정
-    const val BASE_URL = BuildConfig.BASE_URL
-    const val API_URL = BuildConfig.API_URL
+  //  const val BASE_URL = BuildConfig.BASE_URL
+ //   const val API_URL = BuildConfig.API_URL
+    const val BASE_URL = "http://192.168.0.34:3000"
+    const val API_URL = "http://192.168.0.34:8000"
+
     const val BUILD_TYPE = BuildConfig.BUILD_TYPE
     
     /**
