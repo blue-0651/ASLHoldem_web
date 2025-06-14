@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Button, Form, Spinner, Alert, Table, Container, Row, Col, Badge } from 'react-bootstrap';
 import axios from 'axios';
 import MobileHeader from '../../components/MobileHeader';
+import QRScanner from '../../components/QRScanner';
 
 /**
  * 로컬 axios 인스턴스 생성 및 인터셉터 설정
@@ -89,7 +90,7 @@ const PlayerRegistration = () => {
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState('');
   const [playerMappingData, setPlayerMappingData] = useState(null);
-  const [isScanning, setIsScanning] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   
   // 새로 추가된 상태들
@@ -353,36 +354,129 @@ const PlayerRegistration = () => {
    * QR 스캔 버튼을 눌렀을 때 호출됩니다.
    */
   const handleStartScan = () => {
-    setIsScanning(true);
+    if (!selectedTournament) {
+      setError('먼저 토너먼트를 선택해주세요.');
+      return;
+    }
+    
     setScanResult(null);
     setError(null);
-    
-    // 실제로는 카메라를 활성화하고 QR 코드를 스캔하는 로직이 들어가야 합니다.
-    // 여기서는 시뮬레이션을 위해 3초 후에 스캔 결과를 받았다고 가정합니다.
-    setTimeout(() => {
-      const mockScanResult = {
-        userId: '12345',
-        username: '홍길동',
-        email: 'user@example.com',
-        phone: '010-1234-5678'
-      };
-      
-      setScanResult(mockScanResult);
-      setPlayerData({
-        username: mockScanResult.username,
-        email: mockScanResult.email,
-        phone: mockScanResult.phone,
-        nickname: ''
-      });
-      setIsScanning(false);
-    }, 3000);
+    setShowQRScanner(true);
   };
 
   /**
-   * QR 스캔 취소 핸들러
+   * QR 스캐너 오류 처리
+   * @param {Error} error - 스캔 오류
    */
-  const handleCancelScan = () => {
-    setIsScanning(false);
+  const handleScanError = (error) => {
+    console.error('QR 스캔 오류:', error);
+    setError('QR 스캔 중 오류가 발생했습니다. 카메라 권한을 확인해주세요.');
+    setShowQRScanner(false);
+  };
+
+  /**
+   * QR 코드 스캔 처리
+   * @param {string} qrData - 스캔된 QR 코드 데이터
+   */
+  const handleQRScan = async (qrData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // QR 코드 스캔 API 호출
+      const response = await api.post('/user/scan-qr-code/', {
+        qr_data: qrData
+      });
+      
+      if (response.data.success) {
+        const userInfo = response.data.user_info;
+        
+        setScanResult(userInfo);
+        setFoundUser(userInfo);
+        setIsNewUser(false);
+        setPlayerData({
+          username: userInfo.nickname || userInfo.phone,
+          email: userInfo.email,
+          phone: userInfo.phone,
+          nickname: userInfo.nickname || ''
+        });
+        setPhoneSearched(true);
+        
+        // 선택된 토너먼트가 있으면 해당 토너먼트의 SEAT권 현황도 조회
+        if (selectedTournament) {
+          try {
+            const ticketResponse = await api.get('/store/user-tickets/', {
+              params: { 
+                phone_number: userInfo.phone,
+                tournament_id: selectedTournament
+              }
+            });
+            setFoundUser(prev => ({
+              ...prev,
+              ticketInfo: ticketResponse.data
+            }));
+          } catch (ticketErr) {
+            console.warn('SEAT권 정보 조회 실패:', ticketErr);
+          }
+        }
+        
+        // QR 스캔 성공 후 자동으로 토너먼트 참가 처리
+        if (selectedTournament) {
+          await handleAutoRegister(userInfo);
+        }
+        
+      } else {
+        setError(response.data.error || 'QR 코드 스캔에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('QR 스캔 오류:', err);
+      if (err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('QR 코드 스캔 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setLoading(false);
+      setShowQRScanner(false);
+    }
+  };
+
+  /**
+   * QR 스캔 후 자동 참가 처리
+   * @param {Object} userInfo - 스캔된 사용자 정보
+   */
+  const handleAutoRegister = async (userInfo) => {
+    try {
+      const requestData = {
+        tournament_id: selectedTournament,
+        user_id: userInfo.id,
+        phone_number: userInfo.phone,
+        nickname: userInfo.nickname || ''
+      };
+
+      console.log('QR 스캔 후 자동 참가 요청:', requestData);
+
+      const response = await api.post('/store/register-player/', requestData);
+      
+      if (response.data.success) {
+        setSuccess(true);
+        
+        // 성공 후 다시 선수 매핑 정보 로드
+        if (selectedTournament) {
+          fetchPlayerMapping(selectedTournament);
+        }
+        
+        // 성공 메시지 표시
+        alert(`${userInfo.nickname || userInfo.phone}님이 토너먼트에 성공적으로 참가되었습니다!`);
+      }
+    } catch (err) {
+      console.error('자동 참가 처리 오류:', err);
+      if (err.response?.data?.error) {
+        setError(`자동 참가 실패: ${err.response.data.error}`);
+      } else {
+        setError('자동 참가 처리 중 오류가 발생했습니다.');
+      }
+    }
   };
 
   /**
@@ -527,50 +621,20 @@ const PlayerRegistration = () => {
               사용자의 QR 코드를 스캔하여 토너먼트에 참가하세요.
             </Card.Text>
             
-            {isScanning ? (
-              <div>
-                <div style={{
-                  width: '100%', 
-                  height: '250px', 
-                  background: '#000',
-                  position: 'relative',
-                  marginBottom: '15px',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    width: '200px',
-                    height: '200px',
-                    border: '2px solid #fff',
-                    borderRadius: '10px'
-                  }}></div>
-                  <Spinner animation="border" variant="light" />
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '10px',
-                    color: 'white',
-                    fontSize: '14px'
-                  }}>QR 코드 스캔 중...</div>
-                </div>
-                <Button 
-                  variant="secondary" 
-                  onClick={handleCancelScan} 
-                  className="w-100">
-                  스캔 취소
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                variant="primary" 
-                onClick={handleStartScan} 
-                className="w-100"
-                disabled={loading}>
-                <i className="fas fa-qrcode me-2"></i>
-                QR 코드 스캔 시작
-              </Button>
+            <Button 
+              variant="primary" 
+              onClick={handleStartScan} 
+              className="w-100"
+              disabled={loading || !selectedTournament}>
+              <i className="fas fa-qrcode me-2"></i>
+              QR 코드 스캔 시작
+            </Button>
+            
+            {!selectedTournament && (
+              <Form.Text className="text-warning mt-2">
+                <i className="fas fa-exclamation-triangle me-1"></i>
+                먼저 토너먼트를 선택해주세요.
+              </Form.Text>
             )}
             
             {scanResult && (
@@ -598,7 +662,7 @@ const PlayerRegistration = () => {
               </Alert>
             )}
 
-            <Form onSubmit={handleSubmit}>
+            <Form onSubmit={(e) => { e.preventDefault(); handleSubmit(e); }}>
               {/* 휴대폰 번호 입력 필드 - 가장 먼저 배치 */}
               <Form.Group className="mb-3">
                 <Form.Label>
@@ -913,6 +977,14 @@ const PlayerRegistration = () => {
           </Card.Body>
         </Card>
       </Container>
+
+      {/* QR 스캐너 모달 */}
+      <QRScanner
+        show={showQRScanner}
+        onHide={() => setShowQRScanner(false)}
+        onScan={handleQRScan}
+        onError={handleScanError}
+      />
     </div>
   );
 };

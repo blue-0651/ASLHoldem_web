@@ -59,7 +59,7 @@ const StoreDashboard = () => {
             <Card className="asl-action-card" onClick={() => navigate('/mobile/store/player-registration')}>
               <Card.Body className="text-center">
                 <i className="fas fa-user-plus fa-2x mb-2"></i>
-                <Card.Title>선수 등록</Card.Title>
+                <Card.Title>선수 회원 참가</Card.Title>
               </Card.Body>
             </Card>
           </Col>
