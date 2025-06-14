@@ -195,12 +195,33 @@ const TournamentManagement = () => {
   });
   const [editModalLoading, setEditModalLoading] = useState(false);
 
+  // 🆕 새로고침 상태 관리
+  const [refreshing, setRefreshing] = useState(false);
+
   // 매장 정보 캐시 추가 (전역 캐시)
   const [allStoresCache, setAllStoresCache] = useState(null);
   const [storesLoading, setStoresLoading] = useState(false);
 
   // API 호출 중복 방지를 위한 ref
   const hasFetchedData = useRef(false);
+
+  // 🆕 키보드 단축키 지원 (F5: 새로고침)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // F5 키 (브라우저 새로고침 방지하고 전체 새로고침 실행)
+      if (e.key === 'F5') {
+        e.preventDefault();
+        if (!loading && !refreshing) {
+          handleFullRefresh();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [loading, refreshing]); // 의존성 배열에 상태들 추가
 
   // 폼 상태 - 매장 관련 필드 제거
   const [formData, setFormData] = useState({
@@ -485,16 +506,52 @@ const TournamentManagement = () => {
         distributionMap.set(dist.store_id, dist);
       });
 
-      // 전체 매장과 분배 정보 결합
+      // 🆕 실제 발급된 티켓 기반으로 매장별 배포 수량 계산
+      const actualDistributedByStore = new Map();
+      if (Array.isArray(ticketDetailsData) && ticketDetailsData.length > 0) {
+        ticketDetailsData.forEach(ticket => {
+          const storeId = ticket?.store;
+          if (storeId) {
+            const currentCount = actualDistributedByStore.get(storeId) || 0;
+            actualDistributedByStore.set(storeId, currentCount + 1);
+          }
+        });
+        
+        // 🔍 디버깅: 실제 매장별 배포 수량 로그
+        if (!isPreload) {
+          console.log('🎯 실제 매장별 SEAT권 발급 수량:');
+          actualDistributedByStore.forEach((count, storeId) => {
+            const storeName = allStores?.find(s => s.id === storeId)?.name || `매장 ID ${storeId}`;
+            console.log(`  - ${storeName} (ID: ${storeId}): ${count}매`);
+          });
+          
+          // 🔍 분배 API vs 실제 발급 데이터 비교 분석
+          console.log('📊 분배 API vs 실제 발급 데이터 비교:');
+          storeDistributions.forEach(dist => {
+            const storeName = allStores?.find(s => s.id === dist.store_id)?.name || `매장 ID ${dist.store_id}`;
+            const actualCount = actualDistributedByStore.get(dist.store_id) || 0;
+            const apiCount = dist.distributed_quantity || 0;
+            
+            if (actualCount !== apiCount) {
+              console.warn(`  ⚠️ ${storeName}: 분배API(${apiCount}매) ≠ 실제발급(${actualCount}매) - 차이: ${actualCount - apiCount}매`);
+            } else {
+              console.log(`  ✅ ${storeName}: 분배API(${apiCount}매) = 실제발급(${actualCount}매)`);
+            }
+          });
+        }
+      }
+
+      // 전체 매장과 분배 정보 결합 (실제 발급 수량 반영)
       const combinedStoreData = (allStores || []).map(store => {
         const distribution = distributionMap.get(store.id);
+        const actualDistributed = actualDistributedByStore.get(store.id) || 0; // 🔥 실제 발급 수량 사용
         
         return {
           storeName: store.name || '미지정 매장',
           storeId: store.id,
           ticketQuantity: distribution?.allocated_quantity || 0,
-          distributedQuantity: distribution?.distributed_quantity || 0,
-          remainingQuantity: distribution?.remaining_quantity || 0
+          distributedQuantity: actualDistributed, // 🔥 실제 발급 수량으로 교체
+          remainingQuantity: Math.max(0, (distribution?.allocated_quantity || 0) - actualDistributed) // 🔥 재계산
         };
       });
 
@@ -536,6 +593,9 @@ const TournamentManagement = () => {
           console.warn('⚠️ 매장 매핑이 생성되지 않았습니다. 원인을 확인해주세요.');
         }
       }
+
+      // 🆕 실제 발급된 총 수량 계산
+      const totalActualDistributed = Array.from(actualDistributedByStore.values()).reduce((sum, count) => sum + count, 0);
 
       // 데이터 통합
       const combinedData = {
@@ -611,7 +671,7 @@ const TournamentManagement = () => {
           return playerRows;
         })(),
         totalTicketQuantity: distributionResponse.data.tournament?.ticket_quantity || 0,
-        distributedTicketQuantity: distributionResponse.data.summary?.total_distributed || 0,
+        distributedTicketQuantity: totalActualDistributed, // 🔥 실제 발급 수량으로 교체
         usedTicketQuantity: seatTicketResponse.data.ticket_stats?.used_tickets || 0,
         storeCount: combinedStoreData.length,
         playerCount: seatTicketResponse.data.user_summaries?.length || 0
@@ -1114,7 +1174,10 @@ const TournamentManagement = () => {
       });
 
       // 🚀 성능 개선: 토너먼트 목록만 빠르게 새로고침
-      await refreshTournamentList();
+      await fetchTournamentsOnly();
+      
+      // 캐시 무효화 (새로운 토너먼트가 추가되었으므로)
+      setTournamentDetailsCache(new Map());
 
       // 모달 닫기
       setShowCreateModal(false);
@@ -1136,20 +1199,80 @@ const TournamentManagement = () => {
     }
   };
 
-  // 🆕 토너먼트 목록 빠른 새로고침 함수
-  const refreshTournamentList = async () => {
+
+
+  // 🆕 전체 페이지 새로고침 함수 (완전 리플래시)
+  const handleFullRefresh = async () => {
     try {
-      console.log('🔄 토너먼트 목록 새로고침');
-      await fetchTournamentsOnly();
+      setRefreshing(true);
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
       
-      // 캐시 무효화 (새로운 토너먼트가 추가되었으므로)
+      console.log('🔄 전체 페이지 새로고침 시작');
+      
+      // 1. 모든 캐시 초기화
       setTournamentDetailsCache(new Map());
-      console.log('✅ 토너먼트 목록 새로고침 완료');
+      setStoreUsersCache(new Map());
+      setAllStoresCache(null);
+      setLoadingDetails(new Set());
+      setLoadingStoreUsers(new Set());
+      
+      // 2. 현재 확장된 행 닫기
+      setExpandedRowId(null);
+      
+      // 3. 선택된 매장 및 필터 초기화
+      setSelectedStoreByTournament(new Map());
+      setStoreFilters(new Map());
+      
+      // 4. API 호출 중복 방지 초기화
+      hasFetchedData.current = false;
+      
+      // 5. 전체 데이터 다시 로딩 (초기 로딩과 동일한 프로세스)
+      setInitialLoading(true);
+      setBackgroundLoading(false);
+      
+      // 토너먼트 목록 새로고침
+      await fetchTournamentsOnly();
+      setInitialLoading(false);
+      
+      // 백그라운드 최적화 작업 시작
+      setBackgroundLoading(true);
+      setTimeout(async () => {
+        try {
+          await fetchAllStores();
+          
+          // 인기 토너먼트 프리로딩 (선택적)
+          if (document.hasFocus()) {
+            await preloadPopularTournamentDetails();
+          }
+        } catch (err) {
+          console.warn('⚠️ 백그라운드 최적화 중 오류:', err);
+        } finally {
+          setBackgroundLoading(false);
+        }
+      }, 100);
+      
+      setSuccess('전체 데이터가 성공적으로 새로고침되었습니다.');
+      console.log('✅ 전체 페이지 새로고침 완료');
+      
+      // 3초 후 성공 메시지 제거
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+      
     } catch (err) {
-      console.error('❌ 토너먼트 목록 새로고침 실패:', err);
-      setError('토너먼트 목록을 새로고침하는 중 오류가 발생했습니다.');
+      console.error('❌ 전체 페이지 새로고침 실패:', err);
+      setError('전체 페이지를 새로고침하는 중 오류가 발생했습니다.');
+      setInitialLoading(false);
+      setBackgroundLoading(false);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
+
+
 
   // 날짜 포맷 함수
   const formatDate = (dateString) => {
@@ -1947,7 +2070,7 @@ const TournamentManagement = () => {
       setSuccess(`토너먼트 "${editFormData.name}"이 성공적으로 수정되었습니다.`);
       
       // 🚀 성능 개선: 토너먼트 목록만 빠르게 새로고침
-      await refreshTournamentList();
+      await fetchTournamentsOnly();
 
       // 해당 토너먼트의 캐시 무효화 (수정되었으므로)
       setTournamentDetailsCache(prev => {
@@ -2044,10 +2167,12 @@ const TournamentManagement = () => {
           <div className="d-flex justify-content-between align-items-center">
             <div>
               <h5>토너먼트 목록</h5>
-              <small>정렬 가능하고 확장 가능한 토너먼트 테이블입니다. 행을 클릭하면 상세 정보를 볼 수 있습니다.</small>
+              <small>
+                정렬 가능하고 확장 가능한 토너먼트 테이블입니다. 행을 클릭하면 상세 정보를 볼 수 있습니다.
+              </small>
             </div>
             
-            {/* 🆕 로딩 상태 표시 개선 */}
+            {/* 🆕 로딩 상태 표시 및 새로고침 버튼 개선 */}
             <div className="d-flex align-items-center">
               {backgroundLoading && (
                 <div className="me-3 d-flex align-items-center">
@@ -2058,14 +2183,23 @@ const TournamentManagement = () => {
               
               {!initialLoading && (
                 <Button
-                  variant="outline-secondary"
+                  variant="outline-primary"
                   size="sm"
-                  onClick={refreshTournamentList}
-                  disabled={loading || backgroundLoading}
-                  title="토너먼트 목록 새로고침"
+                  onClick={handleFullRefresh}
+                  disabled={loading || backgroundLoading || refreshing}
+                  title="모든 데이터와 캐시를 새로고침"
                 >
-                  <i className="fas fa-sync-alt me-1"></i>
-                  새로고침
+                  {refreshing ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" className="me-1" />
+                      새로고침 중...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-redo me-1"></i>
+                      새로고침
+                    </>
+                  )}
                 </Button>
               )}
             </div>
