@@ -370,11 +370,12 @@ const TournamentManagement = () => {
       const apiResults = await Promise.allSettled([
         dashboardAPI.getPlayerMapping(tournamentId),
         distributionAPI.getSummaryByTournament(tournamentId),
-        seatTicketAPI.getTournamentSummary(tournamentId)
+        seatTicketAPI.getTournamentSummary(tournamentId),
+        seatTicketAPI.getTicketsByTournament(tournamentId, { status: 'ACTIVE' }) // 🆕 매장 정보 획득용
       ]);
 
       // 각 API 결과 처리 (실패한 것은 기본값 사용)
-      const [playerMappingResult, distributionResult, seatTicketResult] = apiResults;
+      const [playerMappingResult, distributionResult, seatTicketResult, ticketDetailsResult] = apiResults;
       
       const playerMappingResponse = playerMappingResult.status === 'fulfilled' 
         ? playerMappingResult.value 
@@ -388,10 +389,74 @@ const TournamentManagement = () => {
         ? seatTicketResult.value 
         : { data: { user_summaries: [], ticket_stats: {} } };
 
+      // 🆕 티켓 상세 정보 처리 (매장 정보 포함)
+      const ticketDetailsResponse = ticketDetailsResult.status === 'fulfilled' 
+        ? ticketDetailsResult.value 
+        : { data: [] };
+
+      // 🆕 사용자별 매장 매핑 생성 (user_id -> {storeId, storeName})
+      const userStoreMapping = new Map();
+      
+      // API 응답 구조 안전하게 처리
+      let ticketDetailsData = [];
+      if (ticketDetailsResponse.data) {
+        // 응답이 배열인지 확인
+        if (Array.isArray(ticketDetailsResponse.data)) {
+          ticketDetailsData = ticketDetailsResponse.data;
+        } else if (ticketDetailsResponse.data.results && Array.isArray(ticketDetailsResponse.data.results)) {
+          // 페이지네이션된 응답인 경우
+          ticketDetailsData = ticketDetailsResponse.data.results;
+        } else {
+          console.warn('⚠️ 예상과 다른 티켓 상세 API 응답 구조:', ticketDetailsResponse.data);
+        }
+      }
+      
+      // 안전하게 매장 매핑 생성 (다양한 필드명 지원)
+      if (Array.isArray(ticketDetailsData) && ticketDetailsData.length > 0) {
+        ticketDetailsData.forEach((ticket, index) => {
+          // 다양한 사용자 ID 필드 지원
+          const userId = ticket?.user || ticket?.user_id || ticket?.userId;
+          
+          // 다양한 매장 ID 필드 지원
+          const storeId = ticket?.store || ticket?.store_id || ticket?.storeId;
+          
+          // 다양한 매장명 필드 지원
+          const storeName = ticket?.store_name || ticket?.storeName || ticket?.store?.name;
+          
+          if (!isPreload && index < 3) {
+            console.log(`🔍 티켓 ${index + 1} 매핑 시도:`, {
+              userId,
+              storeId,
+              storeName,
+              originalTicket: ticket
+            });
+          }
+          
+          if (userId && storeId && storeName) {
+            userStoreMapping.set(userId, {
+              storeId: storeId,
+              storeName: storeName
+            });
+            
+            if (!isPreload && index < 3) {
+              console.log(`✅ 사용자 ${userId} -> 매장 ${storeName} (ID: ${storeId}) 매핑 성공`);
+            }
+          } else {
+            if (!isPreload && index < 3) {
+              console.warn(`⚠️ 티켓 ${index + 1} 매핑 실패 - 필수 필드 누락:`, {
+                hasUserId: !!userId,
+                hasStoreId: !!storeId,
+                hasStoreName: !!storeName
+              });
+            }
+          }
+        });
+      }
+
       // 실패한 API 로그 출력
       apiResults.forEach((result, index) => {
         if (result.status === 'rejected') {
-          const apiNames = ['플레이어 매핑', '분배 정보', 'SEAT권 요약'];
+          const apiNames = ['플레이어 매핑', '분배 정보', 'SEAT권 요약', '매장별 티켓 상세'];
           console.warn(`⚠️ ${apiNames[index]} API 실패:`, result.reason);
         }
       });
@@ -404,6 +469,15 @@ const TournamentManagement = () => {
       
       // 매장별 현황 데이터 처리
       const storeDistributions = distributionResponse.data.store_distributions || [];
+      
+      // 🔄 보조 매장 매핑 생성 (분배 정보 기반)
+      const storeIdToNameMapping = new Map();
+      storeDistributions.forEach(dist => {
+        const matchingStore = allStores?.find(store => store.id === dist.store_id);
+        if (matchingStore) {
+          storeIdToNameMapping.set(dist.store_id, matchingStore.name);
+        }
+      });
       
       // 분배 정보를 매장 ID로 인덱싱
       const distributionMap = new Map();
@@ -426,18 +500,116 @@ const TournamentManagement = () => {
 
       if (!isPreload) {
         console.log(`✅ 토너먼트 ${tournamentId} 상세 정보 로딩 완료: 매장 ${combinedStoreData.length}개, 선수 ${seatTicketResponse.data.user_summaries?.length || 0}명`);
+        console.log(`🆕 티켓 상세 데이터 처리 완료: ${ticketDetailsData.length}건의 티켓 정보`);
+        
+        // 🔍 디버깅: 티켓 상세 데이터 구조 확인
+        if (ticketDetailsData.length > 0) {
+          console.log('🔍 첫 번째 티켓 데이터 구조:', ticketDetailsData[0]);
+          console.log('🔍 티켓 데이터 필드들:', Object.keys(ticketDetailsData[0] || {}));
+        }
+        
+        // 🔍 디버깅: 사용자 요약 데이터 구조 확인
+        if (seatTicketResponse.data.user_summaries?.length > 0) {
+          console.log('🔍 첫 번째 사용자 요약 구조:', seatTicketResponse.data.user_summaries[0]);
+          console.log('🔍 사용자 요약 필드들:', Object.keys(seatTicketResponse.data.user_summaries[0] || {}));
+          
+          // 🔍 모든 사용자의 시트권 현황 분석
+          console.log('📊 전체 사용자 요약 분석:');
+          seatTicketResponse.data.user_summaries.forEach((user, idx) => {
+            console.log(`  사용자 ${idx + 1}:`, {
+              id: user?.id,
+              user: user?.user,
+              nickname: user?.user_nickname,
+              phone: user?.user_phone,
+              activeTickets: user?.active_tickets || 0,
+              usedTickets: user?.used_tickets || 0,
+              totalTickets: user?.total_tickets || 0,
+              shouldShow: (user?.active_tickets || 0) > 0
+            });
+          });
+        }
+        
+        console.log(`🆕 매장 매핑 생성 완료: ${userStoreMapping.size}명의 선수에 대한 매장 정보`);
+        if (userStoreMapping.size > 0) {
+          console.log('🏪 사용자별 매장 매핑:', Array.from(userStoreMapping.entries()));
+        } else {
+          console.warn('⚠️ 매장 매핑이 생성되지 않았습니다. 원인을 확인해주세요.');
+        }
       }
 
       // 데이터 통합
       const combinedData = {
         ...playerMappingResponse.data,
         storeDetails: combinedStoreData,
-        playerDetails: seatTicketResponse.data.user_summaries?.map(user => ({
-          playerName: user.user_nickname || user.user_phone,
-          hasTicket: user.active_tickets > 0 ? 'Y' : 'N',
-          storeName: '미지정',
-          ticketCount: user.active_tickets || 0
-        })) || [],
+        // 🚀 매장별 시트권 그룹핑 - 티켓 데이터 직접 활용
+        playerDetails: (() => {
+          if (!Array.isArray(ticketDetailsData) || ticketDetailsData.length === 0) {
+            return [];
+          }
+          
+          // 📊 사용자-매장 조합별로 티켓 그룹핑
+          const userStoreGroups = new Map();
+          
+          ticketDetailsData.forEach(ticket => {
+            const userId = ticket?.user;
+            const storeId = ticket?.store;
+            const storeName = ticket?.store_name;
+            const userName = ticket?.user_nickname || ticket?.user_name || ticket?.user_phone;
+            const userPhone = ticket?.user_phone || '';
+            
+            if (userId && storeId && storeName) {
+              const groupKey = `${userId}-${storeId}`;
+              
+              if (!userStoreGroups.has(groupKey)) {
+                userStoreGroups.set(groupKey, {
+                  userId,
+                  userName,
+                  userPhone,
+                  storeId,
+                  storeName,
+                  tickets: []
+                });
+              }
+              
+              userStoreGroups.get(groupKey).tickets.push(ticket);
+            }
+          });
+          
+          // 🎯 그룹별로 티켓 수량 계산하여 행 생성
+          const playerRows = [];
+          
+          userStoreGroups.forEach((group, groupKey) => {
+            const activeTickets = group.tickets.filter(t => t.status === 'ACTIVE').length;
+            const usedTickets = group.tickets.filter(t => t.status === 'USED').length;
+            const totalTickets = group.tickets.length;
+            
+            // 활성 티켓이 있는 경우만 표시
+            if (activeTickets > 0) {
+              playerRows.push({
+                playerName: group.userName || '이름 없음',
+                playerPhone: group.userPhone || '',
+                hasTicket: 'Y',
+                storeName: group.storeName,
+                storeId: group.storeId,
+                ticketCount: activeTickets,
+                activeTickets: activeTickets,
+                usedTickets: usedTickets,
+                totalTickets: totalTickets,
+                groupKey: groupKey // 디버깅용
+              });
+            }
+          });
+          
+          // 🔍 디버깅: 매장별 그룹핑 결과 로그
+          if (!isPreload && playerRows.length > 0) {
+            console.log('🏪 매장별 시트권 그룹핑 결과:');
+            playerRows.forEach((row, idx) => {
+              console.log(`  ${idx + 1}. ${row.playerName} @ ${row.storeName}: ${row.activeTickets}매 (사용: ${row.usedTickets}매)`);
+            });
+          }
+          
+          return playerRows;
+        })(),
         totalTicketQuantity: distributionResponse.data.tournament?.ticket_quantity || 0,
         distributedTicketQuantity: distributionResponse.data.summary?.total_distributed || 0,
         usedTicketQuantity: seatTicketResponse.data.ticket_stats?.used_tickets || 0,
@@ -1396,9 +1568,9 @@ const TournamentManagement = () => {
                       border: '1px solid #ccc'
                     }}
                   >
-                    <option value="all">🏪 전체매장</option>
-                    <option value="with_seats">🎫 SEAT권 보유매장</option>
-                    <option value="without_seats">❌ SEAT권 비보유매장</option>
+                                  <option value="all">전체매장</option>
+              <option value="with_seats">SEAT권 보유매장</option>
+              <option value="without_seats">SEAT권 비보유매장</option>
                   </Form.Select>
                   <small className="text-white ms-2" style={{ fontSize: '11px', minWidth: '60px' }}>
                     ({filteredStores.length}개)
@@ -1409,9 +1581,7 @@ const TournamentManagement = () => {
               {/* 매장별 현황 안내 문구 */}
               <div className="text-end mb-1">
                 <small style={{ color: '#e3f2fd', fontSize: '12px' }}>
-                  💡 매장명을 클릭하면 해당 매장 선수를 조회합니다 
-                  <span className="ms-1" title="한 번 조회한 데이터는 캐시되어 빠르게 로딩됩니다">
-                  </span>
+                  💡 매장별 SEAT권 분배 현황을 확인할 수 있습니다
                 </small>
               </div>
               
@@ -1459,35 +1629,15 @@ const TournamentManagement = () => {
                           <td
                             className="border border-secondary"
                             style={{
-                              fontWeight: isSelected ? 'bold' : 'normal',
-                              color: isSelected ? '#1976d2' : (hasSeatTickets ? 'inherit' : '#856404'),
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center'
+                              fontWeight: 'normal',
+                              color: hasSeatTickets ? 'inherit' : '#856404',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '200px'
                             }}
-                            onClick={() => handleStoreClick(data.id, store.storeId, store.storeName)}
                           >
-                            {/* 로딩 상태 표시 */}
-                            {isLoadingUsers && (
-                              <Spinner 
-                                animation="border" 
-                                size="sm" 
-                                variant="primary" 
-                                className="me-2"
-                                style={{ width: '1rem', height: '1rem' }}
-                              />
-                            )}
-                            
-                            {/* 🆕 캐시 상태 아이콘 */}
-                            {!isLoadingUsers && hasUserCache && (
-                              <span className="me-1" title="사용자 데이터 캐시됨 - 빠른 로딩"></span>
-                            )}
-                            
-                            {/* 매장 상태 아이콘 */}
-                            {!isLoadingUsers && (hasSeatTickets ? '🎫' : '❌')} {store.storeName}
-                            
-                            {/* 선택 상태 표시 */}
-                            {isSelected && !isLoadingUsers && <span className="ms-2">▶️</span>}
+                            {store.storeName}
                           </td>
                           <td className="text-center border border-secondary">{store.distributedQuantity || 0}</td>
                           <td className="text-center border border-secondary">{store.remainingQuantity || 0}</td>
@@ -1520,8 +1670,8 @@ const TournamentManagement = () => {
                   ) : (
                     <tr>
                       <td colSpan="5" className="text-center border border-secondary" style={{ color: '#6c757d', fontStyle: 'italic' }}>
-                        {currentStoreFilter === 'with_seats' && '🎫 SEAT권을 보유한 매장이 없습니다.'}
-                        {currentStoreFilter === 'without_seats' && '❌ SEAT권을 보유하지 않은 매장이 없습니다.'}
+                                      {currentStoreFilter === 'with_seats' && 'SEAT권을 보유한 매장이 없습니다.'}
+              {currentStoreFilter === 'without_seats' && 'SEAT권을 보유하지 않은 매장이 없습니다.'}
                         {currentStoreFilter === 'all' && '매장 데이터가 없습니다.'}
                       </td>
                     </tr>
@@ -1551,74 +1701,101 @@ const TournamentManagement = () => {
           <div className="col-md-6">
             <div className="border border-light rounded p-3 mb-3" style={{ backgroundColor: '#b02a37' }}>
               <h4 className="mb-3 bg-dark text-white p-3 rounded border border-light text-center" style={{ fontWeight: 'bold' }}>
-                {(() => {
-                  const selectedStore = selectedStoreByTournament.get(data.id);
-                  const cacheKey = selectedStore ? `${data.id}-${selectedStore.storeId}` : null;
-                  const isLoadingUsers = cacheKey && loadingStoreUsers.has(cacheKey);
-                  
-                  return selectedStore ? (
-                    <>
-                      {isLoadingUsers && (
-                        <Spinner 
-                          animation="border" 
-                          size="sm" 
-                          variant="light" 
-                          className="me-2"
-                          style={{ width: '1.2rem', height: '1.2rem' }}
-                        />
-                      )}
-                      ▶️ {selectedStore.storeName} 매장선수 목록
-                      {isLoadingUsers && <span className="ms-2 text-warning">로딩 중...</span>}
-                    </>
-                  ) : (
-                    <>
-                      ▶️ 매장선수 목록
-                    </>
-                  );
-                })()}
+                선수별 현황
               </h4>
+              
+              {/* 선수별 현황 안내 문구 */}
+              <div className="text-end mb-1">
+                <small style={{ color: '#e3f2fd', fontSize: '12px' }}>
+                  💡 선수별 SEAT권 분배 현황을 확인할 수 있습니다
+                </small>
+              </div>
+              
               <Table bordered size="sm" className="mb-0" style={{ backgroundColor: '#ffffff' }}>                <thead style={{ backgroundColor: '#6c757d', color: 'white' }}>
                   <tr>
                     <th className="border border-dark text-white">선수</th>
+                    <th className="border border-dark text-white">획득 매장</th>
                     <th className="border border-dark text-white">SEAT권 보유 수량</th>
                     <th className="border border-dark text-white">SEAT권 사용 수량</th>
-                    <th className="border border-dark text-white">SEAT권 전송</th>
+                    <th className="border border-dark text-white">SEAT권 사용정보</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(() => {
-                    const selectedStore = selectedStoreByTournament.get(data.id);
-                    const cacheKey = selectedStore ? `${data.id}-${selectedStore.storeId}` : null;
-                    const isLoadingUsers = cacheKey && loadingStoreUsers.has(cacheKey);
+                    // 토너먼트 상세 정보에서 참가 선수 데이터 가져오기
+                    const isLoadingDetails = loadingDetails.has(data.id);
                     
-                    if (isLoadingUsers) {
+                    if (isLoadingDetails) {
                       return (
                         <tr>
-                          <td colSpan="4" className="text-center border border-secondary p-4">
+                          <td colSpan="5" className="text-center border border-secondary p-4">
                             <div className="d-flex align-items-center justify-content-center">
                               <Spinner animation="border" variant="primary" className="me-2" />
-                              <span>선수 목록을 불러오는 중입니다...</span>
+                              <span>참가 선수 목록을 불러오는 중입니다...</span>
                             </div>
                           </td>
                         </tr>
                       );
                     }
-                      if (tournamentDetails.playerDetails?.length > 0) {
-                      return tournamentDetails.playerDetails.map((player, index) => (
+
+                    // 캐시된 토너먼트 상세 정보에서 참가 선수 데이터 가져오기
+                    const tournamentDetails = tournamentDetailsCache.get(data.id);
+                    const allParticipants = tournamentDetails?.playerDetails || [];
+                    
+                    // 실제 좌석권 보유자만 필터링 (토너먼트 참가자)
+                    const actualParticipants = allParticipants.filter(user => 
+                      user.hasTicket === 'Y' && (user.ticketCount || 0) > 0
+                    );
+
+                    if (actualParticipants.length > 0) {
+                      return actualParticipants.map((participant, index) => (
                         <tr key={index}>
-                          <td className="border border-secondary">{player.playerName}</td>
-                          <td className="text-center border border-secondary">{player.activeTickets || 0}</td>
-                          <td className="text-center border border-secondary">{player.usedTickets || 0}</td>
+                          <td className="border border-secondary">
+                            <div className="d-flex align-items-center">
+                  
+                              <div>
+                                <div style={{ fontWeight: 'bold' }}>{participant.playerName}</div>
+                                {participant.playerPhone && (
+                                  <small className="text-muted">{participant.playerPhone}</small>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="text-center border border-secondary">
+                            <div className="d-flex align-items-center justify-content-center">
+                              <div>
+                                <div style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                                  {participant.storeName || '미지정'}
+                                </div>
+                                {participant.storeId && (
+                                  <small className="text-muted" style={{ fontSize: '10px' }}>
+                                    ID: {participant.storeId}
+                                  </small>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="text-center border border-secondary">
+                            <span className="badge bg-success fs-6">
+                              {participant.ticketCount || participant.activeTickets || 0}매
+                            </span>
+                          </td>
+                          <td className="text-center border border-secondary">
+                            <span className="badge bg-info fs-6">
+                              {participant.usedTickets || 0}매
+                            </span>
+                          </td>
                           <td className="text-center border border-secondary">
                             <Button 
                               variant="outline-primary" 
                               size="sm"
                               onClick={() => {
-                                // TODO: SEAT권 전송 기능 구현 예정
-                                console.log('SEAT권 전송 버튼 클릭:', player.playerName);
+                                // TODO: SEAT권 사용정보 조회 기능 구현 예정
+                                console.log('SEAT권 정보 버튼 클릭:', participant.playerName);
                               }}
                             >
-                              SEAT 권 전송
+                              <i className="fas fa-info-circle me-1"></i>
+                              SEAT권 정보
                             </Button>
                           </td>
                         </tr>
@@ -1626,8 +1803,22 @@ const TournamentManagement = () => {
                     } else {
                       return (
                         <tr>
-                          <td colSpan="4" className="text-center border border-secondary">
-                            {selectedStore ? '선수 데이터가 없습니다.' : '매장을 선택해주세요.'}
+                          <td colSpan="5" className="text-center border border-secondary p-4">
+                            <div className="text-muted">
+                              <i className="fas fa-users fa-2x mb-2"></i>
+                              <p className="mb-0">
+                                {tournamentDetails ? 
+                                  '아직 SEAT권을 보유한 참가자가 없습니다.' : 
+                                  '토너먼트 정보를 불러오는 중입니다...'}
+                              </p>
+                              {tournamentDetails && (
+                                <small className="text-info">
+                                  💡 실제 SEAT권을 보유한 참가자만 표시됩니다.
+                                  <br />
+                                  등록만 된 사용자는 SEAT권 발급 후 표시됩니다.
+                                </small>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1905,7 +2096,7 @@ const TournamentManagement = () => {
                   <div className="flex-grow-1">
                     <strong>백그라운드 최적화 진행 중</strong>
                     <div className="small mt-1">
-                      🏪 매장 정보 캐싱 및 인기 토너먼트 프리로딩을 진행하고 있습니다. 
+                      매장 정보 캐싱 및 인기 토너먼트 프리로딩을 진행하고 있습니다. 
                       이 작업은 페이지 사용에 영향을 주지 않습니다.
                     </div>
                   </div>
@@ -2230,7 +2421,7 @@ const TournamentManagement = () => {
               <Card className="mb-4">
                 <Card.Header>
                   <h5 className="mb-0">
-                    🏪 {selectedStoreForSeatEdit.storeName} 매장
+                    {selectedStoreForSeatEdit.storeName} 매장
                   </h5>
                 </Card.Header>
                 <Card.Body>
