@@ -148,6 +148,15 @@ export const tournamentAPI = {
       formData.append(key, data[key]);
     });
     return API.put(`/tournaments/${id}/`, formData);
+  },
+
+  // 토너먼트 삭제
+  deleteTournament: (id) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📤 토너먼트 삭제 (ID: ${id})`);
+    }
+    
+    return API.delete(`/tournaments/${id}/`);
   }
 };
 

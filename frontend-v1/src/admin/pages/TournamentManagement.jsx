@@ -195,6 +195,11 @@ const TournamentManagement = () => {
   });
   const [editModalLoading, setEditModalLoading] = useState(false);
 
+  // 🆕 토너먼트 삭제 모달 관련 상태 추가
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingTournament, setDeletingTournament] = useState(null);
+  const [deleteModalLoading, setDeleteModalLoading] = useState(false);
+
   // 🆕 새로고침 상태 관리
   const [refreshing, setRefreshing] = useState(false);
 
@@ -1507,8 +1512,7 @@ const TournamentManagement = () => {
             size="sm"
             onClick={(e) => {
               e.stopPropagation(); // 행 확장 방지
-              console.log('토너먼트 삭제:', row.id);
-              // TODO: 토너먼트 삭제 기능 구현 예정
+              handleOpenDeleteModal(row);
             }}
             className="py-1 px-2"
             style={{ fontSize: '12px' }}
@@ -2096,6 +2100,89 @@ const TournamentManagement = () => {
         setError('토너먼트 수정 중 오류가 발생했습니다.');
       }
       setEditModalLoading(false);
+    }
+  };
+
+  // 🆕 토너먼트 삭제 모달 열기
+  const handleOpenDeleteModal = (tournament) => {
+    console.log('토너먼트 삭제 모달 열기:', tournament);
+    setDeletingTournament(tournament);
+    setError(null); // 이전 오류 메시지 초기화
+    setShowDeleteModal(true);
+  };
+
+  // 🆕 토너먼트 삭제 확인 핸들러
+  const handleConfirmDelete = async () => {
+    if (!deletingTournament) return;
+
+    try {
+      setDeleteModalLoading(true);
+      setError(null);
+
+      console.log('토너먼트 삭제 요청:', deletingTournament.id);
+
+      // API 호출
+      await tournamentAPI.deleteTournament(deletingTournament.id);
+
+      setSuccess(`토너먼트 "${deletingTournament.name}"이 성공적으로 삭제되었습니다.`);
+      
+      // 🚀 성능 개선: 토너먼트 목록만 빠르게 새로고침
+      await fetchTournamentsOnly();
+
+      // 해당 토너먼트의 캐시 무효화 (삭제되었으므로)
+      setTournamentDetailsCache(prev => {
+        const newCache = new Map(prev);
+        newCache.delete(deletingTournament.id);
+        return newCache;
+      });
+
+      // 확장된 행이 삭제된 토너먼트인 경우 축소
+      if (expandedRowId === deletingTournament.id) {
+        setExpandedRowId(null);
+      }
+
+      // 모달 닫기
+      setShowDeleteModal(false);
+      setDeleteModalLoading(false);
+      setDeletingTournament(null);
+
+      // 3초 후 성공 메시지 제거
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+
+    } catch (err) {
+      console.error('토너먼트 삭제 오류:', err);
+      setDeleteModalLoading(false);
+      
+      if (err.response && err.response.data) {
+        // 서버에서 삭제 제한 관련 오류가 발생한 경우 처리
+        if (err.response.status === 400 || err.response.status === 409) {
+          const errorMessage = err.response.data.error || err.response.data.message || err.response.data.detail;
+          
+          if (errorMessage && (
+            errorMessage.includes('참가자') || 
+            errorMessage.includes('SEAT권') || 
+            errorMessage.includes('이미 진행') ||
+            errorMessage.includes('삭제할 수 없습니다')
+          )) {
+            setError(`❌ 토너먼트 삭제 불가\n\n${errorMessage}\n\n진행 중이거나 참가자가 있는 토너먼트는 삭제할 수 없습니다.`);
+          } else {
+            setError(`토너먼트 삭제 중 오류가 발생했습니다: ${errorMessage}`);
+          }
+        } else if (err.response.status === 404) {
+          setError('삭제하려는 토너먼트가 존재하지 않습니다.');
+        } else if (err.response.status === 403) {
+          setError('토너먼트 삭제 권한이 없습니다.');
+        } else {
+          const errorMessage = err.response.data.error || err.response.data.message || JSON.stringify(err.response.data);
+          setError(`토너먼트 삭제 중 오류가 발생했습니다: ${errorMessage}`);
+        }
+      } else if (err.message) {
+        setError(`토너먼트 삭제 중 네트워크 오류가 발생했습니다: ${err.message}`);
+      } else {
+        setError('토너먼트 삭제 중 알 수 없는 오류가 발생했습니다.');
+      }
     }
   };
 
@@ -2992,6 +3079,165 @@ const TournamentManagement = () => {
             </>
           )}
         </Modal.Body>
+      </Modal>
+
+      {/* 🆕 토너먼트 삭제 확인 모달 */}
+      <Modal
+        show={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        backdrop="static"
+        keyboard={false}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title className="text-danger">
+            <i className="fas fa-exclamation-triangle me-2"></i>
+            토너먼트 삭제 확인
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {error && (
+            <Alert variant="danger" className="mb-3" onClose={() => setError(null)} dismissible>
+              <div style={{ whiteSpace: 'pre-line' }}>{error}</div>
+            </Alert>
+          )}
+
+          {deletingTournament && (
+            <>
+              <div className="text-center mb-4">
+                <i className="fas fa-trash-alt fa-3x text-danger mb-3"></i>
+                <h5 className="text-danger mb-3">정말로 삭제하시겠습니까?</h5>
+                <p className="text-muted mb-1">
+                  다음 토너먼트가 <strong className="text-danger">영구적으로 삭제</strong>됩니다:
+                </p>
+              </div>
+
+              <Card className="mb-4 border-danger">
+                <Card.Header className="bg-danger-subtle">
+                  <h6 className="mb-0 text-danger fw-bold">
+                    <i className="fas fa-trophy me-2"></i>
+                    삭제 대상 토너먼트
+                  </h6>
+                </Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <div className="mb-2">
+                        <small className="text-muted">토너먼트명</small>
+                        <div className="fw-bold">{deletingTournament.name}</div>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div className="mb-2">
+                        <small className="text-muted">상태</small>
+                        <div>
+                          <span className={`badge ${
+                            deletingTournament.status === 'UPCOMING' ? 'bg-info' :
+                            deletingTournament.status === 'ONGOING' ? 'bg-success' :
+                            deletingTournament.status === 'COMPLETED' ? 'bg-secondary' :
+                            'bg-danger'
+                          }`}>
+                            {deletingTournament.status}
+                          </span>
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col md={6}>
+                      <div className="mb-2">
+                        <small className="text-muted">바이인</small>
+                        <div className="fw-bold">{deletingTournament.buy_in || 0}매</div>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div className="mb-2">
+                        <small className="text-muted">SEAT권 총 수량</small>
+                        <div className="fw-bold">{deletingTournament.ticket_quantity}매</div>
+                      </div>
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col md={12}>
+                      <div className="mb-0">
+                        <small className="text-muted">시작 시간</small>
+                        <div className="fw-bold">
+                          {(() => {
+                            try {
+                              const date = new Date(deletingTournament.start_time);
+                              const dateStr = date.toLocaleDateString('ko-KR', { 
+                                year: 'numeric',
+                                month: 'short', 
+                                day: 'numeric' 
+                              });
+                              const timeStr = date.toLocaleTimeString('ko-KR', { 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: false 
+                              });
+                              return `${dateStr} ${timeStr}`;
+                            } catch (error) {
+                              return deletingTournament.start_time;
+                            }
+                          })()}
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+
+              <Alert variant="warning" className="mb-4">
+                <Alert.Heading className="h6 mb-2">
+                  <i className="fas fa-exclamation-triangle me-2"></i>
+                  삭제 주의사항
+                </Alert.Heading>
+                <ul className="mb-0 small">
+                  <li>삭제된 토너먼트는 <strong>복구할 수 없습니다.</strong></li>
+                  <li>관련된 모든 데이터 (참가자 정보, SEAT권 정보 등)도 함께 삭제될 수 있습니다.</li>
+                  <li>진행 중이거나 참가자가 있는 토너먼트는 삭제가 제한될 수 있습니다.</li>
+                  <li>삭제 작업은 되돌릴 수 없으니 신중하게 진행해주세요.</li>
+                </ul>
+              </Alert>
+
+              <div className="text-center">
+                <p className="text-muted mb-3">
+                  <i className="fas fa-keyboard me-1"></i>
+                  삭제를 진행하려면 <strong className="text-danger">"삭제 확인"</strong> 버튼을 클릭하세요.
+                </p>
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            onClick={() => setShowDeleteModal(false)}
+            disabled={deleteModalLoading}
+            size="lg"
+          >
+            <i className="fas fa-times me-1"></i>
+            취소
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleConfirmDelete}
+            disabled={deleteModalLoading || !deletingTournament}
+            size="lg"
+          >
+            {deleteModalLoading ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" className="me-2" />
+                삭제 중...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-trash me-1"></i>
+                삭제 확인
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );
