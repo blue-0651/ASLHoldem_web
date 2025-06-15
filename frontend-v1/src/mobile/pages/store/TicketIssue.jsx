@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, Table, Badge, Modal, Spinner } from 'react-bootstrap';
 import { Search, Plus, Award } from 'react-feather';
 import MobileHeader from '../../components/MobileHeader';
+import API from '../../../utils/api';
+import { isAuthenticated, getToken, getCurrentUser } from '../../../utils/auth';
 
 const TicketIssue = () => {
   const [tournaments, setTournaments] = useState([]);
@@ -13,6 +15,7 @@ const TicketIssue = () => {
   const [memo, setMemo] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [tournamentsLoading, setTournamentsLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, type: '', message: '' });
   const [confirmModal, setConfirmModal] = useState(false);
   const [recentTickets, setRecentTickets] = useState([]);
@@ -30,163 +33,118 @@ const TicketIssue = () => {
 
   const fetchCurrentUserStore = async () => {
     try {
-      const token = localStorage.getItem('asl_holdem_access_token');
-      console.log('현재 사용자 매장 정보 조회 시작, 토큰:', token ? '있음' : '없음');
+      console.log('🏪 현재 사용자 매장 정보 조회 시작');
       
-      if (!token) {
-        console.error('❌ 토큰이 없습니다.');
+      if (!isAuthenticated()) {
+        console.error('❌ 인증되지 않은 사용자');
         showAlert('warning', '로그인이 필요합니다. 다시 로그인해주세요.');
-        fetchStores();
         return;
       }
 
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
-      // JWT 토큰에서 사용자 정보 추출
-      try {
-        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-        console.log('📝 토큰 페이로드:', { user_id: tokenPayload.user_id, exp: tokenPayload.exp });
-        
-        // 토큰 만료 확인
-        const currentTime = Math.floor(Date.now() / 1000);
-        if (tokenPayload.exp && tokenPayload.exp < currentTime) {
-          console.error('❌ 토큰이 만료되었습니다.');
-          showAlert('warning', '로그인이 만료되었습니다. 다시 로그인해주세요.');
-          fetchStores();
-          return;
-        }
-        
-        // 토큰에서 사용자 ID 추출
-        const userId = tokenPayload.user_id;
-        if (userId) {
-          console.log('🔍 사용자 ID로 매장 조회:', userId);
-          
-          // 해당 사용자가 소유한 매장 조회
-          const storeResponse = await fetch(`http://localhost:8000/api/v1/stores/by_owner/?owner_id=${userId}`, {
-            headers: headers
-          });
-          
-          if (storeResponse.ok) {
-            const storeData = await storeResponse.json();
-            console.log('✅ 사용자 소유 매장 데이터:', storeData);
-            
-            setCurrentStore(storeData);
-            showAlert('success', `${storeData.name} 매장으로 로그인되었습니다.`);
-              return;
-          } else {
-            console.warn('⚠️ 사용자 소유 매장 조회 실패:', storeResponse.status, storeResponse.statusText);
-            const errorData = await storeResponse.json().catch(() => ({}));
-            console.log('오류 상세:', errorData);
-          }
-        }
-      } catch (tokenError) {
-        console.error('❌ 토큰 파싱 실패:', tokenError);
-        showAlert('warning', '토큰 정보가 올바르지 않습니다. 다시 로그인해주세요.');
+      const currentUser = getCurrentUser();
+      if (!currentUser || !currentUser.user_id) {
+        console.error('❌ 사용자 정보를 가져올 수 없습니다.');
+        showAlert('warning', '사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
+        return;
       }
 
-      // 모든 방법이 실패한 경우 사용자에게 명확한 안내
-      console.log('❌ 사용자별 매장 정보를 가져올 수 없어 fallback을 실행합니다.');
-      showAlert('warning', '매장 정보를 자동으로 가져올 수 없습니다. 올바른 매장 관리자 계정으로 다시 로그인해주세요.');
-      fetchStores();
+      console.log('🔍 사용자 ID로 매장 조회:', currentUser.user_id);
+      
+      // 해당 사용자가 소유한 매장 조회
+      const storeResponse = await API.get(`/stores/by_owner/`, {
+        params: { owner_id: currentUser.user_id }
+      });
+      
+      if (storeResponse.data) {
+        console.log('✅ 사용자 소유 매장 데이터:', storeResponse.data);
+        setCurrentStore(storeResponse.data);
+        showAlert('success', `${storeResponse.data.name} 매장으로 로그인되었습니다.`);
+      } else {
+        console.warn('⚠️ 사용자 소유 매장을 찾을 수 없습니다.');
+        showAlert('warning', '매장 정보를 찾을 수 없습니다. 올바른 매장 관리자 계정으로 다시 로그인해주세요.');
+      }
       
     } catch (error) {
       console.error('❌ 현재 사용자 매장 정보 조회 실패:', error);
-      showAlert('danger', '매장 정보 조회 중 오류가 발생했습니다. 다시 로그인해주세요.');
-      fetchStores();
-    }
-  };
-
-  const fetchStores = async () => {
-    try {
-      const token = localStorage.getItem('asl_holdem_access_token');
-      console.log('매장 조회 시작, 토큰:', token);
       
-      const headers = {
-        'Content-Type': 'application/json'
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      // 오류 메시지 개선 - Android WebView 호환성
+      let errorMessage = '매장 정보 조회 중 오류가 발생했습니다.';
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = '인증이 만료되었습니다. 다시 로그인해주세요.';
+        } else if (error.response.status === 403) {
+          errorMessage = '매장 관리자 권한이 없습니다.';
+        } else if (error.response.status === 404) {
+          errorMessage = '매장 정보를 찾을 수 없습니다.';
+        } else if (error.response.data?.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+        errorMessage = '네트워크 연결을 확인해주세요.';
       }
       
-      const response = await fetch('http://localhost:8000/api/v1/stores/', {
-        headers: headers
-      });
-      
-      console.log('매장 응답 상태:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('매장 데이터:', data);
-        const storesList = data.results || data;
-        
-        // 하드코딩된 첫 번째 매장 자동 선택 로직 제거
-        // 사용자가 명시적으로 매장을 선택하도록 변경
-        console.warn('⚠️ 사용자별 매장 정보를 가져올 수 없습니다. 매장을 수동으로 선택해주세요.');
-        showAlert('warning', '매장 정보를 자동으로 가져올 수 없습니다. 올바른 계정으로 다시 로그인해주세요.');
-      } else {
-        console.error('매장 조회 실패:', response.status, response.statusText);
-        showAlert('danger', '매장 정보를 불러오는데 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('매장 조회 실패:', error);
-      showAlert('danger', '매장 정보를 불러오는데 실패했습니다.');
+      showAlert('danger', errorMessage);
     }
   };
 
   const fetchTournamentsForStore = async (storeId) => {
+    setTournamentsLoading(true);
     try {
-      const token = localStorage.getItem('asl_holdem_access_token');
-      console.log('매장별 토너먼트 조회 시작, 매장 ID:', storeId);
+      console.log('🎯 매장별 토너먼트 조회 시작, 매장 ID:', storeId);
       
-      const headers = {
-        'Content-Type': 'application/json'
-      };
+      // API 유틸리티 사용으로 변경
+      const response = await API.get('/store/tournaments/');
       
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      console.log('✅ 토너먼트 데이터 조회 성공:', response.data);
+      
+      // 배포된 토너먼트 목록 설정
+      const tournamentsData = Array.isArray(response.data) ? response.data : [];
+      setTournaments(tournamentsData);
+      
+      if (tournamentsData.length === 0) {
+        showAlert('info', '현재 배포된 토너먼트가 없습니다.');
       }
       
-      // 매장 관리자용 토너먼트 목록 API 사용
-      const response = await fetch('http://localhost:8000/api/v1/store/tournaments/', {
-        headers: headers
-      });
-      
-      console.log('토너먼트 응답 상태:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('토너먼트 데이터:', data);
-        
-        // 배포된 토너먼트 목록 설정
-        setTournaments(data);
-      } else {
-        console.error('토너먼트 조회 실패:', response.status, response.statusText);
-      }
     } catch (error) {
-      console.error('매장별 토너먼트 조회 실패:', error);
+      console.error('❌ 매장별 토너먼트 조회 실패:', error);
+      
+      // 오류 메시지 개선 - Android WebView 호환성
+      let errorMessage = '토너먼트 목록을 불러오는데 실패했습니다.';
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = '인증이 만료되었습니다. 다시 로그인해주세요.';
+        } else if (error.response.status === 403) {
+          errorMessage = '토너먼트 조회 권한이 없습니다.';
+        } else if (error.response.data?.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+        errorMessage = '네트워크 연결을 확인해주세요.';
+      }
+      
+      showAlert('danger', errorMessage);
+      setTournaments([]);
+    } finally {
+      setTournamentsLoading(false);
     }
   };
 
   const fetchRecentTickets = async () => {
     try {
-      const token = localStorage.getItem('asl_holdem_access_token');
-      const response = await fetch('http://localhost:8000/api/v1/seats/tickets/?limit=10', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      console.log('📋 최근 좌석권 조회 시작');
+      
+      const response = await API.get('/seats/tickets/', {
+        params: { limit: 10 }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setRecentTickets(data.results || data);
-      }
+      const ticketsData = response.data.results || response.data || [];
+      setRecentTickets(ticketsData);
+      console.log('✅ 최근 좌석권 조회 완료:', ticketsData.length, '개');
+      
     } catch (error) {
-      console.error('최근 좌석권 조회 실패:', error);
+      console.error('❌ 최근 좌석권 조회 실패:', error);
+      // 최근 좌석권 조회 실패는 치명적이지 않으므로 조용히 처리
+      setRecentTickets([]);
     }
   };
 
@@ -198,43 +156,43 @@ const TicketIssue = () => {
 
     setSearchLoading(true);
     try {
-      const token = localStorage.getItem('asl_holdem_access_token');
+      console.log('🔍 사용자 검색 시작:', searchPhone);
       
       // 전화번호 형식 정리
       const cleanPhone = searchPhone.replace(/-/g, '');
       const formattedPhone = `${cleanPhone.slice(0,3)}-${cleanPhone.slice(3,7)}-${cleanPhone.slice(7)}`;
       
-      const response = await fetch(`http://localhost:8000/api/v1/accounts/users/get_user/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          phone: formattedPhone
-        })
+      const response = await API.post('/accounts/users/get_user/', {
+        phone: formattedPhone
       });
       
-      if (response.ok) {
-        const userData = await response.json();
-        console.log('사용자 검색 결과:', userData);
-        
-        if (userData && userData.id) {
-          setSelectedUser(userData);
-          showAlert('success', '사용자를 찾았습니다.');
-        } else {
-          setSelectedUser(null);
-          showAlert('warning', '해당 전화번호의 사용자를 찾을 수 없습니다.');
-        }
+      if (response.data && response.data.id) {
+        console.log('✅ 사용자 검색 성공:', response.data);
+        setSelectedUser(response.data);
+        showAlert('success', '사용자를 찾았습니다.');
       } else {
-        const errorData = await response.json().catch(() => ({}));
+        console.warn('⚠️ 사용자를 찾을 수 없습니다.');
         setSelectedUser(null);
-        showAlert('warning', errorData.error || '해당 전화번호의 사용자를 찾을 수 없습니다.');
+        showAlert('warning', '해당 전화번호의 사용자를 찾을 수 없습니다.');
       }
+      
     } catch (error) {
-      console.error('사용자 검색 실패:', error);
+      console.error('❌ 사용자 검색 실패:', error);
+      
+      // 오류 메시지 개선 - Android WebView 호환성
+      let errorMessage = '해당 전화번호의 사용자를 찾을 수 없습니다.';
+      if (error.response) {
+        if (error.response.status === 404) {
+          errorMessage = '해당 전화번호로 등록된 사용자가 없습니다.';
+        } else if (error.response.data?.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+        errorMessage = '네트워크 연결을 확인해주세요.';
+      }
+      
       setSelectedUser(null);
-      showAlert('warning', '해당 전화번호의 사용자를 찾을 수 없습니다.');
+      showAlert('warning', errorMessage);
     } finally {
       setSearchLoading(false);
     }
@@ -269,7 +227,6 @@ const TicketIssue = () => {
         return;
       }
 
-      const token = localStorage.getItem('asl_holdem_access_token');
       const requestData = {
         user_id: selectedUser.id,
         tournament_id: parseInt(selectedTournament),
@@ -281,35 +238,42 @@ const TicketIssue = () => {
 
       console.log('🎫 SEAT권 발급 요청:', requestData);
 
-      const response = await fetch('http://localhost:8000/api/v1/seats/tickets/grant/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-      });
+      const response = await API.post('/seats/tickets/grant/', requestData);
       
-      if (response.ok) {
-        const data = await response.json();
-        showAlert('success', `${selectedUser.nickname || selectedUser.username || '사용자'}님에게 SEAT권이 성공적으로 발급되었습니다.`);
-        
-        // 폼 초기화
-        setSelectedUser(null);
-        setSearchPhone('');
-        setQuantity(1);
-        setMemo('');
-        
-        // 최근 발급 목록 새로고침
-        fetchRecentTickets();
-      } else {
-        const errorData = await response.json();
-        console.error('❌ SEAT권 발급 실패:', errorData);
-        showAlert('danger', errorData.error || 'SEAT권 발급에 실패했습니다.');
-      }
+      console.log('✅ SEAT권 발급 성공:', response.data);
+      showAlert('success', `${selectedUser.nickname || selectedUser.username || '사용자'}님에게 SEAT권이 성공적으로 발급되었습니다.`);
+      
+      // 폼 초기화
+      setSelectedUser(null);
+      setSearchPhone('');
+      setQuantity(1);
+      setMemo('');
+      
+      // 최근 발급 목록 새로고침
+      fetchRecentTickets();
+      
     } catch (error) {
       console.error('❌ SEAT권 발급 실패:', error);
-      showAlert('danger', 'SEAT권 발급 중 오류가 발생했습니다.');
+      
+      // 오류 메시지 개선 - Android WebView 호환성
+      let errorMessage = 'SEAT권 발급에 실패했습니다.';
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorMessage = error.response.data?.error || '입력 정보를 확인해주세요.';
+        } else if (error.response.status === 401) {
+          errorMessage = '인증이 만료되었습니다. 다시 로그인해주세요.';
+        } else if (error.response.status === 403) {
+          errorMessage = 'SEAT권 발급 권한이 없습니다.';
+        } else if (error.response.status === 404) {
+          errorMessage = '토너먼트 또는 사용자 정보를 찾을 수 없습니다.';
+        } else if (error.response.data?.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+        errorMessage = '네트워크 연결을 확인해주세요.';
+      }
+      
+      showAlert('danger', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -327,9 +291,8 @@ const TicketIssue = () => {
       'EXPIRED': { variant: 'warning', text: '만료됨' },
       'CANCELLED': { variant: 'danger', text: '취소됨' }
     };
-    
-    const statusInfo = statusMap[status] || { variant: 'secondary', text: status };
-    return <Badge bg={statusInfo.variant}>{statusInfo.text}</Badge>;
+    const config = statusMap[status] || { variant: 'secondary', text: status };
+    return <Badge bg={config.variant}>{config.text}</Badge>;
   };
 
   const getSourceBadge = (source) => {
@@ -337,15 +300,26 @@ const TicketIssue = () => {
       'PURCHASE': { variant: 'primary', text: '구매' },
       'REWARD': { variant: 'success', text: '보상' },
       'GIFT': { variant: 'info', text: '선물' },
-      'ADMIN': { variant: 'warning', text: '관리자 지급' }
+      'ADMIN': { variant: 'warning', text: '관리자' }
     };
-    
-    const sourceInfo = sourceMap[source] || { variant: 'secondary', text: source };
-    return <Badge bg={sourceInfo.variant}>{sourceInfo.text}</Badge>;
+    const config = sourceMap[source] || { variant: 'secondary', text: source };
+    return <Badge bg={config.variant}>{config.text}</Badge>;
+  };
+
+  // Android WebView 호환성을 위한 CSS 스타일
+  const webViewStyles = {
+    container: {
+      WebkitOverflowScrolling: 'touch',
+      overflowY: 'auto'
+    },
+    card: {
+      WebkitBoxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    }
   };
 
   return (
-    <div className="asl-mobile-container">
+    <div className="asl-mobile-container" style={webViewStyles.container}>
       <MobileHeader title="SEAT권 발급" />
       
       <Container className="asl-mobile-content">
@@ -355,7 +329,7 @@ const TicketIssue = () => {
           </Alert>
         )}
 
-        <Card className="mb-4">
+        <Card className="mb-4" style={webViewStyles.card}>
           <Card.Header>
             <h5 className="mb-0">
               <Award className="me-2" size={20} />
@@ -370,73 +344,71 @@ const TicketIssue = () => {
                 <Form.Select
                   value={selectedTournament}
                   onChange={(e) => setSelectedTournament(e.target.value)}
+                  disabled={tournamentsLoading}
                 >
-                  <option value="">토너먼트를 선택하세요</option>
+                  <option value="">
+                    {tournamentsLoading ? '토너먼트 목록 로딩 중...' : '토너먼트를 선택하세요'}
+                  </option>
                   {tournaments.map(tournament => (
                     <option key={tournament.id} value={tournament.id}>
                       {tournament.name} ({new Date(tournament.start_time).toLocaleDateString()})
                     </option>
                   ))}
                 </Form.Select>
-                {tournaments.length === 0 && (
+                {tournaments.length === 0 && !tournamentsLoading && (
                   <Form.Text className="text-muted">
                     배포된 토너먼트가 없습니다.
+                  </Form.Text>
+                )}
+                {tournamentsLoading && (
+                  <Form.Text className="text-muted">
+                    <Spinner size="sm" className="me-2" />
+                    토너먼트 목록을 불러오는 중...
                   </Form.Text>
                 )}
               </Form.Group>
 
               {/* 사용자 검색 */}
               <Form.Group className="mb-3">
-                <Form.Label>사용자 검색 (전화번호) *</Form.Label>
-                <div className="d-flex">
-                  <Form.Control
-                    type="text"
-                    placeholder="전화번호를 입력하세요 (예: 010-1234-5678)"
-                    value={searchPhone}
-                    onChange={(e) => setSearchPhone(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && searchUser()}
-                  />
-                  <Button
-                    variant="primary"
-                    className="ms-2"
-                    onClick={searchUser}
-                    disabled={searchLoading}
-                  >
-                    {searchLoading ? <Spinner size="sm" /> : <Search size={16} />}
-                  </Button>
-                </div>
+                <Form.Label>사용자 검색 *</Form.Label>
+                <Row>
+                  <Col xs={8}>
+                    <Form.Control
+                      type="text"
+                      placeholder="전화번호 입력 (예: 010-1234-5678)"
+                      value={searchPhone}
+                      onChange={(e) => setSearchPhone(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && searchUser()}
+                    />
+                  </Col>
+                  <Col xs={4}>
+                    <Button 
+                      variant="outline-primary" 
+                      onClick={searchUser}
+                      disabled={searchLoading}
+                      className="w-100"
+                    >
+                      {searchLoading ? (
+                        <Spinner size="sm" />
+                      ) : (
+                        <>
+                          <Search size={16} className="me-1" />
+                          검색
+                        </>
+                      )}
+                    </Button>
+                  </Col>
+                </Row>
+                {selectedUser && (
+                  <div className="mt-2 p-2 bg-light rounded">
+                    <strong>{selectedUser.nickname || selectedUser.username || '이름 없음'}</strong>
+                    <br />
+                    <small className="text-muted">{selectedUser.phone}</small>
+                  </div>
+                )}
               </Form.Group>
 
-              {/* 검색된 사용자 정보 */}
-              {selectedUser && (
-                <Alert variant="info" className="mb-3">
-                  <div className="d-flex align-items-center">
-                    <div className="me-3" style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '50%',
-                      backgroundColor: '#0d6efd',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 'bold'
-                    }}>
-                      {((selectedUser.nickname || selectedUser.username || selectedUser.phone || 'U')).charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="fw-bold">
-                        {selectedUser.nickname || selectedUser.username || '이름 없음'}
-                      </div>
-                      <div className="text-muted small">
-                        {selectedUser.phone || '전화번호 없음'}
-                      </div>
-                    </div>
-                  </div>
-                </Alert>
-              )}
-
-              {/* 수량 */}
+              {/* 수량 입력 */}
               <Form.Group className="mb-3">
                 <Form.Label>수량 *</Form.Label>
                 <Form.Control
@@ -449,12 +421,12 @@ const TicketIssue = () => {
               </Form.Group>
 
               {/* 메모 */}
-              <Form.Group className="mb-4">
-                <Form.Label>메모 (선택사항)</Form.Label>
+              <Form.Group className="mb-3">
+                <Form.Label>메모</Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={3}
-                  placeholder="좌석권 발급 관련 메모를 입력하세요"
+                  placeholder="발급 관련 메모를 입력하세요 (선택사항)"
                   value={memo}
                   onChange={(e) => setMemo(e.target.value)}
                 />
@@ -462,11 +434,11 @@ const TicketIssue = () => {
 
               {/* 발급 버튼 */}
               <div className="d-grid">
-                <Button
-                  variant="primary"
+                <Button 
+                  variant="primary" 
                   size="lg"
                   onClick={handleIssueTicket}
-                  disabled={loading}
+                  disabled={loading || !selectedTournament || !selectedUser}
                 >
                   {loading ? (
                     <>
@@ -475,7 +447,7 @@ const TicketIssue = () => {
                     </>
                   ) : (
                     <>
-                      <Plus size={16} className="me-2" />
+                      <Plus className="me-2" size={20} />
                       SEAT권 발급
                     </>
                   )}
@@ -486,48 +458,47 @@ const TicketIssue = () => {
         </Card>
 
         {/* 최근 발급된 SEAT권 목록 */}
-        <Card>
-          <Card.Header>
-            <h6 className="mb-0">최근 발급된 SEAT권</h6>
-          </Card.Header>
-          <Card.Body>
-            <Table responsive size="sm">
-              <thead>
-                <tr>
-                  <th>SEAT권 ID</th>
-                  <th>토너먼트</th>
-                  <th>사용자</th>
-                  <th>상태</th>
-                  <th>발급일시</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTickets.map(ticket => (
-                  <tr key={ticket.id}>
-                    <td>
-                      <span style={{ fontSize: '11px', fontFamily: 'monospace' }}>
-                        {ticket.ticket_id?.substring(0, 8)}...
-                      </span>
-                    </td>
-                    <td style={{ fontSize: '12px' }}>{ticket.tournament_name}</td>
-                    <td style={{ fontSize: '12px' }}>{ticket.user_name}</td>
-                    <td>{getStatusBadge(ticket.status)}</td>
-                    <td style={{ fontSize: '11px' }}>
-                      {new Date(ticket.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-                {recentTickets.length === 0 && (
+        {recentTickets.length > 0 && (
+          <Card style={webViewStyles.card}>
+            <Card.Header>
+              <h6 className="mb-0">최근 발급된 SEAT권</h6>
+            </Card.Header>
+            <Card.Body>
+              <Table responsive size="sm">
+                <thead>
                   <tr>
-                    <td colSpan="5" className="text-center text-muted py-3">
-                      발급된 SEAT권이 없습니다.
-                    </td>
+                    <th>사용자</th>
+                    <th>토너먼트</th>
+                    <th>상태</th>
+                    <th>발급일</th>
                   </tr>
-                )}
-              </tbody>
-            </Table>
-          </Card.Body>
-        </Card>
+                </thead>
+                <tbody>
+                  {recentTickets.slice(0, 5).map((ticket, index) => (
+                    <tr key={index}>
+                      <td>
+                        <small>
+                          {ticket.user_nickname || ticket.user_phone || '알 수 없음'}
+                        </small>
+                      </td>
+                      <td>
+                        <small>
+                          {ticket.tournament_name || `토너먼트 ${ticket.tournament}`}
+                        </small>
+                      </td>
+                      <td>{getStatusBadge(ticket.status)}</td>
+                      <td>
+                        <small>
+                          {new Date(ticket.created_at).toLocaleDateString()}
+                        </small>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Card.Body>
+          </Card>
+        )}
 
         {/* 확인 모달 */}
         <Modal show={confirmModal} onHide={() => setConfirmModal(false)} centered>
