@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Container, Card, Form, Button, Alert, Row, Col, Modal } from 'react-bootstrap';
+import { Container, Card, Form, Button, Alert, Row, Col, Modal, InputGroup, Spinner } from 'react-bootstrap';
 import FeatherIcon from 'feather-icons-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { reqSignUp } from '../../../utils/auth';
@@ -54,20 +54,18 @@ const MobileSignup = () => {
   // 전화번호 중복 확인 함수
   const checkPhone = async () => {
     if (!formData.phone.trim()) {
-      setErrors({...errors, phone: '전화번호를 입력해주세요'});
+      setErrors({ ...errors, phone: '전화번호를 입력해주세요' });
       return;
     }
 
     // 전화번호 형식 검증
     if (!/^\d{3}-\d{4}-\d{4}$/.test(formData.phone)) {
-      setErrors({...errors, phone: '전화번호 형식이 올바르지 않습니다 (예: 010-1234-5678)'});
+      setErrors({ ...errors, phone: '전화번호 형식이 올바르지 않습니다 (예: 010-1234-5678)' });
       return;
     }
 
     setCheckingPhone(true);
-    setPhoneMessage('');
-
-    try {
+    setPhoneMessage(''); try {
       const response = await API.get(`/accounts/users/check_phone/`, {
         params: { phone: formData.phone }
       });
@@ -88,9 +86,7 @@ const MobileSignup = () => {
     } finally {
       setCheckingPhone(false);
     }
-  };
-
-  const validate = () => {
+  }; const validate = () => {
     const newErrors = {};
 
     if (!formData.phone.trim()) {
@@ -129,7 +125,7 @@ const MobileSignup = () => {
     if (!formData.last_name.trim()) {
       newErrors.last_name = '성은 필수입니다';
     }
-    
+
     if (!formData.gender) {
       newErrors.gender = '성별을 선택해주세요';
     }
@@ -186,9 +182,9 @@ const MobileSignup = () => {
   return (
     <div className="asl-mobile-container">
       <div className="asl-mobile-logo-container">
-        <img 
-          src="/images/asl_logo.png" 
-          alt="ASL 홀덤 로고" 
+        <img
+          src="/images/asl_logo.png"
+          alt="ASL 홀덤 로고"
           className="asl-mobile-logo"
         />
       </div>
@@ -223,8 +219,8 @@ const MobileSignup = () => {
                   {errors.phone && <Form.Text className="text-danger">{errors.phone}</Form.Text>}
                 </Col>
                 <Col xs="4" className="mb-3">
-                  <Button 
-                    variant="outline-secondary" 
+                  <Button
+                    variant="outline-secondary"
                     onClick={checkPhone}
                     disabled={checkingPhone || !formData.phone.trim()}
                     className="w-100"
@@ -374,9 +370,9 @@ const MobileSignup = () => {
                 {errors.gender && <Form.Text className="text-danger">{errors.gender}</Form.Text>}
               </Form.Group>
 
-              <Button 
-                type="submit" 
-                className="asl-mobile-login-btn asl-user-btn" 
+              <Button
+                type="submit"
+                className="asl-mobile-login-btn asl-user-btn"
                 disabled={loading}
               >
                 {loading ? (
