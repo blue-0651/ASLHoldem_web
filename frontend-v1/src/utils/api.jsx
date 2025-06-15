@@ -1,10 +1,13 @@
 import axios from 'axios';
 import { getToken, refreshToken, logout } from './auth';
 
-// API 기본 설정 - content-type 기본값 제거
+// API 기본 설정 - Android WebView 호환성을 위해 상대 경로 사용
 const API = axios.create({
-  baseURL: 'http://localhost:8000/api/v1',
-  timeout: 20000 // 20초로 증가하여 안정적인 응답 대기
+  baseURL: '/api/v1',
+  timeout: 10000, // 10초 타임아웃
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
 // 요청 인터셉터 - 인증 토큰 추가

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Alert, ListGroup, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import MobileHeader from '../../components/MobileHeader';
-import { getCurrentUser, getToken } from '../../../utils/auth';
+import { getCurrentUser } from '../../../utils/auth';
+import API from '../../../utils/api';
 
 const MyReservations = () => {
   const [tournaments, setTournaments] = useState([]);
@@ -21,34 +22,14 @@ const MyReservations = () => {
         throw new Error('사용자 정보가 없습니다.');
       }
 
-      // 직접 fetch API 사용
-      const token = getToken();
-      if (!token) {
-        throw new Error('인증 토큰이 없습니다.');
-      }
-
-      const response = await fetch(
-        `http://localhost:8000/api/v1/seats/tickets/user_stats/?user_id=${currentUser.id}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('UNAUTHORIZED');
-        } else if (response.status === 404) {
-          throw new Error('NOT_FOUND');
-        } else {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-      }
-
-      const data = await response.json();
+      console.log(`사용자 예약 정보 조회 시작: ${currentUser.id}`);
+      console.log('API 기본 URL:', API.defaults.baseURL);
+      
+      // API 유틸리티 사용하여 상대 경로로 호출
+      const response = await API.get(`/seats/tickets/user_stats/?user_id=${currentUser.id}`);
+      console.log('사용자 예약 정보 응답 성공:', response.data);
+      
+      const data = response.data;
       
       // 토너먼트 정보를 tournaments 상태로 설정
       const tournamentStats = data.tournament_stats || [];
@@ -76,18 +57,45 @@ const MyReservations = () => {
       setIsLoaded(true);
 
     } catch (err) {
-      console.error('예약 정보 조회 오류:', err);
-      
-      if (err.message === 'UNAUTHORIZED') {
-        setError('인증이 필요합니다. 다시 로그인해주세요.');
-        navigate('/mobile/login');
-      } else if (err.message === 'NOT_FOUND') {
-        setError('사용자 정보를 찾을 수 없습니다.');
-      } else if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        setError('네트워크 연결을 확인해주세요.');
-      } else {
-        setError('예약 정보를 불러오는 중 오류가 발생했습니다.');
+      // 오류 객체를 문자열로 안전하게 변환
+      let errorDetails = '';
+      try {
+        errorDetails = JSON.stringify({
+          message: err.message,
+          status: err.response?.status,
+          statusText: err.response?.statusText,
+          data: err.response?.data,
+          code: err.code,
+          name: err.name
+        }, null, 2);
+      } catch (stringifyError) {
+        errorDetails = `오류 직렬화 실패: ${err.toString()}`;
       }
+      
+      console.error('예약 정보 조회 오류 상세:', errorDetails);
+      console.error('원본 오류 객체:', err);
+      
+      // 사용자에게 표시할 오류 메시지 결정
+      let userErrorMessage = '';
+      
+      if (err.response?.status === 401) {
+        userErrorMessage = '인증이 필요합니다. 다시 로그인해주세요.';
+        navigate('/mobile/login');
+      } else if (err.response?.status === 403) {
+        userErrorMessage = '접근 권한이 없습니다.';
+      } else if (err.response?.status === 404) {
+        userErrorMessage = '사용자 정보를 찾을 수 없습니다.';
+      } else if (err.code === 'NETWORK_ERROR' || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch')) {
+        userErrorMessage = '네트워크 연결을 확인해주세요. 서버에 연결할 수 없습니다.';
+      } else if (err.response?.data?.detail) {
+        userErrorMessage = err.response.data.detail;
+      } else if (err.message) {
+        userErrorMessage = err.message;
+      } else {
+        userErrorMessage = '예약 정보를 불러오는 중 알 수 없는 오류가 발생했습니다.';
+      }
+      
+      setError(userErrorMessage);
       setIsLoaded(true);
     }
   };
@@ -100,6 +108,19 @@ const MyReservations = () => {
     }
     fetchReservations();
   }, []);
+
+  // Android WebView 뒤로가기 버튼 처리
+  useEffect(() => {
+    const handlePopState = (event) => {
+      console.log('Android 뒤로가기 버튼 감지');
+      navigate(-1);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [navigate]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -122,8 +143,11 @@ const MyReservations = () => {
   };
 
   return (
-    <div className="asl-mobile-container">
-      <MobileHeader title="내 예약" canGoBack />
+    <div className="asl-mobile-container" style={{ 
+      WebkitOverflowScrolling: 'touch',
+      overflowY: 'auto'
+    }}>
+      <MobileHeader title="내 예약" backButton />
       <Container className="asl-mobile-content">
         {!isLoaded && !error && (
           <div className="text-center py-4">

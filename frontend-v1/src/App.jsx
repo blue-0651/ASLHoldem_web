@@ -108,6 +108,9 @@ function App() {
         <Route path="/mobile/advertisement" element={<AslAd />} />
         <Route path="/mobile/asl-ad" element={<AslAd />} />
 
+        {/* 모바일 회원가입 - NavigationLayout 없이 독립적으로 실행 */}
+        <Route path="/mobile/signup" element={<MobileSignup />} />
+
         {/* 모바일 라우트 */}
         <Route path="/mobile" element={<NavigationLayout />}>
           <Route path="login" element={<MobileLogin />} />
@@ -136,17 +139,6 @@ function App() {
           <Route index element={<Navigate to="/mobile/advertisement" replace />} />
           <Route path="*" element={<Navigate to="/mobile/advertisement" replace />} />
         </Route>
-
-        {/* 모바일 회원가입 */}
-        <Route path="/mobile/signup" element={<MobileSignup />} />
-
-        {/* 일반 사용자 라우트 */}
-        <Route path="/mobile/common/tournaments-list" element={<TournamentsList />} />
-        <Route path="/mobile/user/myreservations" element={<MyReservations />} />
-        <Route path="/mobile/common/settings" element={<Settings />} />
-        
-        {/* 기존 경로 리다이렉트 */}
-        <Route path="/mobile/common/reservations" element={<Navigate to="/mobile/user/myreservations" replace />} />
 
         {/* 매장 검색 관련 라우트 */}
         <Route path="/mobile/common/store-search" element={<StoreSearchPage />} />
