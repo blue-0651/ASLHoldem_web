@@ -424,9 +424,32 @@ const UserInfoPage = () => {
   // 수정 폼 입력 핸들러
   const handleEditFormChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    let processedValue = value;
+    
+    // 전화번호 입력 시 자동 포맷팅
+    if (name === 'phone' && type !== 'checkbox') {
+      // 숫자만 추출
+      const numbers = value.replace(/[^0-9]/g, '');
+      
+      // 11자리 숫자가 있으면 자동으로 하이픈 추가
+      if (numbers.length <= 11) {
+        if (numbers.length <= 3) {
+          processedValue = numbers;
+        } else if (numbers.length <= 7) {
+          processedValue = `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+        } else {
+          processedValue = `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+        }
+              } else {
+          // 11자리 초과 시 입력 무시 (기존 값 유지)
+          return;
+        }
+    }
+    
     setEditForm(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : processedValue
     }));
   };
 
@@ -448,25 +471,48 @@ const UserInfoPage = () => {
         return;
       }
 
-      // 입력값 검증
+      // 입력값 검증 강화
       if (!editForm.email || !editForm.email.includes('@')) {
         setEditError('유효한 이메일 주소를 입력해주세요.');
         return;
       }
 
-      console.log('사용자 정보 수정 요청:', { user_id: editingUser.id, ...editForm });
+      // 전화번호 필수 검증 (백엔드에서 required=True)
+      if (!editForm.phone || editForm.phone.trim() === '') {
+        setEditError('전화번호는 필수 입력 항목입니다.');
+        return;
+      }
 
-      const response = await API.post('/accounts/users/update_user/', {
+      // 전화번호 형식 검증
+      const phoneRegex = /^\d{3}-\d{4}-\d{4}$/;
+      if (!phoneRegex.test(editForm.phone.trim())) {
+        setEditError('전화번호는 010-1234-5678 형식으로 입력해주세요.');
+        return;
+      }
+
+      // 역할(role) 유효성 검증
+      const validRoles = ['ADMIN', 'STORE_OWNER', 'USER', 'GUEST'];
+      if (!editForm.role || !validRoles.includes(editForm.role)) {
+        setEditError('유효한 사용자 역할을 선택해주세요.');
+        return;
+      }
+
+      // 요청 데이터 준비
+      const requestData = {
         user_id: editingUser.id,
-        nickname: editForm.nickname.trim(),
+        nickname: editForm.nickname ? editForm.nickname.trim() : null,
         email: editForm.email.trim(),
         phone: editForm.phone.trim(),
         role: editForm.role,
         is_active: editForm.is_active,
         is_verified: editForm.is_verified,
-        first_name: editForm.first_name.trim(),
-        last_name: editForm.last_name.trim()
-      }, {
+        first_name: editForm.first_name ? editForm.first_name.trim() : '',
+        last_name: editForm.last_name ? editForm.last_name.trim() : ''
+      };
+
+      console.log('사용자 정보 수정 요청:', requestData);
+
+      const response = await API.post('/accounts/users/update_user/', requestData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -497,11 +543,41 @@ const UserInfoPage = () => {
 
     } catch (err) {
       console.error('❌ 사용자 정보 수정 오류:', err);
+      
+      // 더 자세한 오류 정보 로깅
       if (err.response) {
-        const errorMessage = err.response.data?.error || 
-                           err.response.data?.message || 
-                           err.response.data?.detail || 
-                           '알 수 없는 오류가 발생했습니다.';
+        console.error('응답 상태:', err.response.status);
+        console.error('응답 데이터:', err.response.data);
+        console.error('응답 헤더:', err.response.headers);
+        
+        let errorMessage = '알 수 없는 오류가 발생했습니다.';
+        
+        if (err.response.data) {
+          if (typeof err.response.data === 'string') {
+            errorMessage = err.response.data;
+          } else if (err.response.data.details) {
+            // 시리얼라이저 검증 오류 처리
+            const validationErrors = [];
+            Object.keys(err.response.data.details).forEach(field => {
+              const fieldErrors = err.response.data.details[field];
+              if (Array.isArray(fieldErrors)) {
+                fieldErrors.forEach(error => {
+                  validationErrors.push(`${field}: ${error}`);
+                });
+              } else {
+                validationErrors.push(`${field}: ${fieldErrors}`);
+              }
+            });
+            errorMessage = `입력 데이터 오류:\n${validationErrors.join('\n')}`;
+          } else if (err.response.data.error) {
+            errorMessage = err.response.data.error;
+          } else if (err.response.data.message) {
+            errorMessage = err.response.data.message;
+          } else if (err.response.data.detail) {
+            errorMessage = err.response.data.detail;
+          }
+        }
+        
         setEditError(`서버 오류 (${err.response.status}): ${errorMessage}`);
       } else if (err.request) {
         setEditError('서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.');
@@ -1086,7 +1162,7 @@ const UserInfoPage = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>이메일</Form.Label>
+                <Form.Label>이메일 <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="email"
                   name="email"
@@ -1094,35 +1170,47 @@ const UserInfoPage = () => {
                   onChange={handleEditFormChange}
                   placeholder="이메일을 입력하세요"
                   disabled={editLoading}
+                  required
                 />
+                <Form.Text className="text-muted">
+                  유효한 이메일 주소를 입력하세요
+                </Form.Text>
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>전화번호</Form.Label>
+                <Form.Label>전화번호 <span className="text-danger">*</span></Form.Label>
                 <Form.Control
                   type="text"
                   name="phone"
                   value={editForm.phone}
                   onChange={handleEditFormChange}
-                  placeholder="전화번호를 입력하세요"
+                  placeholder="010-1234-5678"
                   disabled={editLoading}
+                  required
                 />
+                <Form.Text className="text-muted">
+                  010-1234-5678 형식으로 입력하세요
+                </Form.Text>
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>역할</Form.Label>
+                <Form.Label>역할 <span className="text-danger">*</span></Form.Label>
                 <Form.Select
                   name="role"
                   value={editForm.role}
                   onChange={handleEditFormChange}
                   disabled={editLoading}
+                  required
                 >
                   <option value="">역할을 선택하세요</option>
                   <option value="ADMIN">관리자</option>
-                  <option value="STORE_MANAGER">매장관리자</option>
-                  <option value="GUEST">게스트</option>
+                  <option value="STORE_OWNER">매장관리자</option>
                   <option value="USER">일반사용자</option>
+                  <option value="GUEST">게스트</option>
                 </Form.Select>
+                <Form.Text className="text-muted">
+                  사용자의 시스템 역할을 선택하세요
+                </Form.Text>
               </Form.Group>
 
               <Row>

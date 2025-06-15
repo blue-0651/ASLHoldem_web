@@ -1441,7 +1441,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user_id\": 1,\n  \"nickname\": \"수정된닉네임\",\n  \"email\": \"updated@example.com\",\n  \"phone\": \"010-9876-5432\",\n  \"role\": \"USER\",\n  \"is_active\": true,\n  \"is_verified\": true,\n  \"first_name\": \"수정된이름\",\n  \"last_name\": \"수정된성\"\n}",
+              "raw": "{\n  \"user_id\": 1,\n  \"nickname\": \"수정된닉네임\",\n  \"email\": \"updated@example.com\",\n  \"phone\": \"010-9876-5432\",\n  \"role\": \"STORE_OWNER\",\n  \"is_active\": true,\n  \"is_verified\": true,\n  \"first_name\": \"수정된이름\",\n  \"last_name\": \"수정된성\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1462,7 +1462,7 @@
                 ""
               ]
             },
-            "description": "사용자 정보를 업데이트합니다.\n\n요청 본문:\n- user_id: 사용자 ID (필수)\n- nickname: 닉네임\n- email: 이메일 주소\n- phone: 전화번호\n- role: 사용자 역할 (ADMIN, STORE_OWNER, GUEST, USER)\n- is_active: 계정 활성화 여부\n- is_verified: 계정 인증 여부\n- first_name: 이름\n- last_name: 성\n\n응답:\n- 200: 성공적으로 사용자 정보 업데이트\n  - success: true\n  - message: 성공 메시지\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청\n- 404: 사용자를 찾을 수 없음\n- 500: 서버 내부 오류"
+            "description": "사용자 정보를 업데이트합니다.\n\n⚠️ 필수 검증 사항:\n- user_id: 사용자 ID (필수)\n- email: 유효한 이메일 주소 (필수, @ 포함)\n- phone: 전화번호 (필수, 010-1234-5678 형식)\n- role: 사용자 역할 (필수, ADMIN, STORE_OWNER, USER, GUEST 중 하나)\n\n선택 필드:\n- nickname: 닉네임 (선택사항, null 허용)\n- is_active: 계정 활성화 여부 (boolean, 기본값: true)\n- is_verified: 계정 인증 여부 (boolean, 기본값: false)\n- first_name: 이름 (선택사항)\n- last_name: 성 (선택사항)\n\n일반적인 400 오류 원인:\n1. phone 필드 누락 또는 잘못된 형식\n2. role 필드가 유효하지 않은 값\n3. email 필드 누락 또는 @ 기호 없음\n4. user_id 필드 누락\n\n응답:\n- 200: 성공적으로 사용자 정보 업데이트\n  - success: true\n  - message: 성공 메시지\n  - user: 업데이트된 사용자 정보\n- 400: 잘못된 요청 데이터\n  - success: false\n  - error: 오류 메시지\n  - details: 필드별 검증 오류 (시리얼라이저 오류)\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청\n- 404: 사용자를 찾을 수 없음\n- 500: 서버 내부 오류"
           },
           "response": []
         },

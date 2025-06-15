@@ -94,31 +94,6 @@ const menuItems = {
         }
       ]
     },
-
-    {
-      id: 'support',
-      title: 'Support',
-      type: 'group',
-      icon: 'icon-support',
-      children: [
-        {
-          id: 'sample-page',
-          title: 'Sample Page',
-          type: 'item',
-          url: '/sample-page',
-          classes: 'nav-item',
-          icon: 'feather icon-sidebar'
-        },
-        {
-          id: 'dash-analytics',
-          title: 'Dash Analytics',
-          type: 'item',
-          url: '/dash-analytics',
-          classes: 'nav-item',
-          icon: 'feather icon-bar-chart'
-        }
-      ]
-    }
   ]
 };
 
