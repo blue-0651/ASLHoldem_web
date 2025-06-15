@@ -333,6 +333,11 @@ class UserSerializer(serializers.ModelSerializer):
         user_permissions = validated_data.pop('user_permissions', None)
         password = validated_data.pop('password', None)
         is_store_owner = validated_data.pop('is_store_owner', False)
+        
+        # username을 phone 값으로 설정 (unique constraint 해결)
+        if 'phone' in validated_data and not validated_data.get('username'):
+            validated_data['username'] = validated_data['phone']
+        
         user = User.objects.create(**validated_data)
         user.is_store_owner = is_store_owner
         if password:
@@ -582,6 +587,45 @@ class UserViewSet(viewsets.ViewSet):
             api_logger.error(f"전화번호 확인 중 오류: {str(e)}")
             return Response({
                 'error': f'전화번호 확인 중 오류가 발생했습니다: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], url_path='check_nickname')
+    def check_nickname(self, request):
+        """
+        닉네임 중복 확인 API
+        """
+        try:
+            nickname = request.GET.get('nickname')
+            
+            if not nickname:
+                return Response({
+                    'error': '닉네임이 필요합니다.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 닉네임 길이 검증
+            if len(nickname.strip()) < 2:
+                return Response({
+                    'error': '닉네임은 2자 이상이어야 합니다.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if len(nickname.strip()) > 20:
+                return Response({
+                    'error': '닉네임은 20자 이하여야 합니다.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # 닉네임 존재 여부 확인
+            exists = User.objects.filter(nickname=nickname.strip()).exists()
+            
+            return Response({
+                'exists': exists,
+                'is_available': not exists,  # 프론트엔드 호환성을 위해 추가
+                'nickname': nickname.strip()
+            })
+            
+        except Exception as e:
+            api_logger.error(f"닉네임 확인 중 오류: {str(e)}")
+            return Response({
+                'error': f'닉네임 확인 중 오류가 발생했습니다: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['post'], url_path='create_guest_user')
