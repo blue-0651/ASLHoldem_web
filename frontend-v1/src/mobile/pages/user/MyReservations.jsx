@@ -109,18 +109,11 @@ const MyReservations = () => {
     fetchReservations();
   }, []);
 
-  // Android WebView 뒤로가기 버튼 처리
-  useEffect(() => {
-    const handlePopState = (event) => {
-      console.log('Android 뒤로가기 버튼 감지');
-      navigate(-1);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [navigate]);
+  // 뒤로가기 버튼 클릭 시 사용자 대시보드로 이동
+  const handleBackClick = () => {
+    console.log('내 예약 페이지에서 뒤로가기 클릭');
+    navigate('/mobile/user/dashboard');
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -147,7 +140,7 @@ const MyReservations = () => {
       WebkitOverflowScrolling: 'touch',
       overflowY: 'auto'
     }}>
-      <MobileHeader title="내 예약" backButton />
+      <MobileHeader title="내 예약" backButton onBackClick={handleBackClick} />
       <Container className="asl-mobile-content">
         {!isLoaded && !error && (
           <div className="text-center py-4">
