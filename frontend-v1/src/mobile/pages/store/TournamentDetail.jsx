@@ -3,6 +3,7 @@ import { Container, Row, Col, Card, Button, Spinner, Alert, Badge, Modal } from 
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileHeader from '../../components/MobileHeader';
 import API from '../../../utils/api';
+import { getCurrentUser } from '../../../utils/auth';
 
 const TournamentDetail = () => {
   const [tournament, setTournament] = useState(null);
@@ -12,6 +13,8 @@ const TournamentDetail = () => {
   const [cancelling, setCancelling] = useState(false);
   const navigate = useNavigate();
   const { id } = useParams();
+  const currentUser = getCurrentUser();
+  const isStoreManager = currentUser?.user_type === 'store';
 
   useEffect(() => {
     fetchTournamentDetail();
@@ -20,14 +23,29 @@ const TournamentDetail = () => {
   const fetchTournamentDetail = async () => {
     try {
       setLoading(true);
-      console.log(`토너먼트 상세 정보 조회: ${id}`);
+      console.log(`토너먼트 상세 정보 조회: ${id}, 사용자 타입: ${currentUser?.user_type}`);
       
-      // 매장 관리자용 토너먼트 목록에서 해당 토너먼트 찾기
-      const response = await API.get('/store/tournaments/');
-      console.log('매장 토너먼트 목록 응답:', response.data);
+      let response;
+      let foundTournament;
       
-      // 해당 ID의 토너먼트 찾기
-      const foundTournament = response.data.find(t => t.id === parseInt(id));
+      if (isStoreManager) {
+        // 매장 관리자용 API 사용
+        response = await API.get('/store/tournaments/');
+        console.log('매장 토너먼트 목록 응답:', response.data);
+        foundTournament = response.data.find(t => t.id === parseInt(id));
+      } else {
+        // 일반 사용자용 API 사용
+        try {
+          response = await API.get('/tournaments/all_info/');
+          console.log('일반 토너먼트 목록 응답:', response.data);
+          foundTournament = response.data.find(t => t.id === parseInt(id));
+        } catch (apiError) {
+          // all_info API 실패 시 기본 tournaments API 시도
+          console.log('all_info API 실패, 기본 API 시도');
+          response = await API.get('/tournaments/');
+          foundTournament = response.data.find(t => t.id === parseInt(id));
+        }
+      }
       
       if (foundTournament) {
         setTournament(foundTournament);
@@ -38,7 +56,7 @@ const TournamentDetail = () => {
     } catch (err) {
       console.error('토너먼트 상세 정보 조회 오류:', err);
       if (err.response?.status === 403) {
-        setError('매장 관리자 권한이 없습니다.');
+        setError('접근 권한이 없습니다.');
       } else if (err.response?.status === 401) {
         setError('로그인이 필요합니다.');
       } else {
