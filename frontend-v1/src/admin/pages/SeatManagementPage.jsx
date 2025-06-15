@@ -42,6 +42,23 @@ import { userAPI, tournamentAPI, storeAPI, seatTicketAPI } from '../../utils/api
 // third party
 import DataTable from 'react-data-table-component';
 
+// CSS 애니메이션 추가
+const pulseKeyframes = `
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
+`;
+
+// 스타일 태그 추가
+if (!document.getElementById('seat-management-styles')) {
+  const style = document.createElement('style');
+  style.id = 'seat-management-styles';
+  style.textContent = pulseKeyframes;
+  document.head.appendChild(style);
+}
+
 const SeatManagementPage = () => {
   // 탭 상태
   const [activeTab, setActiveTab] = useState('send');
@@ -65,14 +82,24 @@ const SeatManagementPage = () => {
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [selectedTournamentFilter, setSelectedTournamentFilter] = useState(''); // 토너먼트 필터용
-
   // 회수용 추가 상태
   const [userTickets, setUserTickets] = useState([]);
   const [selectedTickets, setSelectedTickets] = useState([]);
 
+  // 새로운 필터 및 정렬 상태 추가
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('all'); // today, week, month, all (기본값을 'all'로 변경)
+  const [sortBy, setSortBy] = useState('newest'); // newest, oldest, status
+  const [userFilter, setUserFilter] = useState('');
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
+
+  // 최근 처리한 항목 하이라이팅을 위한 상태
+  const [recentlyProcessedTickets, setRecentlyProcessedTickets] = useState([]);
+
   // API 호출 중복 방지를 위한 ref
   const hasFetchedData = useRef(false);
-
   // 초기 데이터 로드 (중복 호출 방지)
   useEffect(() => {
     if (!hasFetchedData.current) {
@@ -83,6 +110,69 @@ const SeatManagementPage = () => {
       fetchRecentTransactions();
     }
   }, []);
+
+  // 자동 새로고침을 위한 useEffect
+  useEffect(() => {
+    let interval;
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        fetchRecentTransactions();
+        setLastUpdateTime(new Date());
+      }, 10000); // 10초마다 자동 새로고침
+    }
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [autoRefresh, selectedTournamentFilter]);
+
+  // 필터링된 데이터 계산
+  const filteredTransactions = useMemo(() => {
+    let filtered = [...recentTransactions];
+
+    // 상태 필터
+    if (statusFilter) {
+      filtered = filtered.filter(transaction => transaction.status === statusFilter);
+    }
+
+    // 소스 필터
+    if (sourceFilter) {
+      filtered = filtered.filter(transaction => transaction.source === sourceFilter);
+    }
+
+    // 사용자 필터 (이름 또는 전화번호)
+    if (userFilter) {
+      filtered = filtered.filter(transaction => 
+        (transaction.user_name && transaction.user_name.toLowerCase().includes(userFilter.toLowerCase())) ||
+        (transaction.user_phone && transaction.user_phone.includes(userFilter))
+      );
+    }
+
+    // 날짜 필터
+    const now = new Date();
+    if (dateFilter === 'today') {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      filtered = filtered.filter(transaction => new Date(transaction.created_at) >= today);
+    } else if (dateFilter === 'week') {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(transaction => new Date(transaction.created_at) >= weekAgo);
+    } else if (dateFilter === 'month') {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(transaction => new Date(transaction.created_at) >= monthAgo);
+    }
+
+    // 정렬
+    if (sortBy === 'newest') {
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else if (sortBy === 'oldest') {
+      filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else if (sortBy === 'status') {
+      filtered.sort((a, b) => a.status.localeCompare(b.status));
+    }
+
+    return filtered;
+  }, [recentTransactions, statusFilter, sourceFilter, userFilter, dateFilter, sortBy]);
 
   // 토너먼트 목록 조회
   const fetchTournaments = async () => {
@@ -128,7 +218,7 @@ const SeatManagementPage = () => {
     }
   };
 
-  // 최근 발급된 SEAT권 조회
+  // 최근 발급된 SEAT권 조회 (모든 페이지 데이터 가져오기)
   const fetchRecentTransactions = async (tournamentFilter = null) => {
     setTransactionsLoading(true);
     try {
@@ -136,7 +226,7 @@ const SeatManagementPage = () => {
       console.log('📋 최근 발급된 SEAT권 조회 시작, 토너먼트 필터:', filterTournamentId || '전체');
       
       const params = {
-        page_size: 50,  // Django REST Framework pagination 파라미터
+        page_size: 50,  // 백엔드 최대 제한에 맞춤
         ordering: '-created_at'  // 최신순 정렬
       };
       
@@ -145,12 +235,39 @@ const SeatManagementPage = () => {
         params.tournament_id = filterTournamentId;
       }
       
-      const response = await seatTicketAPI.getRecentTransactions(params);
+      // 모든 페이지 데이터를 수집할 배열
+      let allTransactions = [];
+      let currentPage = 1;
+      let hasNextPage = true;
       
-      const transactionsData = response.data.results || response.data || [];
-      console.log('✅ 최근 발급된 SEAT권 조회 완료:', transactionsData.length, '개');
+      // 모든 페이지를 순회하며 데이터 수집
+      while (hasNextPage) {
+        const pageParams = { ...params, page: currentPage };
+        console.log(`📄 페이지 ${currentPage} 조회 중...`);
+        
+        const response = await seatTicketAPI.getRecentTransactions(pageParams);
+        const responseData = response.data;
+        
+        // 현재 페이지 데이터 추가
+        const pageResults = responseData.results || [];
+        allTransactions = [...allTransactions, ...pageResults];
+        
+        console.log(`✅ 페이지 ${currentPage} 완료: ${pageResults.length}개 (누적: ${allTransactions.length}개)`);
+        
+        // 다음 페이지 여부 확인
+        hasNextPage = !!responseData.next;
+        currentPage++;
+        
+        // 무한 루프 방지 (최대 20페이지)
+        if (currentPage > 20) {
+          console.warn('⚠️ 최대 페이지 수 제한으로 조회 중단');
+          break;
+        }
+      }
       
-      setRecentTransactions(transactionsData);
+      console.log('✅ 전체 SEAT권 조회 완료:', `${allTransactions.length}개 (${currentPage - 1}페이지)`);
+      setRecentTransactions(allTransactions);
+      
     } catch (error) {
       console.error('❌ 최근 발급된 SEAT권 조회 실패:', error);
       showAlert('warning', 'SEAT권 목록을 불러오는데 실패했습니다.');
@@ -264,10 +381,10 @@ const SeatManagementPage = () => {
 
     setConfirmModal(true);
   };
-
   // 확인 후 실행 (실제 API 호출)
   const confirmAction = async () => {
     setLoading(true);
+    const processedTicketIds = [];
 
     try {
       if (activeTab === 'send') {
@@ -283,10 +400,15 @@ const SeatManagementPage = () => {
 
         console.log('🎫 SEAT권 전송 요청:', grantData);
         const response = await seatTicketAPI.grantTickets(grantData);
-                  console.log('✅ SEAT권 전송 성공:', response.data);
+        console.log('✅ SEAT권 전송 성공:', response.data);
 
-        // 성공 시 SEAT권 목록 다시 로드
-        fetchRecentTransactions();
+        // 새로 생성된 티켓 ID들을 추적 (응답에서 받아온다고 가정)
+        if (response.data.tickets) {
+          processedTicketIds.push(...response.data.tickets.map(t => t.ticket_id));
+        } else if (response.data.ticket_id) {
+          processedTicketIds.push(response.data.ticket_id);
+        }
+
         showAlert('success', `SEAT권 ${quantity}개가 성공적으로 전송되었습니다.`);
 
       } else if (activeTab === 'retrieve') {
@@ -338,13 +460,35 @@ const SeatManagementPage = () => {
         const response = await seatTicketAPI.bulkOperation(retrieveData);
         console.log('✅ SEAT권 회수 성공:', response.data);
 
-        // 성공 시 SEAT권 목록 다시 로드
-        fetchRecentTransactions();
+        // 회수된 티켓 ID들 추적
+        processedTicketIds.push(...selectedTickets);
+
         showAlert('success', `SEAT권 ${selectedTickets.length}개가 성공적으로 회수되었습니다.`);
 
         // 사용자 SEAT권 목록 다시 로드
         loadUserTickets(selectedUser.id);
       }
+
+      // 최근 처리된 티켓들을 상태에 저장 (5분간 하이라이트)
+      setRecentlyProcessedTickets(prev => [
+        ...prev,
+        ...processedTicketIds.map(id => ({
+          id,
+          timestamp: Date.now(),
+          action: activeTab
+        }))
+      ]);
+
+      // 5분 후 하이라이트 제거
+      setTimeout(() => {
+        setRecentlyProcessedTickets(prev => 
+          prev.filter(item => Date.now() - item.timestamp < 300000) // 5분
+        );
+      }, 300000);
+
+      // SEAT권 목록 새로고침
+      await fetchRecentTransactions();
+      setLastUpdateTime(new Date());
 
       // 폼 초기화
       setSelectedTournament('');
@@ -405,12 +549,35 @@ const SeatManagementPage = () => {
     const formattedPhone = formatPhoneNumber(e.target.value);
     setSearchPhone(formattedPhone);
   };
-
   // 토너먼트 필터 변경 핸들러
   const handleTournamentFilterChange = (e) => {
     const newFilter = e.target.value;
     setSelectedTournamentFilter(newFilter);
     fetchRecentTransactions(newFilter);
+  };
+
+  // 필터 초기화 함수
+  const resetFilters = () => {
+    setStatusFilter('');
+    setSourceFilter('');
+    setDateFilter('all'); // 'today' → 'all'로 변경
+    setSortBy('newest');
+    setUserFilter('');
+    setSelectedTournamentFilter('');
+    fetchRecentTransactions();
+  };
+
+  // 최근 처리된 항목인지 확인하는 함수
+  const isRecentlyProcessed = (ticketId) => {
+    return recentlyProcessedTickets.some(item => 
+      item.id === ticketId && Date.now() - item.timestamp < 300000 // 5분
+    );
+  };
+
+  // 최근 처리된 항목의 액션 타입 반환
+  const getRecentActionType = (ticketId) => {
+    const item = recentlyProcessedTickets.find(item => item.id === ticketId);
+    return item ? item.action : null;
   };
 
   // 상태 배지
@@ -450,6 +617,68 @@ const SeatManagementPage = () => {
         ? prev.filter(id => id !== ticketId)
         : [...prev, ticketId]
     );
+  };
+
+  // 전체 선택/해제
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      const allTicketIds = userTickets.map(ticket => ticket.ticket_id);
+      setSelectedTickets(allTicketIds);
+    } else {
+      setSelectedTickets([]);
+    }
+  };
+
+  // 활성 상태만 선택
+  const handleSelectActiveOnly = () => {
+    const activeTicketIds = userTickets
+      .filter(ticket => ticket.status === 'ACTIVE')
+      .map(ticket => ticket.ticket_id);
+    setSelectedTickets(activeTicketIds);
+  };
+
+  // 토너먼트별 선택
+  const handleSelectByTournament = (tournamentName) => {
+    const tournamentTicketIds = userTickets
+      .filter(ticket => ticket.tournament_name === tournamentName)
+      .map(ticket => ticket.ticket_id);
+    
+    // 이미 해당 토너먼트의 모든 티켓이 선택되어 있다면 해제, 아니면 선택
+    const allSelected = tournamentTicketIds.every(id => selectedTickets.includes(id));
+    
+    if (allSelected) {
+      setSelectedTickets(prev => prev.filter(id => !tournamentTicketIds.includes(id)));
+    } else {
+      setSelectedTickets(prev => [...new Set([...prev, ...tournamentTicketIds])]);
+    }
+  };
+
+  // 선택 상태 계산
+  const getSelectionStatus = () => {
+    const totalTickets = userTickets.length;
+    const selectedCount = selectedTickets.length;
+    const activeTickets = userTickets.filter(ticket => ticket.status === 'ACTIVE').length;
+    
+    return {
+      total: totalTickets,
+      selected: selectedCount,
+      active: activeTickets,
+      isAllSelected: selectedCount === totalTickets && totalTickets > 0,
+      isPartialSelected: selectedCount > 0 && selectedCount < totalTickets
+    };
+  };
+
+  // 토너먼트별 그룹화
+  const getGroupedTickets = () => {
+    const grouped = {};
+    userTickets.forEach(ticket => {
+      const tournamentName = ticket.tournament_name || '토너먼트 정보 없음';
+      if (!grouped[tournamentName]) {
+        grouped[tournamentName] = [];
+      }
+      grouped[tournamentName].push(ticket);
+    });
+    return grouped;
   };
 
   // 거래 타입 한국어 매핑
@@ -511,12 +740,11 @@ const SeatManagementPage = () => {
           <div style={{ fontSize: '10px', color: '#666' }}>{row.user_phone || ''}</div>
         </div>
       )
-    },
-    {
+    },    {
       name: <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#721c24' }}>상태</span>,
       selector: (row) => row.status_display || row.status,
       center: true,
-      width: '120px',
+      width: '140px',
       cell: (row) => {
         const statusStyleMap = {
           'ACTIVE': { 
@@ -551,23 +779,45 @@ const SeatManagementPage = () => {
           color: 'white', 
           text: row.status_display || row.status 
         };
+
+        const isRecent = isRecentlyProcessed(row.ticket_id);
+        const actionType = getRecentActionType(row.ticket_id);
         
         return (
-          <span 
-            className="badge"
-            style={{
-              backgroundColor: statusInfo.backgroundColor,
-              color: statusInfo.color,
-              fontSize: '11px',
-              fontWeight: '500',
-              padding: '6px 12px',
-              borderRadius: '15px',
-              border: 'none',
-              textTransform: 'none'
-            }}
-          >
-            {statusInfo.text}
-          </span>
+          <div className="d-flex flex-column align-items-center">
+            <span 
+              className="badge"
+              style={{
+                backgroundColor: statusInfo.backgroundColor,
+                color: statusInfo.color,
+                fontSize: '11px',
+                fontWeight: '500',
+                padding: '6px 12px',
+                borderRadius: '15px',
+                border: 'none',
+                textTransform: 'none'
+              }}
+            >
+              {statusInfo.text}
+            </span>
+            {isRecent && (
+              <div 
+                className="mt-1"
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 'bold',
+                  color: actionType === 'send' ? '#28a745' : '#dc3545',
+                  backgroundColor: actionType === 'send' ? '#d4edda' : '#f8d7da',
+                  padding: '2px 6px',
+                  borderRadius: '8px',
+                  border: `1px solid ${actionType === 'send' ? '#28a745' : '#dc3545'}`,
+                  animation: 'pulse 2s infinite',
+                }}
+              >
+                방금 {actionType === 'send' ? '전송됨' : '회수됨'}
+              </div>
+            )}
+          </div>
         );
       }
     },
@@ -625,7 +875,7 @@ const SeatManagementPage = () => {
         </div>
       )
     }
-  ], []);
+  ], [isRecentlyProcessed, getRecentActionType]);
 
   // DataTable 커스텀 스타일 (StoreManagement.jsx 참고)
   const customStyles = {
@@ -1026,12 +1276,113 @@ const SeatManagementPage = () => {
                       <Row className="mt-4">
                         <Col md={12}>
                           <FormGroup>
-                            <Label>회수할 SEAT권 선택 *</Label>
-                            <div className="border rounded p-3" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <Label className="mb-0">회수할 SEAT권 선택 *</Label>
+                              <div className="d-flex align-items-center gap-2">
+                                {(() => {
+                                  const status = getSelectionStatus();
+                                  return (
+                                    <div className="d-flex align-items-center gap-3">
+                                      <small className="text-info fw-bold">
+                                        선택됨: {status.selected}/{status.total}개
+                                        {status.active < status.total && (
+                                          <span className="text-muted ms-1">(활성: {status.active}개)</span>
+                                        )}
+                                      </small>
+                                      
+                                      {/* 빠른 선택 버튼들 */}
+                                      <div className="btn-group" role="group">
+                                        <Button
+                                          color="outline-primary"
+                                          size="sm"
+                                          onClick={() => handleSelectAll(true)}
+                                          style={{ fontSize: '11px', padding: '4px 8px' }}
+                                        >
+                                          모두 선택
+                                        </Button>
+                                        <Button
+                                          color="outline-secondary"
+                                          size="sm"
+                                          onClick={() => handleSelectAll(false)}
+                                          style={{ fontSize: '11px', padding: '4px 8px' }}
+                                        >
+                                          모두 해제
+                                        </Button>
+                                        {status.active > 0 && (
+                                          <Button
+                                            color="outline-success"
+                                            size="sm"
+                                            onClick={handleSelectActiveOnly}
+                                            style={{ fontSize: '11px', padding: '4px 8px' }}
+                                          >
+                                            활성만 선택
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+
+                            {/* 토너먼트별 그룹 선택 버튼들 */}
+                            {(() => {
+                              const groupedTickets = getGroupedTickets();
+                              const tournamentNames = Object.keys(groupedTickets);
+                              
+                              return tournamentNames.length > 1 && (
+                                <div className="mb-3 p-2 bg-light border rounded">
+                                  <small className="text-muted d-block mb-2">토너먼트별 선택:</small>
+                                  <div className="d-flex flex-wrap gap-1">
+                                    {tournamentNames.map(tournamentName => {
+                                      const tournamentTickets = groupedTickets[tournamentName];
+                                      const tournamentTicketIds = tournamentTickets.map(t => t.ticket_id);
+                                      const allSelected = tournamentTicketIds.every(id => selectedTickets.includes(id));
+                                      const someSelected = tournamentTicketIds.some(id => selectedTickets.includes(id));
+                                      
+                                      return (
+                                        <Button
+                                          key={tournamentName}
+                                          color={allSelected ? "success" : someSelected ? "warning" : "outline-info"}
+                                          size="sm"
+                                          onClick={() => handleSelectByTournament(tournamentName)}
+                                          style={{ fontSize: '10px', padding: '2px 6px' }}
+                                          title={`${tournamentName} (${tournamentTickets.length}개)`}
+                                        >
+                                          {tournamentName.length > 20 ? 
+                                            `${tournamentName.substring(0, 20)}...` : 
+                                            tournamentName
+                                          } ({tournamentTickets.length})
+                                          {allSelected && ' ✓'}
+                                          {someSelected && !allSelected && ' ○'}
+                                        </Button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            <div className="border rounded p-3" style={{ maxHeight: '350px', overflowY: 'auto' }}>
                               <Table responsive size="sm" className="mb-0">
-                                <thead>
+                                <thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa', zIndex: 1 }}>
                                   <tr>
-                                    <th width="50">선택</th>
+                                    <th width="50" className="text-center">
+                                      {(() => {
+                                        const status = getSelectionStatus();
+                                        return (
+                                          <Input
+                                            type="checkbox"
+                                            checked={status.isAllSelected}
+                                            onChange={(e) => handleSelectAll(e.target.checked)}
+                                            ref={(input) => {
+                                              if (input) input.indeterminate = status.isPartialSelected;
+                                            }}
+                                            title={status.isAllSelected ? "모두 해제" : "모두 선택"}
+                                          />
+                                        );
+                                      })()}
+                                    </th>
                                     <th>SEAT권 ID</th>
                                     <th>토너먼트</th>
                                     <th>상태</th>
@@ -1039,33 +1390,103 @@ const SeatManagementPage = () => {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {userTickets.map(ticket => (
-                                    <tr key={ticket.id}>
-                                      <td>
-                                        <Input
-                                          type="checkbox"
-                                          checked={selectedTickets.includes(ticket.ticket_id)}
-                                          onChange={() => toggleTicketSelection(ticket.ticket_id)}
-                                        />
-                                      </td>
-                                      <td>
-                                        <span className="text-monospace">
-                                          {ticket.ticket_id}
-                                        </span>
-                                      </td>
-                                      <td>{ticket.tournament_name || '토너먼트 정보 없음'}</td>
-                                      <td>{getStatusBadge(ticket.status)}</td>
-                                      <td>
-                                        {new Date(ticket.created_at).toLocaleDateString()}
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {userTickets.map((ticket, index) => {
+                                    const isSelected = selectedTickets.includes(ticket.ticket_id);
+                                    return (
+                                      <tr 
+                                        key={ticket.id}
+                                        className={isSelected ? 'table-primary' : ''}
+                                        style={{
+                                          backgroundColor: isSelected ? '#e3f2fd' : 'transparent',
+                                          cursor: 'pointer'
+                                        }}
+                                        onClick={() => toggleTicketSelection(ticket.ticket_id)}
+                                      >
+                                        <td className="text-center">
+                                          <Input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => toggleTicketSelection(ticket.ticket_id)}
+                                            onClick={(e) => e.stopPropagation()}
+                                          />
+                                        </td>
+                                        <td>
+                                          <span className="text-monospace" style={{ fontSize: '11px' }}>
+                                            {ticket.ticket_id ? ticket.ticket_id.slice(-8) : '정보없음'}
+                                          </span>
+                                        </td>
+                                        <td style={{ fontSize: '12px' }}>
+                                          {ticket.tournament_name || '토너먼트 정보 없음'}
+                                        </td>
+                                        <td>{getStatusBadge(ticket.status)}</td>
+                                        <td style={{ fontSize: '11px' }}>
+                                          <div>{new Date(ticket.created_at).toLocaleDateString('ko-KR')}</div>
+                                          <div className="text-muted" style={{ fontSize: '10px' }}>
+                                            {new Date(ticket.created_at).toLocaleTimeString('ko-KR', { 
+                                              hour: '2-digit', 
+                                              minute: '2-digit' 
+                                            })}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
                                 </tbody>
                               </Table>
                             </div>
-                            <small className="text-muted mt-2 d-block">
-                              선택된 SEAT권: {selectedTickets.length}개
-                            </small>
+                            
+                            {/* 선택 상태 요약 */}
+                            <div className="mt-3 p-2 bg-light border rounded">
+                              <div className="row">
+                                <div className="col-md-6">
+                                  {(() => {
+                                    const status = getSelectionStatus();
+                                    return (
+                                      <small className="text-muted">
+                                        <strong className="text-primary">선택된 SEAT권: {status.selected}개</strong>
+                                        {status.selected > 0 && (
+                                          <span className="ms-2">
+                                            ({((status.selected / status.total) * 100).toFixed(0)}%)
+                                          </span>
+                                        )}
+                                      </small>
+                                    );
+                                  })()}
+                                </div>
+                                <div className="col-md-6 text-end">
+                                  <small className="text-muted">
+                                    전체: {userTickets.length}개 | 
+                                    활성: {userTickets.filter(t => t.status === 'ACTIVE').length}개 |
+                                    사용됨: {userTickets.filter(t => t.status === 'USED').length}개
+                                  </small>
+                                </div>
+                              </div>
+                              
+                              {selectedTickets.length > 0 && (
+                                <div className="mt-2">
+                                  <small className="text-success">
+                                    <strong>선택된 SEAT권 ID:</strong> 
+                                    <div className="mt-1" style={{ 
+                                      maxHeight: '60px', 
+                                      overflowY: 'auto',
+                                      fontSize: '10px',
+                                      fontFamily: 'monospace',
+                                      backgroundColor: 'white',
+                                      padding: '8px',
+                                      border: '1px solid #dee2e6',
+                                      borderRadius: '4px'
+                                    }}>
+                                      {selectedTickets.map((ticketId, index) => (
+                                        <span key={ticketId}>
+                                          {ticketId.slice(-8)}
+                                          {index < selectedTickets.length - 1 && ', '}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </small>
+                                </div>
+                              )}
+                            </div>
                           </FormGroup>
                         </Col>
                       </Row>
@@ -1123,36 +1544,24 @@ const SeatManagementPage = () => {
             </CardBody>
           </Card>
         </Col>
-      </Row>
-
-      {/* 최근 거래 내역 */}
+      </Row>      {/* 최근 거래 내역 - 개선된 버전 */}
       <Row>
         <Col md={12}>
-          <Card className="form-section" style={{ height: '750px', display: 'flex', flexDirection: 'column' }}>
-            <CardHeader style={{ flexShrink: 0 }}>
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <CardTitle tag="h5" className="mb-0">최근 발급된 SEAT권</CardTitle>
-                <div className="d-flex align-items-center gap-3">
-                  {/* 토너먼트 필터 */}
-                  <div className="d-flex align-items-center">
-                    <Label className="me-2 mb-0" style={{ fontSize: '14px', fontWeight: '500' }}>토너먼트:</Label>
-                    <Input
-                      type="select"
-                      value={selectedTournamentFilter}
-                      onChange={handleTournamentFilterChange}
-                      style={{ width: '200px', fontSize: '13px' }}
-                      disabled={transactionsLoading}
-                    >
-                      <option value="">전체 토너먼트</option>
-                      {tournaments.map(tournament => (
-                        <option key={tournament.id} value={tournament.id}>
-                          {tournament.name}
-                        </option>
-                      ))}
-                    </Input>
-                  </div>
-                  
-                  {/* 새로고침 버튼 */}
+          <Card className="form-section" style={{ minHeight: '900px', display: 'flex', flexDirection: 'column' }}>
+            <CardHeader style={{ flexShrink: 0, paddingBottom: '1rem' }}>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <CardTitle tag="h5" className="mb-0">
+                  최근 발급된 SEAT권
+                  {autoRefresh && (
+                    <Badge color="success" className="ms-2" style={{ fontSize: '10px' }}>
+                      자동 새로고침 ON
+                    </Badge>
+                  )}
+                </CardTitle>
+                <div className="d-flex align-items-center gap-2">
+                  <small className="text-muted">
+                    마지막 업데이트: {lastUpdateTime.toLocaleTimeString()}
+                  </small>
                   <Button 
                     color="outline-primary" 
                     size="sm"
@@ -1160,20 +1569,138 @@ const SeatManagementPage = () => {
                     disabled={transactionsLoading}
                   >
                     {transactionsLoading ? (
-                      <>
-                        <Spinner size="sm" className="me-2" />
-                        새로고침 중...
-                      </>
+                      <Spinner size="sm" />
                     ) : (
-                      <>
-                        <RotateCcw size={14} className="me-2" />
-                        새로고침
-                      </>
+                      <RotateCcw size={14} />
                     )}
+                  </Button>
+                  <Button
+                    color={autoRefresh ? "success" : "outline-secondary"}
+                    size="sm"
+                    onClick={() => setAutoRefresh(!autoRefresh)}
+                  >
+                    자동새로고침 {autoRefresh ? 'ON' : 'OFF'}
                   </Button>
                 </div>
               </div>
-              <div className="d-flex justify-content-between align-items-center">
+
+              {/* 고급 필터 섹션 */}
+              <div className="filter-section border rounded p-3 bg-light">
+                <Row className="g-2">
+                  <Col md={2}>
+                    <Label className="form-label" style={{ fontSize: '12px', fontWeight: '600' }}>토너먼트</Label>
+                    <Input
+                      type="select"
+                      value={selectedTournamentFilter}
+                      onChange={handleTournamentFilterChange}
+                      style={{ fontSize: '12px' }}
+                    >
+                      <option value="">전체</option>
+                      {tournaments.map(tournament => (
+                        <option key={tournament.id} value={tournament.id}>
+                          {tournament.name}
+                        </option>
+                      ))}
+                    </Input>
+                  </Col>
+                  
+                  <Col md={1}>
+                    <Label className="form-label" style={{ fontSize: '12px', fontWeight: '600' }}>상태</Label>
+                    <Input
+                      type="select"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      style={{ fontSize: '12px' }}
+                    >
+                      <option value="">전체</option>
+                      <option value="ACTIVE">활성</option>
+                      <option value="USED">사용됨</option>
+                      <option value="EXPIRED">만료됨</option>
+                      <option value="CANCELLED">회수됨</option>
+                    </Input>
+                  </Col>
+
+                  <Col md={1}>
+                    <Label className="form-label" style={{ fontSize: '12px', fontWeight: '600' }}>발급방법</Label>
+                    <Input
+                      type="select"
+                      value={sourceFilter}
+                      onChange={(e) => setSourceFilter(e.target.value)}
+                      style={{ fontSize: '12px' }}
+                    >
+                      <option value="">전체</option>
+                      <option value="ADMIN">관리자</option>
+                      <option value="PURCHASE">구매</option>
+                      <option value="REWARD">보상</option>
+                      <option value="EVENT">이벤트</option>
+                    </Input>
+                  </Col>
+
+                  <Col md={1}>
+                    <Label className="form-label" style={{ fontSize: '12px', fontWeight: '600' }}>기간</Label>
+                    <Input
+                      type="select"
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      style={{ fontSize: '12px' }}
+                    >
+                      <option value="today">오늘</option>
+                      <option value="week">1주일</option>
+                      <option value="month">1개월</option>
+                      <option value="all">전체</option>
+                    </Input>
+                  </Col>
+
+                  <Col md={1}>
+                    <Label className="form-label" style={{ fontSize: '12px', fontWeight: '600' }}>정렬</Label>
+                    <Input
+                      type="select"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      style={{ fontSize: '12px' }}
+                    >
+                      <option value="newest">최신순</option>
+                      <option value="oldest">오래된순</option>
+                      <option value="status">상태순</option>
+                    </Input>
+                  </Col>
+
+                  <Col md={2}>
+                    <Label className="form-label" style={{ fontSize: '12px', fontWeight: '600' }}>사용자 검색</Label>
+                    <Input
+                      type="text"
+                      placeholder="이름 또는 전화번호"
+                      value={userFilter}
+                      onChange={(e) => setUserFilter(e.target.value)}
+                      style={{ fontSize: '12px' }}
+                    />
+                  </Col>
+
+                  <Col md={2}>
+                    <Label className="form-label" style={{ fontSize: '12px', fontWeight: '600' }}>&nbsp;</Label>
+                    <div className="d-flex gap-1">
+                      <Button
+                        color="outline-secondary"
+                        size="sm"
+                        onClick={resetFilters}
+                        style={{ fontSize: '11px' }}
+                      >
+                        필터 초기화
+                      </Button>
+                    </div>
+                  </Col>
+
+                  <Col md={2}>
+                    <Label className="form-label" style={{ fontSize: '12px', fontWeight: '600' }}>
+                      필터링 결과: {filteredTransactions.length}개
+                    </Label>
+                    <div style={{ fontSize: '11px', color: '#666' }}>
+                      전체: {recentTransactions.length}개
+                    </div>                  </Col>
+                </Row>
+              </div>
+              
+              <div className="d-flex justify-content-between align-items-center mt-2">
                 <small className="text-muted">
                   최근 발급된 SEAT권의 상태와 정보를 확인할 수 있습니다.
                   {selectedTournamentFilter && (
@@ -1199,8 +1726,7 @@ const SeatManagementPage = () => {
                   <Spinner animation="border" variant="primary" />
                   <p className="mt-3">SEAT권 목록을 불러오는 중입니다...</p>
                 </div>
-              ) : (
-                <div style={{ 
+              ) : (                <div style={{ 
                   flex: 1, 
                   display: 'flex', 
                   flexDirection: 'column',
@@ -1208,7 +1734,7 @@ const SeatManagementPage = () => {
                 }}>
                   <DataTable
                     columns={transactionColumns}
-                    data={recentTransactions}
+                    data={filteredTransactions}
                     customStyles={{
                       ...customStyles,
                       table: {
@@ -1222,25 +1748,54 @@ const SeatManagementPage = () => {
                           flexDirection: 'column',
                           height: '100%'
                         }
+                      },
+                      rows: {
+                        style: {
+                          minHeight: '55px',
+                          '&:nth-of-type(odd)': {
+                            backgroundColor: '#f8f9fa',
+                          },
+                        },
+                        highlightOnHoverStyle: {
+                          backgroundColor: '#e3f2fd',
+                          borderBottomColor: '#2196f3',
+                          borderRadius: '1px',
+                          outline: '1px solid #2196f3',
+                        },
                       }
-                    }}
+                    }}                    conditionalRowStyles={[
+                      {
+                        when: (row) => row && row.ticket_id && isRecentlyProcessed(row.ticket_id),
+                        style: (row) => ({
+                          backgroundColor: getRecentActionType(row.ticket_id) === 'send' ? '#d4edda' : '#f8d7da',
+                          color: getRecentActionType(row.ticket_id) === 'send' ? '#155724' : '#721c24',
+                          fontWeight: 'bold',
+                          border: `2px solid ${getRecentActionType(row.ticket_id) === 'send' ? '#28a745' : '#dc3545'}`,
+                          animation: 'pulse 2s infinite',
+                        }),
+                      },
+                    ]}
                     pagination
                     paginationPerPage={10}
-                    paginationRowsPerPageOptions={[5, 10, 15, 20]}
+                    paginationRowsPerPageOptions={[5, 10, 15, 20, 25, 50]}
                     noDataComponent={
                       <div className="text-center p-5">
                         <div className="mb-3">
                           <i className="fas fa-ticket-alt fa-3x text-muted"></i>
                         </div>
-                        <h5 className="text-muted">발급된 SEAT권이 없습니다.</h5>
-                        <p className="text-muted mb-0">SEAT권 전송을 시작해보세요.</p>
+                        <h5 className="text-muted">
+                          {recentTransactions.length > 0 ? '필터 조건에 맞는 SEAT권이 없습니다.' : '발급된 SEAT권이 없습니다.'}
+                        </h5>
+                        <p className="text-muted mb-0">
+                          {recentTransactions.length > 0 ? '다른 필터 조건을 시도해보세요.' : 'SEAT권 전송을 시작해보세요.'}
+                        </p>
                       </div>
                     }
                     highlightOnHover
                     striped
                     dense
                     fixedHeader
-                    fixedHeaderScrollHeight="calc(100vh - 400px)"
+                    fixedHeaderScrollHeight="600px"
                   />
                 </div>
               )}

@@ -569,12 +569,12 @@ class UserViewSet(viewsets.ViewSet):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             formatted_phone = f"{clean_phone[:3]}-{clean_phone[3:7]}-{clean_phone[7:]}"
-            
-            # 사용자 존재 여부 확인
+              # 사용자 존재 여부 확인
             exists = User.objects.filter(phone=formatted_phone).exists()
             
             return Response({
                 'exists': exists,
+                'is_available': not exists,  # 프론트엔드 호환성을 위해 추가
                 'phone': formatted_phone
             })
             
