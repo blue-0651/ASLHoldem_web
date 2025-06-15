@@ -4,7 +4,7 @@ import { getToken, refreshToken, logout } from './auth';
 // API 기본 설정 - content-type 기본값 제거
 const API = axios.create({
   baseURL: 'http://localhost:8000/api/v1',
-  timeout: 10000
+  timeout: 20000 // 20초로 증가하여 안정적인 응답 대기
 });
 
 // 요청 인터셉터 - 인증 토큰 추가
@@ -540,6 +540,12 @@ export const bannerAPI = {
     
     return API.get('/banners/', { params });
   }
+};
+
+// 시트 관련 API
+export const seatAPI = {
+  // 내 시트권 조회
+  getMySeats: () => API.get('/seats/my/'),
 };
 
 // API 모듈을 변수에 할당 후 내보내기
