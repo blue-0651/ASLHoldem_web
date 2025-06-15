@@ -6,7 +6,7 @@ import MobileHeader from '../../../components/MobileHeader';
 
 // 간소화된 API 인스턴스 생성
 const API = axios.create({
-  baseURL: '/api/v1'
+  baseURL: 'http://localhost:8000/api/v1'
 });
 
 // 요청/응답 로깅 인터셉터 추가
@@ -52,16 +52,49 @@ const Reservations = () => {
   const fetchReservations = async () => {
     try {
       setLoading(true);
-      const response = await API.get('/reservations/', {
+      const token = localStorage.getItem('asl_holdem_access_token');
+      
+      // 내 토너먼트 참가 정보 조회
+      const tournamentResponse = await API.get('/tournaments/my/', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
+          Authorization: `Bearer ${token}`
         }
       });
-      setReservations(response.data);
+      
+      // 내 시트권 정보 조회
+      const seatResponse = await API.get('/seats/tickets/', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      // 토너먼트 참가 정보를 예약 형태로 변환
+      const tournamentReservations = tournamentResponse.data.map(tournament => ({
+        id: tournament.id,
+        tournament: {
+          title: tournament.name,
+          start_date: tournament.start_time,
+          store: {
+            name: tournament.store_name || '매장 정보 없음'
+          }
+        },
+        status: tournament.status === 'UPCOMING' ? 'confirmed' : 
+                tournament.status === 'ACTIVE' ? 'confirmed' :
+                tournament.status === 'COMPLETED' ? 'completed' : 'cancelled',
+        reservation_code: `T${tournament.id}`
+      }));
+      
+      setReservations(tournamentReservations);
       setError(null);
     } catch (err) {
       console.error('예약 목록 가져오기 오류:', err);
-      setError('예약 목록을 불러오는 중 오류가 발생했습니다.');
+      if (err.response?.status === 404) {
+        setError('예약 정보를 찾을 수 없습니다.');
+      } else if (err.response?.status === 401) {
+        setError('로그인이 필요합니다.');
+      } else {
+        setError('예약 목록을 불러오는 중 오류가 발생했습니다.');
+      }
     } finally {
       setLoading(false);
     }
@@ -102,28 +135,30 @@ const Reservations = () => {
 
   // 예약 취소 처리
   const handleCancelReservation = async (reservationId) => {
-    if (!window.confirm('정말 이 예약을 취소하시겠습니까?')) {
+    if (!window.confirm('정말 이 토너먼트 참가를 취소하시겠습니까?')) {
       return;
     }
 
     try {
-      await API.post(`/reservations/${reservationId}/cancel/`, null, {
+      const token = localStorage.getItem('asl_holdem_access_token');
+      await API.delete(`/tournaments/${reservationId}/register/`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
+          Authorization: `Bearer ${token}`
         }
       });
 
       // 성공 후 목록 새로고침
       fetchReservations();
+      alert('토너먼트 참가가 취소되었습니다.');
     } catch (err) {
       console.error('예약 취소 오류:', err);
-      alert('예약 취소에 실패했습니다. 다시 시도해주세요.');
+      alert('토너먼트 참가 취소에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
-  // 예약 상세 보기로 이동
+  // 토너먼트 상세 보기로 이동
   const handleViewReservation = (reservationId) => {
-    navigate(`/mobile/common/reservation/${reservationId}`);
+    navigate(`/mobile/common/tournaments-list/${reservationId}`);
   };
 
   // 날짜 포맷팅

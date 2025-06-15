@@ -82,7 +82,7 @@ const TicketIssuePage = () => {
         const userId = tokenPayload.user_id;
         if (userId) {
           // 해당 사용자가 소유한 매장 조회
-          const storeResponse = await fetch(`http://localhost:8000/api/v1/stores/?owner_id=${userId}`, {
+          const storeResponse = await fetch(`http://192.168.0.185:8000/api/v1/stores/?owner_id=${userId}`, {
             headers: headers
           });
           
@@ -104,7 +104,7 @@ const TicketIssuePage = () => {
       // 토큰에서 사용자 정보를 가져올 수 없는 경우, 사용자 정보 API 호출
       const userPhone = localStorage.getItem('userPhone'); // 로그인 시 저장된 전화번호
       if (userPhone) {
-        const userResponse = await fetch('http://localhost:8000/api/v1/accounts/users/get_user/', {
+        const userResponse = await fetch('http://192.168.0.185:8000/api/v1/accounts/users/get_user/', {
           method: 'POST',
           headers: headers,
           body: JSON.stringify({ phone: userPhone })
@@ -115,7 +115,7 @@ const TicketIssuePage = () => {
           console.log('사용자 데이터:', userData);
           
           // 해당 사용자가 소유한 매장 조회
-          const storeResponse = await fetch(`http://localhost:8000/api/v1/stores/?owner_id=${userData.id}`, {
+          const storeResponse = await fetch(`http://192.168.0.185:8000/api/v1/stores/?owner_id=${userData.id}`, {
             headers: headers
           });
           
@@ -157,7 +157,7 @@ const TicketIssuePage = () => {
       }
       
       // 매장 관리자용 토너먼트 목록 API 사용 (선수참가 화면과 동일)
-      const response = await fetch('http://localhost:8000/api/v1/store/tournaments/', {
+      const response = await fetch('http://192.168.0.185:8000/api/v1/store/tournaments/', {
         headers: headers
       });
       
@@ -194,7 +194,7 @@ const TicketIssuePage = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch('http://localhost:8000/api/v1/tournaments/', {
+      const response = await fetch('http://192.168.0.185:8000/api/v1/tournaments/', {
         headers: headers
       });
       
@@ -221,7 +221,7 @@ const TicketIssuePage = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch('http://localhost:8000/api/v1/stores/', {
+      const response = await fetch('http://192.168.0.185:8000/api/v1/stores/', {
         headers: headers
       });
       

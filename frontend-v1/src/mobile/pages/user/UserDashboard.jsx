@@ -48,7 +48,7 @@ const UserDashboard = () => {
             </Card>
           </Col>
           <Col xs={6} className="mb-3">
-            <Card className="asl-action-card" onClick={() => navigate('/mobile/common/reservations')}>
+                            <Card className="asl-action-card" onClick={() => navigate('/mobile/user/myreservations')}>
               <Card.Body className="text-center">
                 <i className="fas fa-ticket-alt fa-2x mb-2"></i>
                 <Card.Title>내 예약</Card.Title>
