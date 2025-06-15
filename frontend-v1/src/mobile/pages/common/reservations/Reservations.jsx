@@ -93,7 +93,7 @@ const Reservations = () => {
       } else if (err.response?.status === 401) {
         setError('로그인이 필요합니다.');
       } else {
-        setError('예약 목록을 불러오는 중 오류가 발생했습니다.');
+      setError('예약 목록을 불러오는 중 오류가 발생했습니다.');
       }
     } finally {
       setLoading(false);
