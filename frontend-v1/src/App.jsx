@@ -30,6 +30,7 @@ import QRCode from './mobile/pages/user/QRCode';
 
 // 토너먼트 상세 페이지 추가
 import TournamentDetail from './mobile/pages/store/TournamentDetail';
+import MyReservations from './mobile/pages/user/MyReservations';
 
 // 모바일 레이아웃
 import NavigationLayout from './mobile/layouts/NavigationLayout';
@@ -121,10 +122,13 @@ function App() {
           <Route path="user" element={<ProtectedRoute userType="user" />}>
             <Route path="dashboard" element={<UserDashboard />} />
             <Route path="qr-code" element={<QRCode />} />
+            <Route path="reservations" element={<MyReservations />} />
+            <Route path="myreservations" element={<MyReservations />} />
           </Route>
           <Route path="common" element={<ProtectedRoute />}>
             <Route path="tournaments-list" element={<TournamentsList />} />
-            <Route path="reservations" element={<Reservations />} />
+            <Route path="tournament/:id" element={<TournamentDetail />} />
+            <Route path="reservations" element={<Navigate to="/mobile/user/myreservations" replace />} />
             <Route path="store-search" element={<StoreSearchPage />} />
             <Route path="store/:id" element={<StoreDetailPage />} />
             <Route path="settings" element={<Settings />} />
@@ -138,8 +142,11 @@ function App() {
 
         {/* 일반 사용자 라우트 */}
         <Route path="/mobile/common/tournaments-list" element={<TournamentsList />} />
-        <Route path="/mobile/common/reservations" element={<Reservations />} />
+        <Route path="/mobile/user/myreservations" element={<MyReservations />} />
         <Route path="/mobile/common/settings" element={<Settings />} />
+        
+        {/* 기존 경로 리다이렉트 */}
+        <Route path="/mobile/common/reservations" element={<Navigate to="/mobile/user/myreservations" replace />} />
 
         {/* 매장 검색 관련 라우트 */}
         <Route path="/mobile/common/store-search" element={<StoreSearchPage />} />
