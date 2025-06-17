@@ -1,0 +1,189 @@
+// ------------------------------------------------------------------
+// React-DatePicker custom theme for ASL Holdem
+// • 프로젝트 공통 변수와 일관된 디자인 적용
+// • 유지보수성을 위해 색상과 여백은 변수화
+// ------------------------------------------------------------------
+
+// DatePicker 전용 색상 변수 (ASL 브랜드 컬러 기반)
+$dp-primary: #8B4513 !default;                    // 브라운 (주 색상)
+$dp-primary-dark: #6F4E37 !default;               // 다크 브라운 (호버)
+$dp-primary-light: #CD853F !default;              // 라이트 브라운 (키보드 선택)
+$dp-background: #F5F5DC !default;                 // 베이지 (호버 배경)
+$dp-background-light: #FDF5E6 !default;           // 아이보리 (비활성)
+$dp-background-today: #F5DEB3 !default;           // 위트 (오늘 날짜)
+$dp-background-today-hover: #DEB887 !default;     // 버랩 (오늘 날짜 호버)
+$dp-weekend: #A0522D !default;                    // 시에나 (주말)
+$dp-outside: #D2B48C !default;                    // 탄 (월 외부)
+$dp-disabled: #DDD !default;                      // 회색 (비활성)
+$dp-focus-shadow: rgba(139, 69, 19, 0.25) !default; // 포커스 그림자
+
+// React DatePicker 스타일
+.react-datepicker {
+  font-family: inherit;
+
+  // 래퍼와 입력 컨테이너
+  &-wrapper {
+    width: 100%;
+  }
+
+  &__input-container {
+    width: 100%;
+
+    input {
+      width: 100%;
+      padding: 0.375rem 0.75rem;
+      font-size: 1rem;
+      font-weight: 400;
+      line-height: 1.5;
+      color: #212529;
+      background-color: #fff;
+      background-image: none;
+      border: 1px solid #ced4da;
+      border-radius: 0.375rem;
+      transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+
+      &:focus {
+        color: #212529;
+        background-color: #fff;
+        border-color: $dp-primary;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem $dp-focus-shadow;
+      }
+    }
+  }
+
+  // 헤더 영역
+  &__header {
+    background-color: $dp-primary;
+    border-bottom: 1px solid $dp-primary;
+  }
+
+  &__current-month,
+  &__day-name {
+    color: white;
+    font-weight: bold;
+  }
+
+  // 네비게이션 화살표
+  &__navigation {
+    &--previous:hover,
+    &--next:hover {
+      border-color: $dp-primary;
+    }
+  }
+
+  // 날짜 셀
+  &__day {
+    &:hover {
+      background-color: $dp-background;
+    }
+
+    &--selected {
+      background-color: $dp-primary;
+      color: white;
+
+      &:hover {
+        background-color: $dp-primary-dark;
+      }
+    }
+
+    &--keyboard-selected {
+      background-color: $dp-primary-light;
+      color: white;
+    }
+
+    &--today {
+      background-color: $dp-background-today;
+      color: $dp-primary;
+      font-weight: bold;
+
+      &:hover {
+        background-color: $dp-background-today-hover;
+      }
+    }
+
+    &--weekend {
+      color: $dp-weekend;
+    }
+
+    &--outside-month {
+      color: $dp-outside;
+    }
+
+    &--disabled {
+      color: $dp-disabled;
+      background-color: $dp-background-light;
+    }
+  }
+
+  // 시간 선택 영역
+  &__time-container {
+    .react-datepicker__time {
+      .react-datepicker__time-box {
+        border-left: 1px solid $dp-primary;
+
+        .react-datepicker__time-header {
+          color: $dp-primary;
+          font-weight: bold;
+        }
+
+        ul.react-datepicker__time-list {
+          li.react-datepicker__time-list-item {
+            &:hover {
+              background-color: $dp-background;
+              color: $dp-primary;
+            }
+
+            &--selected {
+              background-color: $dp-primary;
+              color: white;
+
+              &:hover {
+                background-color: $dp-primary-dark;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 오늘 버튼
+  &__today-button {
+    background-color: $dp-primary;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin: 5px;
+
+    &:hover {
+      background-color: $dp-primary-dark;
+    }
+  }
+
+  // 삼각형 포인터
+  &__triangle {
+    border-bottom-color: $dp-primary !important;
+  }
+
+  // 월/년 드롭다운
+  &__month-dropdown-container--scroll,
+  &__year-dropdown-container--scroll {
+    background-color: $dp-background-light;
+  }
+
+  &__month-option,
+  &__year-option {
+    &:hover {
+      background-color: $dp-background-today;
+    }
+
+    &--selected_month,
+    &--selected_year {
+      background-color: $dp-primary;
+      color: white;
+    }
+  }
+} 
