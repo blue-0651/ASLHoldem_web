@@ -55,6 +55,13 @@ class TournamentPlayer(models.Model):
     토너먼트 참가 선수 정보를 저장하는 모델
     """
     
+    # 참가 상태 선택 옵션
+    STATUS_CHOICES = (
+        ('ACTIVE', '활성'),         # 활성 상태 (현재 유효한 참가)
+        ('USED', '사용됨'),         # 이미 사용된 참가 (중복 참가 시 이전 참가)
+        ('CANCELLED', '취소됨'),    # 취소된 참가
+    )
+    
     # 토너먼트 (외래키)
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, verbose_name='토너먼트')
     
@@ -63,6 +70,9 @@ class TournamentPlayer(models.Model):
     
     # 닉네임 (토너먼트에서 사용할 이름)
     nickname = models.CharField(max_length=50, verbose_name='닉네임')
+    
+    # 참가 상태
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE', verbose_name='참가 상태')
     
     # 참가 시간
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='참가 시간')
@@ -74,10 +84,10 @@ class TournamentPlayer(models.Model):
         db_table = 'tournament_players'
         verbose_name = '토너먼트 참가자'
         verbose_name_plural = '토너먼트 참가자들'
-        unique_together = ('tournament', 'user')  # 같은 토너먼트에 같은 사용자는 한 번만 등록 가능
+        # unique_together 제약 제거하여 중복 참가 허용
         
     def __str__(self):
-        return f"{self.tournament.name} - {self.nickname}"
+        return f"{self.tournament.name} - {self.nickname} ({self.get_status_display()})"
 
 
  
