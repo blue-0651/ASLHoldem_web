@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -11,10 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.asl.holdem.R
 import com.asl.holdem.ui.main.MainActivity
 import com.asl.holdem.ui.theme.ASLHoldemTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -44,7 +48,7 @@ class SplashActivity : ComponentActivity() {
     private fun SplashScreen() {
         // 스플래시 화면 표시 후 메인 액티비티로 이동
         LaunchedEffect(Unit) {
-            delay(2000) // 2초 대기
+            delay(5000) // 2초 대기
             startMainActivity()
         }
         
@@ -52,18 +56,20 @@ class SplashActivity : ComponentActivity() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.primary),
+                .background(Color(0xFFF8F8FF)), // 웹앱과 동일한 아이보리 색상
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "ASL HOLDEM",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                Image(
+                    painter = painterResource(id = R.drawable.asl_logo),
+                    contentDescription = "ASL Logo",
+                    modifier = Modifier
+                        .size(374.dp)
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
