@@ -953,9 +953,24 @@ const PlayerRegistration = () => {
                           <td>{player.name}</td>
                           <td>{new Date(player.registered_at).toLocaleString()}</td>
                           <td>
-                            <span className={`badge ${player.status === 'active' ? 'bg-success' : 'bg-secondary'}`}>
-                              {player.status === 'active' ? '활성' : '비활성'}
-                            </span>
+                            {(() => {
+                              // 상태에 따른 배지 색상과 텍스트 결정
+                              const statusInfo = {
+                                'ACTIVE': { color: 'bg-success', text: '활성' },
+                                'USED': { color: 'bg-warning', text: '사용됨' },
+                                'CANCELLED': { color: 'bg-danger', text: '취소됨' },
+                                'active': { color: 'bg-success', text: '활성' }, // 기존 호환성
+                                'inactive': { color: 'bg-secondary', text: '비활성' } // 기존 호환성
+                              };
+                              
+                              const info = statusInfo[player.status] || { color: 'bg-secondary', text: '알 수 없음' };
+                              
+                              return (
+                                <span className={`badge ${info.color}`}>
+                                  {info.text}
+                                </span>
+                              );
+                            })()}
                           </td>
                         </tr>
                       ))

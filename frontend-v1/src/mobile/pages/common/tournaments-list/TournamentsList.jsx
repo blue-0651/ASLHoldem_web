@@ -367,7 +367,7 @@ const TournamentsList = () => {
 
                   <div style={{ color: '#555', fontSize: '14px', marginBottom: '10px' }}>
                     <i className="fas fa-coins" style={{ marginRight: '8px' }}></i>
-                    필요 좌석권: {formatNumber(tournament.buy_in)}개
+                                          필요 SEAT권: {formatNumber(tournament.buy_in)}개
                   </div>
 
                   {tournament.description && (
