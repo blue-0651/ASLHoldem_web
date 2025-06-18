@@ -427,60 +427,92 @@ def register_player_to_tournament(request):
                 'error': '사용자 ID 또는 휴대폰 번호가 필요합니다.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # 이미 등록된 선수인지 확인
+        # 이미 등록된 선수인지 확인하고 기존 참가를 USED로 변경
         from tournaments.models import TournamentPlayer
-        existing_registration = TournamentPlayer.objects.filter(
+        existing_registrations = TournamentPlayer.objects.filter(
             tournament=tournament,
-            user=user
-        ).first()
+            user=user,
+            status='ACTIVE'  # 활성 상태인 참가만 조회
+        )
         
-        if existing_registration:
-            return Response({
-                'error': '이미 해당 토너먼트에 등록된 선수입니다.',
-                'player': {
-                    'id': existing_registration.id,
-                    'user_id': user.id,
-                    'username': user.nickname or user.phone,
-                    'phone_number': user.phone_number,
-                    'registered_at': existing_registration.created_at
-                }
-            }, status=status.HTTP_400_BAD_REQUEST)
+        # 기존 활성 참가가 있으면 USED로 변경
+        if existing_registrations.exists():
+            for existing_reg in existing_registrations:
+                existing_reg.status = 'USED'
+                existing_reg.save()
+                
+                # 기존 참가에서 사용된 SEAT권의 거래 내역에 메모 추가
+                try:
+                    # 기존 참가에서 사용된 SEAT권 거래 내역 찾기
+                    existing_transactions = SeatTicketTransaction.objects.filter(
+                        reason__contains=f'토너먼트 참가: {tournament.name}',
+                        processed_by__isnull=True  # 시스템에서 처리된 것들
+                    ).filter(
+                        seat_ticket__user=user,
+                        seat_ticket__tournament=tournament,
+                        transaction_type='USE'
+                    )
+                    
+                    # 거래 내역에 중복 참가 메모 추가
+                    for transaction in existing_transactions:
+                        if '중복 참가로 인해 무효화됨' not in transaction.reason:
+                            transaction.reason += f' (중복 참가로 인해 무효화됨 - {existing_reg.created_at.strftime("%Y-%m-%d %H:%M")})'
+                            transaction.save()
+                            
+                except Exception as e:
+                    # 거래 내역 업데이트 실패해도 메인 로직에는 영향 없음
+                    print(f"기존 SEAT권 거래 내역 업데이트 실패: {e}")
+            
+            # 기존 참가 정보를 로그에 기록
+            existing_info = {
+                'count': existing_registrations.count(),
+                'registrations': [
+                    {
+                        'id': reg.id,
+                        'nickname': reg.nickname,
+                        'registered_at': reg.created_at
+                    }
+                    for reg in existing_registrations
+                ]
+            }
+        else:
+            existing_info = {'count': 0, 'registrations': []}
         
-        # 사용자의 해당 토너먼트 좌석권 확인
+        # 사용자의 해당 토너먼트 SEAT권 확인
         from seats.models import SeatTicket, SeatTicketTransaction, UserSeatTicketSummary
         from django.db import transaction as db_transaction
         
-        # 필요한 좌석권 개수 확인 (buy_in)
+        # 필요한 SEAT권 개수 확인 (buy_in)
         required_tickets = tournament.buy_in
         
-        # 사용 가능한 좌석권 조회 (필요한 개수만큼)
+        # 사용 가능한 SEAT권 조회 (필요한 개수만큼)
         available_tickets = SeatTicket.objects.filter(
             user=user,
             tournament=tournament,
             status='ACTIVE'
         )[:required_tickets]
         
-        # 보유한 좌석권 개수 확인
+        # 보유한 SEAT권 개수 확인
         available_count = available_tickets.count()
         
         if available_count < required_tickets:
             return Response({
-                'error': f'토너먼트 참가에는 좌석권 {required_tickets}개가 필요하지만, {available_count}개만 보유하고 있습니다.',
+                'error': f'토너먼트 참가에는 SEAT권 {required_tickets}개가 필요하지만, {available_count}개만 보유하고 있습니다.',
                 'required_tickets': required_tickets,
                 'available_tickets': available_count,
                 'tournament_name': tournament.name,
                 'user_phone': user.phone_number
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # 모든 좌석권이 유효한지 확인
+        # 모든 SEAT권이 유효한지 확인
         for ticket in available_tickets:
             if not ticket.is_valid():
                 return Response({
-                    'error': f'보유하신 좌석권 중 일부가 만료되었거나 사용할 수 없는 상태입니다. (티켓 ID: {ticket.ticket_id})',
+                    'error': f'보유하신 SEAT권 중 일부가 만료되었거나 사용할 수 없는 상태입니다. (티켓 ID: {ticket.ticket_id})',
                     'ticket_status': ticket.get_status_display()
                 }, status=status.HTTP_400_BAD_REQUEST)
         
-        # 트랜잭션으로 선수 등록과 좌석권 사용 처리
+        # 트랜잭션으로 선수 등록과 SEAT권 사용 처리
         with db_transaction.atomic():
             # 선수 등록
             tournament_player = TournamentPlayer.objects.create(
@@ -489,13 +521,13 @@ def register_player_to_tournament(request):
                 nickname=data.get('nickname', user.nickname or user.phone)
             )
             
-            # 모든 필요한 좌석권 사용 처리
+            # 모든 필요한 SEAT권 사용 처리
             used_tickets = []
             for ticket in available_tickets:
                 ticket.use_ticket()
                 used_tickets.append(str(ticket.ticket_id))
                 
-                # 좌석권 거래 내역 생성
+                # SEAT권 거래 내역 생성
                 SeatTicketTransaction.objects.create(
                     seat_ticket=ticket,
                     transaction_type='USE',
@@ -505,7 +537,7 @@ def register_player_to_tournament(request):
                     processed_by=request.user if request.user.is_authenticated else None
                 )
             
-            # 사용자 좌석권 요약 정보 업데이트
+            # 사용자 SEAT권 요약 정보 업데이트
             try:
                 summary = UserSeatTicketSummary.objects.get(
                     user=user,
@@ -520,9 +552,15 @@ def register_player_to_tournament(request):
                 )
                 summary.update_summary()
         
+        # 메시지 생성 (기존 참가가 있었는지에 따라 다른 메시지)
+        if existing_info['count'] > 0:
+            message = f'선수가 성공적으로 재참가되었습니다. 기존 참가 {existing_info["count"]}건이 사용됨으로 변경되었고, SEAT권 {required_tickets}개가 사용되었습니다.'
+        else:
+            message = f'선수가 성공적으로 참가되었습니다. SEAT권 {required_tickets}개가 사용되었습니다.'
+            
         return Response({
             'success': True,
-            'message': f'선수가 성공적으로 참가되었습니다. 좌석권 {required_tickets}개가 사용되었습니다.',
+            'message': message,
             'player': {
                 'id': tournament_player.id,
                 'user_id': user.id,
@@ -535,7 +573,8 @@ def register_player_to_tournament(request):
                 'ticket_ids': used_tickets,
                 'count': len(used_tickets),
                 'tournament_name': tournament.name
-            }
+            },
+            'existing_registrations': existing_info
         })
         
     except Exception as e:
@@ -547,7 +586,7 @@ def register_player_to_tournament(request):
 @permission_classes([IsAuthenticated])
 def grant_seat_ticket(request):
     """
-    사용자에게 좌석권을 지급
+    사용자에게 SEAT권을 지급
     """
     try:
         data = request.data
