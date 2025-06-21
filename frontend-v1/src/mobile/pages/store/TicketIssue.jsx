@@ -42,17 +42,27 @@ const TicketIssue = () => {
       }
 
       const currentUser = getCurrentUser();
-      if (!currentUser || !currentUser.user_id) {
+      console.log('📱 현재 사용자 정보 확인:', currentUser);
+      
+      if (!currentUser) {
         console.error('❌ 사용자 정보를 가져올 수 없습니다.');
         showAlert('warning', '사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.');
         return;
       }
+      
+      // user_id 또는 id 필드를 확인 (토큰 파싱 방식에 따라 다를 수 있음)
+      const userId = currentUser.user_id || currentUser.id;
+      if (!userId) {
+        console.error('❌ 사용자 ID를 찾을 수 없습니다. 사용자 정보:', currentUser);
+        showAlert('warning', '사용자 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
+        return;
+      }
 
-      console.log('🔍 사용자 ID로 매장 조회:', currentUser.user_id);
+      console.log('🔍 사용자 ID로 매장 조회:', userId);
       
       // 해당 사용자가 소유한 매장 조회
       const storeResponse = await API.get(`/stores/by_owner/`, {
-        params: { owner_id: currentUser.user_id }
+        params: { owner_id: userId }
       });
       
       if (storeResponse.data) {
