@@ -149,6 +149,10 @@ cp -r frontend-v1/* $PROJECT_DIR/frontend-v1/
 cp -r docs $PROJECT_DIR/ || true
 cp -r deploy $PROJECT_DIR/ || true
 
+# run.sh 파일 복사
+cp run.sh $PROJECT_DIR/ || true
+chmod +x $PROJECT_DIR/run.sh
+
 # 권한 설정
 chown -R $PROJECT_NAME:www-data $PROJECT_DIR
 
