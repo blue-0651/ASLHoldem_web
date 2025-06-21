@@ -87,11 +87,15 @@ export DEBIAN_FRONTEND=noninteractive
 apt update && apt upgrade -y
 
 log_step "2/10 필수 패키지 설치 중..."
+# Python 3.11 저장소 추가 (Ubuntu 22.04에서 안정성을 위해)
+add-apt-repository ppa:deadsnakes/ppa -y || true
+apt update
+
 apt install -y \
-    python3 \
+    python3.11 \
+    python3.11-venv \
+    python3.11-dev \
     python3-pip \
-    python3-venv \
-    python3-dev \
     postgresql \
     postgresql-contrib \
     nginx \
@@ -101,12 +105,21 @@ apt install -y \
     libpq-dev \
     libffi-dev \
     libjpeg-dev \
-    libssl-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libwebp-dev \
+    libfreetype6-dev \
+    liblcms2-dev \
+    libopenjp2-7-dev \
     zlib1g-dev \
+    libssl-dev \
     supervisor \
     ufw \
     htop \
     unzip
+
+# Python 3.11을 기본으로 설정
+update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 || true
 
 log_step "3/10 Node.js 설치 중..."
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
@@ -186,7 +199,7 @@ chown $PROJECT_NAME:www-data $PROJECT_DIR/backend/.env
 
 log_step "9/10 백엔드 설정 중..."
 cd $PROJECT_DIR/backend
-sudo -u $PROJECT_NAME python3 -m venv .venv
+sudo -u $PROJECT_NAME python3.11 -m venv .venv
 sudo -u $PROJECT_NAME .venv/bin/pip install --upgrade pip
 sudo -u $PROJECT_NAME .venv/bin/pip install -r requirements.txt
 
