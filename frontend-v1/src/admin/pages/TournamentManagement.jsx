@@ -1345,6 +1345,51 @@ const TournamentManagement = () => {
       }
     },
     {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>종료시간</span>,
+      selector: (row) => row.end_time,
+      sortable: true,
+      center: true,
+      style: (row) => ({
+        fontSize: expandedRowId === row.id ? '18px' : '14px',
+        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      }),
+      cell: (row) => {
+        const formatEndTime = (dateTimeString) => {
+          if (!dateTimeString) return '-';
+          
+          try {
+            const date = new Date(dateTimeString);
+            const dateStr = date.toLocaleDateString('ko-KR', { 
+              year: 'numeric',
+              month: 'short', 
+              day: 'numeric' 
+            });
+            const timeStr = date.toLocaleTimeString('ko-KR', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: false 
+            });
+            return `${dateStr} ${timeStr}`;
+          } catch (error) {
+            return dateTimeString;
+          }
+        };
+        
+        return (
+          <span style={{ 
+            fontSize: expandedRowId === row.id ? '18px' : '14px',
+            fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+            transition: 'all 0.3s ease',
+            color: row.end_time ? 'inherit' : '#6c757d',
+            fontStyle: row.end_time ? 'normal' : 'italic'
+          }}>
+            {formatEndTime(row.end_time)}
+          </span>
+        );
+      }
+    },
+    {
       name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>상태</span>,
       selector: (row) => row.status,
       sortable: true,

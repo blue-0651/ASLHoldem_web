@@ -129,7 +129,7 @@
                 ""
               ]
             },
-            "description": "매장 관리자의 토너먼트 목록을 조회합니다.\n\n🔧 2024.12 업데이트: 매장 조회 방식 개선 & 선수회원 참가 화면 buy_in 정보 지원\n- 매장에 배분된 토너먼트만 반환 (SEAT권 발급된 토너먼트)\n- 매장 조회 방식을 다른 API와 통일 (Store.objects.filter(owner=user))\n- 선수회원 참가 화면에서 토너먼트 선택 시 buy_in 정보 표시\n\n응답 데이터:\n- id: 토너먼트 ID\n- name: 토너먼트 이름\n- start_time: 시작 시간\n- buy_in: 바이인 (필요 SEAT권 수) ⭐ 선수회원 참가 화면에서 활용\n- ticket_quantity: 총 SEAT권 수량\n- description: 토너먼트 설명\n- status: 토너먼트 상태\n- allocated_quantity: 매장에 할당된 SEAT권 수량\n- remaining_quantity: 매장 보유 SEAT권 수량\n- distributed_quantity: 배포된 SEAT권 수량\n- distribution_created_at: 배분 생성 시간\n\n사용처:\n- 매장관리자 SEAT권 발급 화면\n- 선수회원 참가 화면 (토너먼트 선택 시 buy_in 정보 표시)\n\n응답:\n- 200: 성공적으로 토너먼트 목록을 반환\n- 401: 인증되지 않은 요청 (로그인 필요)\n- 403: 권한이 없는 요청 (매장 관리자 권한 필요)"
+            "description": "매장 관리자의 토너먼트 목록을 조회합니다.\n\n🔧 2024.12 업데이트: 매장 조회 방식 개선 & 선수회원 참가 화면 buy_in 정보 지원\n- 매장에 배분된 토너먼트만 반환 (SEAT권 발급된 토너먼트)\n- 매장 조회 방식을 다른 API와 통일 (Store.objects.filter(owner=user))\n- 선수회원 참가 화면에서 토너먼트 선택 시 buy_in 정보 표시\n\n🔥 2025.01 업데이트: 종료시간 필드 추가\n- end_time 필드 응답에 포함하여 토너먼트 종료시간 표시 지원\n\n응답 데이터:\n- id: 토너먼트 ID\n- name: 토너먼트 이름\n- start_time: 시작 시간\n- end_time: 종료 시간 ⭐ 새로 추가\n- buy_in: 바이인 (필요 SEAT권 수) ⭐ 선수회원 참가 화면에서 활용\n- ticket_quantity: 총 SEAT권 수량\n- description: 토너먼트 설명\n- status: 토너먼트 상태\n- allocated_quantity: 매장에 할당된 SEAT권 수량\n- remaining_quantity: 매장 보유 SEAT권 수량\n- distributed_quantity: 배포된 SEAT권 수량\n- distribution_created_at: 배분 생성 시간\n\n사용처:\n- 매장관리자 SEAT권 발급 화면\n- 선수회원 참가 화면 (토너먼트 선택 시 buy_in 정보 표시)\n- 토너먼트 관리자 화면 (종료시간 표시)\n\n응답:\n- 200: 성공적으로 토너먼트 목록을 반환\n- 401: 인증되지 않은 요청 (로그인 필요)\n- 403: 권한이 없는 요청 (매장 관리자 권한 필요)"
           },
           "response": []
         },
