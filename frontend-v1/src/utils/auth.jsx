@@ -93,6 +93,7 @@ export const login = async (phone, password, userType = 'store') => {
       
       userInfo = {
         id: tokenPayload.user_id,
+        user_id: tokenPayload.user_id, // 호환성을 위해 user_id 필드도 추가
         phone: tokenPayload.phone,
         nickname: tokenPayload.nickname || '',
         email: tokenPayload.email || '',
@@ -220,6 +221,7 @@ export const reqLoginWithPhone = async (phone, password, userType = 'user') => {
       
       const userInfo = {
         id: tokenPayload.user_id,
+        user_id: tokenPayload.user_id, // 호환성을 위해 user_id 필드도 추가
         phone: tokenPayload.phone,
         nickname: tokenPayload.nickname || '',
         email: tokenPayload.email || '',
