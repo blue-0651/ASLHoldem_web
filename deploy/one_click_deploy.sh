@@ -192,6 +192,30 @@ sudo -u postgres psql -c "ALTER ROLE $DB_USER SET timezone TO 'Asia/Seoul';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
 sudo -u postgres psql -c "ALTER USER $DB_USER CREATEDB;"
 
+# 데이터베이스 소유권 및 스키마 권한 설정
+log_info "데이터베이스 권한 설정 중..."
+sudo -u postgres psql -d $DB_NAME << EOF
+-- 데이터베이스 소유권 변경
+ALTER DATABASE $DB_NAME OWNER TO $DB_USER;
+
+-- public 스키마에 대한 모든 권한 부여
+GRANT ALL ON SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $DB_USER;
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO $DB_USER;
+
+-- 미래에 생성될 객체에 대한 기본 권한 설정
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO $DB_USER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO $DB_USER;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO $DB_USER;
+
+-- PostgreSQL 15+ 버전 호환성을 위한 추가 권한
+GRANT CREATE ON SCHEMA public TO $DB_USER;
+GRANT USAGE ON SCHEMA public TO $DB_USER;
+EOF
+
+log_success "PostgreSQL 데이터베이스 및 권한 설정이 완료되었습니다."
+
 log_step "6/10 프로젝트 사용자 및 디렉토리 생성 중..."
 useradd --system --gid www-data --shell /bin/bash --home $PROJECT_DIR $PROJECT_NAME || true
 mkdir -p $PROJECT_DIR/{backend,frontend-v1,static,media,logs}
