@@ -223,35 +223,65 @@ const PlayerRegistration = () => {
     if (!phone || !tournamentId) return;
     
     try {
-      // SEAT권 정보와 함께 참가 여부도 확인
-      const [ticketResponse, participationResponse] = await Promise.all([
-        api.get('/store/user-tickets/', {
-          params: { 
-            phone_number: phone,
-            tournament_id: tournamentId
-          }
-        }),
-        api.get('/store/check-participation/', {
-          params: {
-            phone_number: phone,
-            tournament_id: tournamentId
-          }
-        }).catch(err => {
-          // 참가 여부 확인 API가 없는 경우 기본값 반환
-          console.warn('참가 여부 확인 API 호출 실패, 기본값 사용:', err);
-          return { data: { is_registered: false, registration_info: null } };
-        })
-      ]);
+      console.log(`토너먼트 참가 여부 확인 시작: phone=${phone}, tournamentId=${tournamentId}`);
+      
+      // SEAT권 정보 조회
+      const ticketResponse = await api.get('/store/user-tickets/', {
+        params: { 
+          phone_number: phone,
+          tournament_id: tournamentId
+        }
+      });
+      
+      console.log('SEAT권 정보 조회 결과:', ticketResponse.data);
+      
+      // 참가 여부 확인을 위해 토너먼트 참가자 목록 조회
+      let participationInfo = { is_registered: false, registration_info: null };
+      
+      try {
+        // 토너먼트 참가자 목록에서 해당 사용자 찾기
+        const participantsResponse = await api.get(`/tournaments/${tournamentId}/participants/`);
+        console.log(`토너먼트 ${tournamentId} 참가자 목록:`, participantsResponse.data);
+        
+        // 휴대폰 번호로 참가 여부 확인
+        const isRegistered = participantsResponse.data.some(participant => {
+          const participantPhone = participant.phone || participant.user_phone;
+          return participantPhone === phone;
+        });
+        
+        if (isRegistered) {
+          const registrationInfo = participantsResponse.data.find(participant => {
+            const participantPhone = participant.phone || participant.user_phone;
+            return participantPhone === phone;
+          });
+          
+          participationInfo = {
+            is_registered: true,
+            registration_info: registrationInfo
+          };
+          
+          console.log(`참가 확인됨:`, registrationInfo);
+        } else {
+          console.log(`참가하지 않음: 전체 ${participantsResponse.data.length}명 중 해당 번호 없음`);
+        }
+        
+      } catch (participantsErr) {
+        console.warn('토너먼트 참가자 목록 조회 실패:', participantsErr);
+        
+        // 대체 방법: 매장별 참가자 목록 확인 (아직 구현되지 않은 API)
+        console.log('매장별 참가자 목록 확인은 아직 구현되지 않음');
+      }
       
       setFoundUser(prev => ({
         ...prev,
         ticketInfo: ticketResponse.data,
-        participationInfo: participationResponse.data
+        participationInfo: participationInfo
       }));
       
     } catch (err) {
-      console.warn('토너먼트 정보 조회 실패:', err);
-      // 에러 발생 시에도 기본 SEAT권 정보는 유지
+      console.error('토너먼트 정보 조회 실패:', err);
+      
+      // 에러 발생 시에도 기본 SEAT권 정보는 유지하되, 참가 정보는 null로 설정
       try {
         const ticketResponse = await api.get('/store/user-tickets/', {
           params: { 
@@ -259,13 +289,21 @@ const PlayerRegistration = () => {
             tournament_id: tournamentId
           }
         });
+        
+        console.log('에러 발생 시 SEAT권 정보 조회 결과:', ticketResponse.data);
+        
         setFoundUser(prev => ({
           ...prev,
           ticketInfo: ticketResponse.data,
-          participationInfo: { is_registered: false, registration_info: null }
+          participationInfo: null // 확인 불가 상태
         }));
       } catch (ticketErr) {
-        console.warn('SEAT권 정보 조회도 실패:', ticketErr);
+        console.error('SEAT권 정보 조회도 실패:', ticketErr);
+        setFoundUser(prev => ({
+          ...prev,
+          ticketInfo: null,
+          participationInfo: null
+        }));
       }
     }
   };
@@ -713,65 +751,123 @@ const PlayerRegistration = () => {
                           })()} | 이메일: {foundUser.email}
                         </small>
                       </div>
-                      {foundUser.ticketInfo && (
-                        <div className="mt-2 p-2 bg-light rounded">
-                          <div className="d-flex justify-content-between align-items-center">
-                            <small className="text-muted">
-                              <i className="fas fa-ticket-alt me-1"></i>
-                              SEAT권 현황
-                            </small>
-                            <div className="d-flex gap-2">
-                              <Badge bg="success" className="d-flex align-items-center">
-                                <i className="fas fa-check-circle me-1" style={{fontSize: '10px'}}></i>
-                                사용가능: {foundUser.ticketInfo.active_tickets}개
-                              </Badge>
-                              <Badge bg="secondary" className="d-flex align-items-center">
-                                <i className="fas fa-times-circle me-1" style={{fontSize: '10px'}}></i>
-                                사용됨: {foundUser.ticketInfo.used_tickets}개
-                              </Badge>
-                            </div>
+                      <div className="mt-2 p-2 bg-light rounded">
+                        <div className="d-flex justify-content-between align-items-center">
+                          <small className="text-muted">
+                            <i className="fas fa-ticket-alt me-1"></i>
+                            SEAT권 현황
+                          </small>
+                          <div className="d-flex gap-2">
+                            <Badge bg="success" className="d-flex align-items-center">
+                              <i className="fas fa-check-circle me-1" style={{fontSize: '10px'}}></i>
+                              사용가능: {foundUser.ticketInfo?.active_tickets || 0}개
+                            </Badge>
+                            <Badge bg="secondary" className="d-flex align-items-center">
+                              <i className="fas fa-times-circle me-1" style={{fontSize: '10px'}}></i>
+                              사용됨: {foundUser.ticketInfo?.used_tickets || 0}개
+                            </Badge>
                           </div>
+                        </div>
                           
                           {/* 토너먼트 참가 여부 표시 */}
-                          {selectedTournament && foundUser.participationInfo && (
-                            <div className="mt-2 p-2 rounded" style={{backgroundColor: foundUser.participationInfo.is_registered ? '#fff3cd' : '#d1ecf1'}}>
+                          {selectedTournament && (
+                            <div className="mt-2 p-2 rounded" style={{
+                              backgroundColor: foundUser.participationInfo === null ? '#f8f9fa' : 
+                                             foundUser.participationInfo?.is_registered ? '#fff3cd' : 
+                                             (foundUser.ticketInfo?.active_tickets >= (tournaments.find(t => t.id.toString() === selectedTournament.toString())?.buy_in || 1)) ? '#d1ecf1' : '#f8d7da'
+                            }}>
                               <div className="d-flex align-items-center">
-                                {foundUser.participationInfo.is_registered ? (
+                                {foundUser.participationInfo === null ? (
                                   <>
-                                    <i className="fas fa-user-check text-warning me-2"></i>
-                                                                         <div className="flex-grow-1">
-                                       <small className="text-warning fw-bold">
-                                         이미 이 토너먼트에 참가되어 있습니다 (중복 참가 가능)
-                                       </small>
-                                       {foundUser.participationInfo.registration_info && (
-                                         <div className="mt-1">
-                                           <small className="text-muted">
-                                             최근 참가일시: {new Date(foundUser.participationInfo.registration_info.created_at).toLocaleString()}
-                                           </small>
-                                         </div>
-                                       )}
-                                     </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <i className="fas fa-user-plus text-info me-2"></i>
-                                    <small className="text-info fw-bold">
-                                      이 토너먼트에 참가 가능합니다
+                                    <i className="fas fa-spinner fa-spin text-muted me-2"></i>
+                                    <small className="text-muted fw-bold">
+                                      토너먼트 참가 여부 확인 중...
                                     </small>
                                   </>
-                                )}
+                                ) : foundUser.participationInfo?.is_registered ? (
+                                  <>
+                                    <i className="fas fa-user-check text-warning me-2"></i>
+                                    <div className="flex-grow-1">
+                                      <small className="text-warning fw-bold">
+                                        이미 이 토너먼트에 참가되어 있습니다 (중복 참가 가능)
+                                      </small>
+                                      {foundUser.participationInfo.registration_info && (
+                                        <div className="mt-1">
+                                          <small className="text-muted">
+                                            최근 참가일시: {new Date(foundUser.participationInfo.registration_info.created_at).toLocaleString()}
+                                          </small>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </>
+                                ) : (() => {
+                                  const selectedTournamentData = tournaments.find(t => t.id.toString() === selectedTournament.toString());
+                                  const requiredTickets = selectedTournamentData?.buy_in || 1;
+                                  const availableTickets = foundUser.ticketInfo?.active_tickets || 0;
+                                  const canParticipate = availableTickets >= requiredTickets;
+                                  
+                                  return canParticipate ? (
+                                    <>
+                                      <i className="fas fa-user-plus text-info me-2"></i>
+                                      <small className="text-info fw-bold">
+                                        이 토너먼트에 참가 가능합니다
+                                      </small>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <i className="fas fa-times-circle text-danger me-2"></i>
+                                      <div className="flex-grow-1">
+                                        <small className="text-danger fw-bold">
+                                          SEAT권이 부족하여 참가할 수 없습니다
+                                        </small>
+                                        <div className="mt-1">
+                                          <small className="text-muted">
+                                            필요: {requiredTickets}개 | 보유: {availableTickets}개 | 부족: {requiredTickets - availableTickets}개
+                                          </small>
+                                        </div>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                           )}
                           
                           <div className="mt-1">
-                            <small className="text-success">
-                              <i className="fas fa-check me-1"></i>
-                              토너먼트 참가 가능합니다.
-                              {foundUser.participationInfo?.is_registered && (
-                                <span className="text-info"> (중복 참가 허용)</span>
-                              )}
-                            </small>
+                            {(() => {
+                              if (foundUser.participationInfo === null) {
+                                return (
+                                  <small className="text-muted">
+                                    <i className="fas fa-spinner fa-spin me-1"></i>
+                                    참가 여부 확인 중...
+                                  </small>
+                                );
+                              }
+                              
+                              const selectedTournamentData = tournaments.find(t => t.id.toString() === selectedTournament.toString());
+                              const requiredTickets = selectedTournamentData?.buy_in || 1;
+                              const availableTickets = foundUser.ticketInfo?.active_tickets || 0;
+                              const canParticipate = availableTickets >= requiredTickets;
+                              
+                              if (!canParticipate) {
+                                return (
+                                  <small className="text-danger">
+                                    <i className="fas fa-times me-1"></i>
+                                    SEAT권 부족으로 참가할 수 없습니다.
+                                  </small>
+                                );
+                              }
+                              
+                              return (
+                                <small className="text-success">
+                                  <i className="fas fa-check me-1"></i>
+                                  토너먼트 참가 가능합니다.
+                                  {foundUser.participationInfo?.is_registered && (
+                                    <span className="text-info"> (중복 참가 허용)</span>
+                                  )}
+                                </small>
+                              );
+                            })()}
                           </div>
                         </div>
                       )}
@@ -1055,24 +1151,40 @@ const PlayerRegistration = () => {
               {/* 제출 버튼 - 휴대폰 번호 검색 후에만 표시 */}
               {(phoneSearched || foundUser) && (
                 <div className="d-grid gap-2">
-                  <Button 
-                    variant="primary" 
-                    type="submit" 
-                    disabled={loading || phoneSearchLoading}
-                    size="lg"
-                  >
-                    {loading ? (
-                      <>
-                        <Spinner animation="border" size="sm" className="me-2" />
-                        참가 중...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fas fa-user-plus me-2"></i>
-                        {foundUser ? '토너먼트 참가' : '신규 회원 등록 및 토너먼트 참가'}
-                      </>
-                    )}
-                  </Button>
+                  {(() => {
+                    // SEAT권 부족 여부 확인
+                    const selectedTournamentData = tournaments.find(t => t.id.toString() === selectedTournament.toString());
+                    const requiredTickets = selectedTournamentData?.buy_in || 1;
+                    const availableTickets = foundUser?.ticketInfo?.active_tickets || 0;
+                    const canParticipate = foundUser ? availableTickets >= requiredTickets : true; // 신규 사용자는 참가 가능
+                    const isDisabled = loading || phoneSearchLoading || (foundUser && !canParticipate);
+                    
+                    return (
+                      <Button 
+                        variant={canParticipate ? "primary" : "danger"} 
+                        type="submit" 
+                        disabled={isDisabled}
+                        size="lg"
+                      >
+                        {loading ? (
+                          <>
+                            <Spinner animation="border" size="sm" className="me-2" />
+                            참가 중...
+                          </>
+                        ) : !canParticipate && foundUser ? (
+                          <>
+                            <i className="fas fa-times me-2"></i>
+                            SEAT권 부족 (참가 불가)
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-user-plus me-2"></i>
+                            {foundUser ? '토너먼트 참가' : '신규 회원 등록 및 토너먼트 참가'}
+                          </>
+                        )}
+                      </Button>
+                    );
+                  })()}
                 </div>
               )}
 
