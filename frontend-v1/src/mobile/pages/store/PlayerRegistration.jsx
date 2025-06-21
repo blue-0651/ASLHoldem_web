@@ -82,14 +82,15 @@ const PlayerRegistration = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [playerData, setPlayerData] = useState({
-    username: '',
+    lastname: '',
+    firstname: '',
     email: '',
     phone: '',
-    nickname: ''
+    birth_date: '',
+    gender_digit: ''
   });
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournament, setSelectedTournament] = useState('');
-  const [playerMappingData, setPlayerMappingData] = useState(null);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   
@@ -114,15 +115,7 @@ const PlayerRegistration = () => {
     fetchTournaments();
   }, []);
 
-  /**
-   * 토너먼트 선택 시 매핑 정보 로드
-   * 토너먼트를 선택하면 해당 토너먼트의 선수 매핑 정보를 dashboard/player_mapping API를 통해 조회합니다.
-   */
-  useEffect(() => {
-    if (selectedTournament) {
-      fetchPlayerMapping(selectedTournament);
-    }
-  }, [selectedTournament]);
+
 
   /**
    * 매장관리자의 토너먼트 목록 가져오기
@@ -219,25 +212,7 @@ const PlayerRegistration = () => {
     updateTournamentsByFilter(filterType);
   };
 
-  /**
-   * 선수 매핑 정보 가져오기
-   * 선택한 토너먼트의 선수 매핑 정보를 dashboard/player_mapping API를 통해 조회합니다.
-   * @param {string} tournamentId - 토너먼트 ID
-   */
-  const fetchPlayerMapping = async (tournamentId) => {
-    setLoading(true);
-    try {
-      const response = await api.get('/tournaments/dashboard/player_mapping/', {
-        params: { tournament_id: tournamentId }
-      });
-      setPlayerMappingData(response.data);
-    } catch (err) {
-      console.error('선수 매핑 정보 로드 오류:', err);
-      setError('선수 매핑 정보를 불러오는데 실패했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   /**
    * 휴대폰 번호로 사용자 검색
@@ -255,13 +230,22 @@ const PlayerRegistration = () => {
       });
       
       if (response.data.found) {
+        console.log('API 응답에서 받은 사용자 정보:', response.data.user);
+        console.log('닉네임 필드 확인:', {
+          nickname: response.data.user.nickname,
+          username: response.data.user.username,
+          last_name: response.data.user.last_name,
+          first_name: response.data.user.first_name
+        });
         setFoundUser(response.data.user);
         setIsNewUser(false);
         setPlayerData({
-          username: response.data.user.username,
+          lastname: response.data.user.last_name || response.data.user.lastname || '',
+          firstname: response.data.user.first_name || response.data.user.firstname || '',
           email: response.data.user.email,
           phone: response.data.user.phone,
-          nickname: ''
+          birth_date: response.data.user.birth_date || '',
+          gender_digit: response.data.user.gender_digit || ''
         });
         
         // 선택된 토너먼트가 있으면 해당 토너먼트의 SEAT권 현황도 조회
@@ -286,17 +270,36 @@ const PlayerRegistration = () => {
         setIsNewUser(true);
         setPlayerData(prev => ({
           ...prev,
-          username: '',
-          email: ''
+          lastname: '',
+          firstname: '',
+          email: '',
+          birth_date: '',
+          gender_digit: ''
         }));
       }
       setPhoneSearched(true);
     } catch (err) {
-      console.error('사용자 검색 오류:', err);
-      setError('사용자 검색 중 오류가 발생했습니다.');
-      setFoundUser(null);
-      setIsNewUser(false);
-      setPhoneSearched(false);
+      // 404 에러는 사용자가 없다는 정상적인 응답이므로 에러로 처리하지 않음
+      if (err.response?.status === 404) {
+        console.log('사용자 검색 결과: 해당 휴대폰 번호로 등록된 사용자 없음');
+        setFoundUser(null);
+        setIsNewUser(true);
+        setPlayerData(prev => ({
+          ...prev,
+          lastname: '',
+          firstname: '',
+          email: '',
+          birth_date: '',
+          gender_digit: ''
+        }));
+        setPhoneSearched(true);
+      } else {
+        console.error('사용자 검색 오류:', err);
+        setError('사용자 검색 중 오류가 발생했습니다.');
+        setFoundUser(null);
+        setIsNewUser(false);
+        setPhoneSearched(false);
+      }
     } finally {
       setPhoneSearchLoading(false);
     }
@@ -332,6 +335,26 @@ const PlayerRegistration = () => {
     
     if (name === 'phone') {
       handlePhoneChange(e);
+      return;
+    }
+    
+    // 생년월일 필드는 숫자만 허용
+    if (name === 'birth_date') {
+      const numericValue = value.replace(/[^0-9]/g, '');
+      setPlayerData((prev) => ({
+        ...prev,
+        [name]: numericValue
+      }));
+      return;
+    }
+    
+    // 성별구분 필드는 1-2 숫자만 허용 (남자: 1, 여자: 2)
+    if (name === 'gender_digit') {
+      const numericValue = value.replace(/[^1-2]/g, '');
+      setPlayerData((prev) => ({
+        ...prev,
+        [name]: numericValue
+      }));
       return;
     }
     
@@ -395,10 +418,12 @@ const PlayerRegistration = () => {
         setFoundUser(userInfo);
         setIsNewUser(false);
         setPlayerData({
-          username: userInfo.nickname || userInfo.phone,
+          lastname: userInfo.last_name || userInfo.lastname || '',
+          firstname: userInfo.first_name || userInfo.firstname || '',
           email: userInfo.email,
           phone: userInfo.phone,
-          nickname: userInfo.nickname || ''
+          birth_date: userInfo.birth_date || '',
+          gender_digit: userInfo.gender_digit || ''
         });
         setPhoneSearched(true);
         
@@ -450,8 +475,7 @@ const PlayerRegistration = () => {
       const requestData = {
         tournament_id: selectedTournament,
         user_id: userInfo.id,
-        phone_number: userInfo.phone,
-        nickname: userInfo.nickname || ''
+        phone_number: userInfo.phone
       };
 
       console.log('QR 스캔 후 자동 참가 요청:', requestData);
@@ -459,15 +483,13 @@ const PlayerRegistration = () => {
       const response = await api.post('/store/register-player/', requestData);
       
       if (response.data.success) {
-        setSuccess(true);
-        
-        // 성공 후 다시 선수 매핑 정보 로드
-        if (selectedTournament) {
-          fetchPlayerMapping(selectedTournament);
-        }
+                setSuccess(true);
         
         // 성공 메시지 표시
-        alert(`${userInfo.nickname || userInfo.phone}님이 토너먼트에 성공적으로 참가되었습니다!`);
+                        const fullName = (userInfo.last_name || userInfo.lastname || '') + (userInfo.first_name || userInfo.firstname || '');
+                        const nickname = userInfo.nickname ? `(${userInfo.nickname})` : '';
+                        const displayName = fullName ? fullName + nickname : userInfo.username || userInfo.phone;
+                        alert(`${displayName}님이 토너먼트에 성공적으로 참가되었습니다!`);
       }
     } catch (err) {
       console.error('자동 참가 처리 오류:', err);
@@ -504,8 +526,8 @@ const PlayerRegistration = () => {
       }
       
       // 신규 사용자인 경우 추가 정보 검증
-      if (isNewUser && (!playerData.username || !playerData.email)) {
-        setError('신규 사용자는 이름과 이메일을 입력해주세요.');
+      if (isNewUser && (!playerData.lastname || !playerData.firstname || !playerData.email)) {
+        setError('신규 사용자는 성, 이름과 이메일을 입력해주세요.');
         setLoading(false);
         return;
       }
@@ -513,8 +535,7 @@ const PlayerRegistration = () => {
       // API 요청 데이터 준비
       const requestData = {
         tournament_id: selectedTournament,
-        phone_number: playerData.phone,
-        nickname: playerData.nickname
+        phone_number: playerData.phone
       };
       
       // 기존 사용자인 경우 user_id 추가
@@ -522,8 +543,11 @@ const PlayerRegistration = () => {
         requestData.user_id = foundUser.id;
       } else {
         // 신규 사용자인 경우 추가 정보 포함
-        requestData.username = playerData.username;
+        requestData.lastname = playerData.lastname;
+        requestData.firstname = playerData.firstname;
         requestData.email = playerData.email;
+        requestData.birth_date = playerData.birth_date;
+        requestData.gender_digit = playerData.gender_digit;
       }
 
       console.log('선수 참가 요청 데이터:', requestData);
@@ -533,20 +557,17 @@ const PlayerRegistration = () => {
       if (response.data.success) {
         setSuccess(true);
         setPlayerData({
-          username: '',
+          lastname: '',
+          firstname: '',
           email: '',
           phone: '',
-          nickname: ''
+          birth_date: '',
+          gender_digit: ''
         });
         setFoundUser(null);
         setIsNewUser(false);
         setPhoneSearched(false);
         setScanResult(null);
-        
-        // 성공 후 다시 선수 매핑 정보 로드
-        if (selectedTournament) {
-          fetchPlayerMapping(selectedTournament);
-        }
       }
     } catch (err) {
       console.error('선수 참가 오류:', err);
@@ -692,7 +713,11 @@ const PlayerRegistration = () => {
                       <strong>기존 회원 발견!</strong>
                       <div className="mt-1">
                         <small>
-                          이름: {foundUser.username} | 이메일: {foundUser.email}
+                          이름: {(() => {
+                            const fullName = (foundUser.last_name || foundUser.lastname || '') + (foundUser.first_name || foundUser.firstname || '');
+                            const nickname = foundUser.nickname ? `(${foundUser.nickname})` : '';
+                            return fullName ? fullName + nickname : foundUser.username || '정보 없음';
+                          })()} | 이메일: {foundUser.email}
                         </small>
                       </div>
                       {foundUser.ticketInfo && (
@@ -829,7 +854,7 @@ const PlayerRegistration = () => {
                   <option value="">토너먼트를 선택하세요</option>
                   {tournaments.map((tournament) => (
                     <option key={tournament.id} value={tournament.id}>
-                      {tournament.name} ({new Date(tournament.start_time).toLocaleString()})
+                      {tournament.name} - Buy-in: {tournament.buy_in || 1}개 ({new Date(tournament.start_time).toLocaleString()})
                     </option>
                   ))}
                 </Form.Select>
@@ -841,31 +866,169 @@ const PlayerRegistration = () => {
                 )}
               </Form.Group>
 
-              {/* 조건부 필드들 - 신규 사용자이거나 기존 사용자 정보 수정 시에만 표시 */}
-              {(isNewUser || foundUser) && (
+              {/* 선택된 토너먼트 정보 표시 */}
+              {selectedTournament && (() => {
+                const selectedTournamentData = tournaments.find(t => t.id.toString() === selectedTournament.toString());
+                return selectedTournamentData && (
+                  <Alert variant="info" className="mb-3">
+                    <div className="d-flex align-items-center">
+                      <i className="fas fa-info-circle me-2"></i>
+                      <div>
+                        <strong>선택된 토너먼트 정보</strong>
+                        <div className="mt-1">
+                          <div><strong>토너먼트명:</strong> {selectedTournamentData.name}</div>
+                          <div><strong>시작 시간:</strong> {new Date(selectedTournamentData.start_time).toLocaleString()}</div>
+                          <div><strong>Buy-in (필요 SEAT권):</strong> 
+                            <Badge bg="warning" text="dark" className="ms-1">
+                              {selectedTournamentData.buy_in || 1}개
+                            </Badge>
+                          </div>
+                          {selectedTournamentData.description && (
+                            <div><strong>설명:</strong> {selectedTournamentData.description}</div>
+                          )}
+                          <div><strong>상태:</strong> 
+                            <Badge 
+                              bg={
+                                selectedTournamentData.status === 'UPCOMING' ? 'primary' :
+                                selectedTournamentData.status === 'ONGOING' ? 'success' :
+                                selectedTournamentData.status === 'COMPLETED' ? 'secondary' : 'danger'
+                              } 
+                              className="ms-1"
+                            >
+                              {
+                                selectedTournamentData.status === 'UPCOMING' ? '예정' :
+                                selectedTournamentData.status === 'ONGOING' ? '진행중' :
+                                selectedTournamentData.status === 'COMPLETED' ? '완료' : '취소됨'
+                              }
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Alert>
+                );
+              })()}
+
+              {/* 기존 사용자 정보 표시 */}
+              {foundUser && (
+                <Card className="mb-3">
+                  <Card.Body>
+                    <Card.Title className="h6">
+                      <i className="fas fa-user me-2"></i>
+                      기존 회원 정보
+                    </Card.Title>
+                    
+                                         <Row className="mb-2">
+                       <Col xs={3}><strong>이름:</strong></Col>
+                       <Col xs={9}>
+                         {foundUser.last_name && foundUser.first_name ? 
+                           `${foundUser.last_name}${foundUser.first_name}` + 
+                           (foundUser.nickname ? `(${foundUser.nickname})` : '') : 
+                           foundUser.username || '정보 없음'
+                         }
+                       </Col>
+                     </Row>
+                    
+                    <Row className="mb-2">
+                      <Col xs={3}><strong>주민번호:</strong></Col>
+                      <Col xs={9}>
+                        {foundUser.birth_date && foundUser.gender_digit ? 
+                          `${foundUser.birth_date}-${foundUser.gender_digit}xxxxxx` : 
+                          '정보 없음'
+                        }
+                      </Col>
+                    </Row>
+                    
+                    <Row className="mb-2">
+                      <Col xs={3}><strong>이메일:</strong></Col>
+                      <Col xs={9}>{foundUser.email || '정보 없음'}</Col>
+                    </Row>
+                    
+                    <Row>
+                      <Col xs={3}><strong>전화번호:</strong></Col>
+                      <Col xs={9}>{foundUser.phone || '정보 없음'}</Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+              )}
+
+              {/* 신규 사용자 입력 필드들 */}
+              {isNewUser && (
                 <>
+                  <Row>
+                    <Col xs={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>
+                          성 <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="lastname"
+                          value={playerData.lastname}
+                          onChange={handleChange}
+                          placeholder="성을 입력하세요"
+                          required
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col xs={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>
+                          이름 <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="firstname"
+                          value={playerData.firstname}
+                          onChange={handleChange}
+                          placeholder="이름을 입력하세요"
+                          required
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+
                   <Form.Group className="mb-3">
                     <Form.Label>
-                      이름 
-                      {isNewUser && <span className="text-danger">*</span>}
-                      {foundUser && <Badge bg="secondary" className="ms-2">기존 정보</Badge>}
+                      주민번호 앞 7자리 <span className="text-danger">*</span>
                     </Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="username"
-                      value={playerData.username}
-                      onChange={handleChange}
-                      placeholder="선수의 실명을 입력하세요"
-                      required={isNewUser}
-                      disabled={foundUser && !isNewUser}
-                    />
+                    <Row>
+                      <Col xs={7}>
+                        <Form.Control
+                          type="text"
+                          name="birth_date"
+                          value={playerData.birth_date}
+                          onChange={handleChange}
+                          placeholder="생년월일 6자리 (예: 901225)"
+                          maxLength="6"
+                          pattern="[0-9]{6}"
+                          required
+                        />
+                      </Col>
+                      <Col xs={1} className="d-flex align-items-center justify-content-center">
+                        <span>-</span>
+                      </Col>
+                      <Col xs={4}>
+                        <Form.Control
+                          type="text"
+                          name="gender_digit"
+                          value={playerData.gender_digit}
+                          onChange={handleChange}
+                          placeholder="성별구분 1자리"
+                          maxLength="1"
+                          pattern="[1-2]"
+                          required
+                        />
+                      </Col>
+                    </Row>
+                    <Form.Text className="text-muted">
+                      생년월일 6자리와 성별구분 숫자를 입력하세요. (남자: 1, 여자: 2, 예: 901225-1)
+                    </Form.Text>
                   </Form.Group>
 
                   <Form.Group className="mb-3">
                     <Form.Label>
-                      이메일 
-                      {isNewUser && <span className="text-danger">*</span>}
-                      {foundUser && <Badge bg="secondary" className="ms-2">기존 정보</Badge>}
+                      이메일 <span className="text-danger">*</span>
                     </Form.Label>
                     <Form.Control
                       type="email"
@@ -873,29 +1036,13 @@ const PlayerRegistration = () => {
                       value={playerData.email}
                       onChange={handleChange}
                       placeholder="이메일 주소를 입력하세요"
-                      required={isNewUser}
-                      disabled={foundUser && !isNewUser}
+                      required
                     />
                   </Form.Group>
                 </>
               )}
 
-              {/* 닉네임은 항상 표시 (선택사항) */}
-              {(phoneSearched || foundUser) && (
-                <Form.Group className="mb-3">
-                  <Form.Label>닉네임 (선택사항)</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="nickname"
-                    value={playerData.nickname}
-                    onChange={handleChange}
-                    placeholder="토너먼트에서 사용할 닉네임을 입력하세요"
-                  />
-                  <Form.Text className="text-muted">
-                    입력하지 않으면 이름이 닉네임으로 사용됩니다.
-                  </Form.Text>
-                </Form.Group>
-              )}
+
 
               {/* 제출 버튼 - 휴대폰 번호 검색 후에만 표시 */}
               {(phoneSearched || foundUser) && (
@@ -914,7 +1061,7 @@ const PlayerRegistration = () => {
                     ) : (
                       <>
                         <i className="fas fa-user-plus me-2"></i>
-                        {foundUser ? '기존 회원 토너먼트 참가' : '신규 회원 참가 및 토너먼트 참가'}
+                        {foundUser ? '토너먼트 참가' : '신규 회원 등록 및 토너먼트 참가'}
                       </>
                     )}
                   </Button>
@@ -932,65 +1079,7 @@ const PlayerRegistration = () => {
           </Card.Body>
         </Card>
 
-        {/* 이미 참가된 선수 목록 섹션 */}
-        <Card>
-          <Card.Body>
-            <Card.Title>참가된 선수 목록</Card.Title>
-            {playerMappingData ? (
-              <div className="table-responsive">
-                <Table striped hover size="sm">
-                  <thead>
-                    <tr>
-                      <th>이름</th>
-                      <th>참가일시</th>
-                      <th>상태</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {playerMappingData.players && playerMappingData.players.length > 0 ? (
-                      playerMappingData.players.map((player, idx) => (
-                        <tr key={idx}>
-                          <td>{player.name}</td>
-                          <td>{new Date(player.registered_at).toLocaleString()}</td>
-                          <td>
-                            {(() => {
-                              // 상태에 따른 배지 색상과 텍스트 결정
-                              const statusInfo = {
-                                'ACTIVE': { color: 'bg-success', text: '활성' },
-                                'USED': { color: 'bg-warning', text: '사용됨' },
-                                'CANCELLED': { color: 'bg-danger', text: '취소됨' },
-                                'active': { color: 'bg-success', text: '활성' }, // 기존 호환성
-                                'inactive': { color: 'bg-secondary', text: '비활성' } // 기존 호환성
-                              };
-                              
-                              const info = statusInfo[player.status] || { color: 'bg-secondary', text: '알 수 없음' };
-                              
-                              return (
-                                <span className={`badge ${info.color}`}>
-                                  {info.text}
-                                </span>
-                              );
-                            })()}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="3" className="text-center">참가된 선수가 없습니다.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </Table>
-              </div>
-            ) : loading ? (
-              <div className="text-center p-3">
-                <Spinner animation="border" />
-              </div>
-            ) : (
-              <p className="text-center mb-0 text-muted">데이터를 불러올 수 없습니다.</p>
-            )}
-          </Card.Body>
-        </Card>
+
       </Container>
 
       {/* QR 스캐너 모달 */}

@@ -347,10 +347,13 @@ def search_user_by_phone(request):
                 'user': {
                     'id': user.id,
                     'username': user.nickname or user.phone,
+                    'nickname': user.nickname,
                     'email': user.email,
                     'phone': user.phone,
                     'first_name': user.first_name,
                     'last_name': user.last_name,
+                    'birth_date': user.birth_date.strftime('%y%m%d') if user.birth_date else None,
+                    'gender_digit': '1' if user.gender == 'M' else '2' if user.gender == 'F' else None,
                 }
             })
         else:
@@ -404,7 +407,7 @@ def register_player_to_tournament(request):
             
             for phone_var in phone_variations:
                 try:
-                    user = User.objects.get(phone_number=phone_var)
+                    user = User.objects.get(phone=phone_var)
                     break
                 except User.DoesNotExist:
                     continue
@@ -414,12 +417,37 @@ def register_player_to_tournament(request):
                 username = data.get('username', f'user_{normalized_phone}')
                 email = data.get('email', f'{normalized_phone}@temp.com')
                 
+                # 생년월일과 성별 처리
+                birth_date = None
+                gender = None
+                
+                # birth_date 처리 (6자리 문자열 -> DateField)
+                birth_date_str = data.get('birth_date')
+                if birth_date_str and len(birth_date_str) == 6:
+                    try:
+                        # 90년대 이후는 19XX, 그 이전은 20XX로 가정
+                        year_prefix = '19' if birth_date_str[:2] >= '50' else '20'
+                        birth_date = datetime.datetime.strptime(
+                            year_prefix + birth_date_str, '%Y%m%d'
+                        ).date()
+                    except ValueError:
+                        pass  # 잘못된 형식이면 None으로 유지
+                
+                # gender_digit 처리 (1,2 -> M,F)
+                gender_digit = data.get('gender_digit')
+                if gender_digit == '1':
+                    gender = 'M'
+                elif gender_digit == '2':
+                    gender = 'F'
+                
                 user = User.objects.create_user(
                     username=username,
                     email=email,
-                    phone_number=phone_number,
-                    first_name=data.get('first_name', ''),
-                    last_name=data.get('last_name', ''),
+                    phone=normalized_phone,  # phone_number -> phone으로 수정
+                    first_name=data.get('firstname', ''),
+                    last_name=data.get('lastname', ''),
+                    birth_date=birth_date,
+                    gender=gender,
                     password='temp_password_123'  # 임시 비밀번호
                 )
         else:
@@ -501,7 +529,7 @@ def register_player_to_tournament(request):
                 'required_tickets': required_tickets,
                 'available_tickets': available_count,
                 'tournament_name': tournament.name,
-                'user_phone': user.phone_number
+                'user_phone': user.phone
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # 모든 SEAT권이 유효한지 확인
@@ -565,7 +593,7 @@ def register_player_to_tournament(request):
                 'id': tournament_player.id,
                 'user_id': user.id,
                 'username': user.nickname or user.phone,
-                'phone_number': user.phone_number,
+                'phone_number': user.phone,
                 'nickname': tournament_player.nickname,
                 'registered_at': tournament_player.created_at
             },
@@ -625,7 +653,7 @@ def grant_seat_ticket(request):
             
             for phone_var in phone_variations:
                 try:
-                    user = User.objects.get(phone_number=phone_var)
+                    user = User.objects.get(phone=phone_var)
                     break
                 except User.DoesNotExist:
                     continue
@@ -691,7 +719,7 @@ def grant_seat_ticket(request):
         return Response({
             'success': True,
             'message': f'{quantity}개의 좌석권이 성공적으로 지급되었습니다.',
-            'user_phone': user.phone_number,
+            'user_phone': user.phone,
             'tournament_name': tournament.name,
             'granted_quantity': quantity,
             'tickets': [
@@ -739,7 +767,7 @@ def get_user_ticket_status(request):
             
             for phone_var in phone_variations:
                 try:
-                    user = User.objects.get(phone_number=phone_var)
+                    user = User.objects.get(phone=phone_var)
                     break
                 except User.DoesNotExist:
                     continue
@@ -774,7 +802,7 @@ def get_user_ticket_status(request):
             used_tickets = tickets.filter(status='USED')
             
             return Response({
-                'user_phone': user.phone_number,
+                'user_phone': user.phone,
                 'tournament_name': tournament.name,
                 'total_tickets': tickets.count(),
                 'active_tickets': active_tickets.count(),
@@ -800,7 +828,7 @@ def get_user_ticket_status(request):
             ).select_related('tournament').order_by('-last_updated')
             
             return Response({
-                'user_phone': user.phone_number,
+                'user_phone': user.phone,
                 'total_tournaments': summaries.count(),
                 'tournaments': [
                     {
