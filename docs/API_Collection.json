@@ -129,7 +129,7 @@
                 ""
               ]
             },
-            "description": "모든 토너먼트 목록을 조회합니다.\n\n응답:\n- 200: 성공적으로 토너먼트 목록을 반환\n- 401: 인증되지 않은 요청\n- 403: 권한이 없는 요청"
+            "description": "매장 관리자의 토너먼트 목록을 조회합니다.\n\n🔧 2024.12 업데이트: 매장 조회 방식 개선\n- 매장에 배분된 토너먼트를 우선 반환\n- 배분된 토너먼트가 없는 경우 모든 활성 토너먼트 반환 (SEAT권 발급 지원)\n- 매장 조회 방식을 다른 API와 통일 (Store.objects.filter(owner=user))\n\n응답 데이터:\n- id: 토너먼트 ID\n- name: 토너먼트 이름\n- start_time: 시작 시간\n- buy_in: 바이인 (필요 SEAT권 수)\n- ticket_quantity: 총 SEAT권 수량\n- description: 토너먼트 설명\n- status: 토너먼트 상태\n- allocated_quantity: 매장에 할당된 SEAT권 수량\n- remaining_quantity: 매장 보유 SEAT권 수량\n- distributed_quantity: 배포된 SEAT권 수량\n- distribution_created_at: 배분 생성 시간\n\n응답:\n- 200: 성공적으로 토너먼트 목록을 반환\n- 401: 인증되지 않은 요청 (로그인 필요)\n- 403: 권한이 없는 요청 (매장 관리자 권한 필요)"
           },
           "response": []
         },
