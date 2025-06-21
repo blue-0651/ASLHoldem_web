@@ -24,14 +24,21 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
 NC='\033[0m'
 
 log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "${CYAN}[INFO]${NC} $1"
 }
 
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 log_error() {
@@ -87,15 +94,49 @@ export DEBIAN_FRONTEND=noninteractive
 apt update && apt upgrade -y
 
 log_step "2/10 필수 패키지 설치 중..."
-# Python 3.11 저장소 추가 (Ubuntu 22.04에서 안정성을 위해)
-add-apt-repository ppa:deadsnakes/ppa -y || true
-apt update
 
+# 시스템 Python 버전 확인
+PYTHON_VERSION=$(python3 --version 2>&1 | cut -d" " -f2 | cut -d"." -f1-2)
+log_info "시스템 Python 버전: $PYTHON_VERSION"
+
+# Python 3.11 설치 시도 (선택적)
+log_info "Python 3.11 설치를 시도합니다..."
+if ! python3.11 --version &> /dev/null; then
+    # Ubuntu 버전 확인
+    UBUNTU_VERSION=$(lsb_release -cs 2>/dev/null || echo "unknown")
+    log_info "Ubuntu 버전: $UBUNTU_VERSION"
+    
+    if [[ "$UBUNTU_VERSION" != "plucky" ]] && [[ "$UBUNTU_VERSION" != "unknown" ]]; then
+        # plucky가 아닌 경우에만 deadsnakes PPA 사용
+        add-apt-repository ppa:deadsnakes/ppa -y || log_warning "deadsnakes PPA 추가에 실패했습니다."
+        apt update || log_warning "패키지 목록 업데이트에 실패했습니다."
+        
+        if apt install -y python3.11 python3.11-venv python3.11-dev 2>/dev/null; then
+            log_success "Python 3.11이 설치되었습니다."
+            PYTHON_CMD="python3.11"
+        else
+            log_warning "Python 3.11 설치에 실패했습니다. 시스템 Python을 사용합니다."
+            PYTHON_CMD="python3"
+        fi
+    else
+        log_warning "Ubuntu $UBUNTU_VERSION에서는 deadsnakes PPA를 사용할 수 없습니다. 시스템 Python을 사용합니다."
+        PYTHON_CMD="python3"
+    fi
+else
+    log_success "Python 3.11이 이미 설치되어 있습니다."
+    PYTHON_CMD="python3.11"
+fi
+
+# 실제 사용할 Python 버전 확인
+ACTUAL_PYTHON_VERSION=$($PYTHON_CMD --version 2>&1 | cut -d" " -f2 | cut -d"." -f1-2)
+log_info "사용할 Python 버전: $ACTUAL_PYTHON_VERSION"
+
+# 기본 패키지 설치
 apt install -y \
-    python3.11 \
-    python3.11-venv \
-    python3.11-dev \
+    python3 \
     python3-pip \
+    python3-venv \
+    python3-dev \
     postgresql \
     postgresql-contrib \
     nginx \
@@ -118,8 +159,14 @@ apt install -y \
     htop \
     unzip
 
-# Python 3.11을 기본으로 설정
-update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 || true
+# Python 버전별 호환성 메시지
+if [[ "$ACTUAL_PYTHON_VERSION" == "3.13" ]]; then
+    log_warning "Python 3.13을 감지했습니다. psycopg3를 사용하여 PostgreSQL 호환성을 확보합니다."
+elif [[ "$ACTUAL_PYTHON_VERSION" == "3.12" ]] || [[ "$ACTUAL_PYTHON_VERSION" == "3.11" ]]; then
+    log_success "Python $ACTUAL_PYTHON_VERSION은 완전히 지원됩니다."
+else
+    log_warning "Python $ACTUAL_PYTHON_VERSION을 사용합니다. 호환성 문제가 발생할 수 있습니다."
+fi
 
 log_step "3/10 Node.js 설치 중..."
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
@@ -170,7 +217,7 @@ chmod +x $PROJECT_DIR/run.sh
 chown -R $PROJECT_NAME:www-data $PROJECT_DIR
 
 log_step "8/10 환경 파일 생성 중..."
-SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')
+SECRET_KEY=$($PYTHON_CMD -c 'import secrets; print(secrets.token_urlsafe(50))')
 
 cat > $PROJECT_DIR/backend/.env << EOF
 DEBUG=False
@@ -199,7 +246,7 @@ chown $PROJECT_NAME:www-data $PROJECT_DIR/backend/.env
 
 log_step "9/10 백엔드 설정 중..."
 cd $PROJECT_DIR/backend
-sudo -u $PROJECT_NAME python3.11 -m venv .venv
+sudo -u $PROJECT_NAME $PYTHON_CMD -m venv .venv
 sudo -u $PROJECT_NAME .venv/bin/pip install --upgrade pip
 sudo -u $PROJECT_NAME .venv/bin/pip install -r requirements.txt
 
