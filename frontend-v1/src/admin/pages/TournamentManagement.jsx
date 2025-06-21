@@ -71,6 +71,13 @@ const TournamentManagement = () => {
   // 🆕 새로고침 상태 관리
   const [refreshing, setRefreshing] = useState(false);
 
+  // 🆕 SEAT권 정보 모달 관련 상태 추가
+  const [showSeatInfoModal, setShowSeatInfoModal] = useState(false);
+  const [seatInfoModalLoading, setSeatInfoModalLoading] = useState(false);
+  const [selectedPlayerForSeatInfo, setSelectedPlayerForSeatInfo] = useState(null);
+  const [playerSeatTickets, setPlayerSeatTickets] = useState([]);
+  const [playerSeatStats, setPlayerSeatStats] = useState(null);
+
   // 매장 정보 캐시 추가 (전역 캐시)
   const [allStoresCache, setAllStoresCache] = useState(null);
   const [storesLoading, setStoresLoading] = useState(false);
@@ -1710,6 +1717,7 @@ const TournamentManagement = () => {
                   <tr>
                     <th className="border border-dark text-white">선수</th>
                     <th className="border border-dark text-white">획득 매장</th>
+                    <th className="border border-dark text-white">SEAT권 총 수량</th>
                     <th className="border border-dark text-white">SEAT권 보유 수량</th>
                     <th className="border border-dark text-white">SEAT권 사용 수량</th>
                     <th className="border border-dark text-white">SEAT권 사용정보</th>
@@ -1723,7 +1731,7 @@ const TournamentManagement = () => {
                     if (isLoadingDetails) {
                       return (
                         <tr>
-                          <td colSpan="5" className="text-center border border-secondary p-4">
+                          <td colSpan="6" className="text-center border border-secondary p-4">
                             <div className="d-flex align-items-center justify-content-center">
                               <Spinner animation="border" variant="primary" className="me-2" />
                               <span>참가 선수 목록을 불러오는 중입니다...</span>
@@ -1771,6 +1779,11 @@ const TournamentManagement = () => {
                             </div>
                           </td>
                           <td className="text-center border border-secondary">
+                            <span className="badge bg-primary fs-6">
+                              {participant.totalTickets || 0}매
+                            </span>
+                          </td>
+                          <td className="text-center border border-secondary">
                             <span className="badge bg-success fs-6">
                               {participant.ticketCount || participant.activeTickets || 0}매
                             </span>
@@ -1784,10 +1797,9 @@ const TournamentManagement = () => {
                             <Button 
                               variant="outline-primary" 
                               size="sm"
-                              onClick={() => {
-                                // TODO: SEAT권 사용정보 조회 기능 구현 예정
-                                console.log('SEAT권 정보 버튼 클릭:', participant.playerName);
-                              }}
+                              onClick={() => handleOpenSeatInfoModal(data.id, participant)}
+                              disabled={seatInfoModalLoading}
+                              title={`${participant.playerName}님의 SEAT권 상세 정보 조회`}
                             >
                               <i className="fas fa-info-circle me-1"></i>
                               SEAT권 정보
@@ -1798,7 +1810,7 @@ const TournamentManagement = () => {
                     } else {
                       return (
                         <tr>
-                          <td colSpan="5" className="text-center border border-secondary p-4">
+                          <td colSpan="6" className="text-center border border-secondary p-4">
                             <div className="text-muted">
                               <i className="fas fa-users fa-2x mb-2"></i>
                               <p className="mb-0">
@@ -1977,6 +1989,85 @@ const TournamentManagement = () => {
     setDeletingTournament(tournament);
     setError(null); // 이전 오류 메시지 초기화
     setShowDeleteModal(true);
+  };
+
+  // 🆕 선수별 SEAT권 정보 조회 함수
+  const fetchPlayerSeatInfo = async (tournamentId, participant) => {
+    try {
+      setSeatInfoModalLoading(true);
+      setPlayerSeatTickets([]);
+      setPlayerSeatStats(null);
+
+      console.log('🎫 선수 SEAT권 정보 조회 시작:', {
+        playerName: participant.playerName,
+        userId: participant.userId,
+        tournamentId: tournamentId
+      });
+
+      // 1. 사용자별 SEAT권 목록 조회 (모든 상태)
+      const ticketsResponse = await seatTicketAPI.getTicketsByTournament(tournamentId, {
+        user_id: participant.userId,
+        // 모든 상태의 SEAT권 조회 (ACTIVE, USED, EXPIRED, CANCELLED)
+      });
+
+      // 2. 사용자 통계 조회
+      const statsResponse = await seatTicketAPI.getUserStats(participant.userId, tournamentId);
+
+      console.log('✅ SEAT권 목록 조회 완료:', ticketsResponse.data);
+      console.log('✅ 사용자 통계 조회 완료:', statsResponse.data);
+
+      // API 응답 구조 안전하게 처리
+      let ticketsData = [];
+      if (ticketsResponse.data) {
+        if (Array.isArray(ticketsResponse.data)) {
+          ticketsData = ticketsResponse.data;
+        } else if (ticketsResponse.data.results && Array.isArray(ticketsResponse.data.results)) {
+          // 페이지네이션된 응답인 경우
+          ticketsData = ticketsResponse.data.results;
+        }
+      }
+
+      // 티켓 데이터를 최신순으로 정렬
+      const sortedTickets = ticketsData.sort((a, b) => {
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
+      setPlayerSeatTickets(sortedTickets);
+      setPlayerSeatStats(statsResponse.data);
+
+      console.log(`📊 ${participant.playerName} 선수 SEAT권 정보 로딩 완료:`, {
+        총티켓수: sortedTickets.length,
+        통계정보: statsResponse.data.overall_stats
+      });
+
+    } catch (err) {
+      console.error('❌ 선수 SEAT권 정보 조회 실패:', err);
+      setError(`선수 SEAT권 정보를 불러오는 중 오류가 발생했습니다: ${err.message}`);
+      
+      // 오류 발생 시 빈 데이터로 설정
+      setPlayerSeatTickets([]);
+      setPlayerSeatStats(null);
+    } finally {
+      setSeatInfoModalLoading(false);
+    }
+  };
+
+  // 🆕 SEAT권 정보 모달 열기 핸들러
+  const handleOpenSeatInfoModal = (tournamentId, participant) => {
+    console.log('🎫 SEAT권 정보 모달 열기:', {
+      tournamentId,
+      participant
+    });
+
+    setSelectedPlayerForSeatInfo({
+      ...participant,
+      tournamentId: tournamentId
+    });
+    setError(null); // 이전 오류 메시지 초기화
+    setShowSeatInfoModal(true);
+
+    // 모달이 열린 후 데이터 조회
+    fetchPlayerSeatInfo(tournamentId, participant);
   };
 
   // 🆕 토너먼트 삭제 확인 핸들러
@@ -3102,6 +3193,325 @@ const TournamentManagement = () => {
               <>
                 <i className="fas fa-trash me-1"></i>
                 삭제 확인
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 🆕 SEAT권 정보 모달 */}
+      <Modal
+        show={showSeatInfoModal}
+        onHide={() => setShowSeatInfoModal(false)}
+        size="xl"
+        backdrop="static"
+        keyboard={false}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i className="fas fa-info-circle me-2 text-primary"></i>
+            SEAT권 상세 정보
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedPlayerForSeatInfo && (
+            <>
+              {/* 선수 기본 정보 */}
+              <Card className="mb-4 border-primary">
+                <Card.Header className="bg-primary-subtle">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <h6 className="mb-0 text-primary fw-bold">
+                      <i className="fas fa-user me-2"></i>
+                      선수 정보
+                    </h6>
+                    {seatInfoModalLoading && (
+                      <Spinner animation="border" size="sm" variant="primary" />
+                    )}
+                  </div>
+                </Card.Header>
+                                 <Card.Body>
+                   <Row>
+                     <Col md={6}>
+                       <div className="text-center p-3">
+                         <div className="mb-2">
+                           <i className="fas fa-user-circle fa-3x text-primary"></i>
+                         </div>
+                         <h5 className="fw-bold text-primary">
+                           {selectedPlayerForSeatInfo.playerName}
+                         </h5>
+                         <small className="text-muted">선수명</small>
+                       </div>
+                     </Col>
+                     <Col md={6}>
+                       <div className="text-center p-3">
+                         <div className="mb-2">
+                           <i className="fas fa-phone fa-2x text-success"></i>
+                         </div>
+                         <h6 className="fw-bold">
+                           {selectedPlayerForSeatInfo.playerPhone || '등록된 전화번호 없음'}
+                         </h6>
+                         <small className="text-muted">연락처</small>
+                       </div>
+                     </Col>
+                   </Row>
+                 </Card.Body>
+              </Card>
+
+              {/* SEAT권 보유 현황 요약 */}
+              {playerSeatStats && (
+                <Alert variant="info" className="mb-4">
+                  <Alert.Heading className="h6 mb-3">
+                    <i className="fas fa-chart-bar me-2"></i>
+                    SEAT권 보유 현황 요약
+                  </Alert.Heading>
+                  <Row className="text-center">
+                    <Col md={3}>
+                      <div className="d-flex flex-column">
+                        <span className="text-muted small">총 SEAT권</span>
+                        <strong className="fs-4 text-primary">
+                          {playerSeatStats.overall_stats?.total_tickets || 0}매
+                        </strong>
+                      </div>
+                    </Col>
+                    <Col md={3}>
+                      <div className="d-flex flex-column">
+                        <span className="text-muted small">활성 SEAT권</span>
+                        <strong className="fs-4 text-success">
+                          {playerSeatStats.overall_stats?.active_tickets || 0}매
+                        </strong>
+                      </div>
+                    </Col>
+                    <Col md={3}>
+                      <div className="d-flex flex-column">
+                        <span className="text-muted small">사용된 SEAT권</span>
+                        <strong className="fs-4 text-secondary">
+                          {playerSeatStats.overall_stats?.used_tickets || 0}매
+                        </strong>
+                      </div>
+                    </Col>
+                    <Col md={3}>
+                      <div className="d-flex flex-column">
+                        <span className="text-muted small">기타 상태</span>
+                        <strong className="fs-4 text-warning">
+                          {(playerSeatStats.overall_stats?.expired_tickets || 0) + 
+                           (playerSeatStats.overall_stats?.cancelled_tickets || 0)}매
+                        </strong>
+                      </div>
+                    </Col>
+                  </Row>
+                </Alert>
+              )}
+
+              {/* SEAT권 상세 목록 */}
+              <Card className="mb-4">
+                <Card.Header>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <h6 className="mb-0 fw-bold">
+                      <i className="fas fa-list me-2"></i>
+                      SEAT권 상세 목록
+                    </h6>
+                    <small className="text-muted">
+                      총 {playerSeatTickets.length}개의 SEAT권
+                    </small>
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  {seatInfoModalLoading ? (
+                    <div className="text-center p-4">
+                      <Spinner animation="border" variant="primary" />
+                      <p className="mt-3">SEAT권 정보를 불러오는 중입니다...</p>
+                    </div>
+                  ) : playerSeatTickets.length > 0 ? (
+                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                      <Table responsive striped bordered hover size="sm">
+                        <thead className="table-dark">
+                          <tr>
+                            <th style={{ width: '120px' }}>SEAT권 ID</th>
+                            <th style={{ width: '100px' }}>상태</th>
+                            <th style={{ width: '100px' }}>발급 방법</th>
+                            <th style={{ width: '140px' }}>발급일시</th>
+                            <th style={{ width: '140px' }}>사용일시</th>
+                            <th>메모</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {playerSeatTickets.map((ticket, index) => {
+                            const getStatusBadge = (status) => {
+                              const statusConfig = {
+                                'ACTIVE': { variant: 'success', text: '활성' },
+                                'USED': { variant: 'secondary', text: '사용됨' },
+                                'EXPIRED': { variant: 'warning', text: '만료됨' },
+                                'CANCELLED': { variant: 'danger', text: '취소됨' }
+                              };
+                              const config = statusConfig[status] || { variant: 'secondary', text: status };
+                              return (
+                                <span className={`badge bg-${config.variant}`}>
+                                  {config.text}
+                                </span>
+                              );
+                            };
+
+                            const getSourceBadge = (source) => {
+                              const sourceConfig = {
+                                'PURCHASE': { variant: 'primary', text: '구매' },
+                                'REWARD': { variant: 'success', text: '보상' },
+                                'GIFT': { variant: 'info', text: '선물' },
+                                'ADMIN': { variant: 'warning', text: '관리자' }
+                              };
+                              const config = sourceConfig[source] || { variant: 'secondary', text: source };
+                              return (
+                                <span className={`badge bg-${config.variant}`}>
+                                  {config.text}
+                                </span>
+                              );
+                            };
+
+                            const formatDateTime = (dateTimeString) => {
+                              if (!dateTimeString) return '-';
+                              try {
+                                const date = new Date(dateTimeString);
+                                return date.toLocaleString('ko-KR', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: false
+                                });
+                              } catch (error) {
+                                return dateTimeString;
+                              }
+                            };
+
+                            return (
+                              <tr key={ticket.ticket_id || index}>
+                                <td>
+                                  <code style={{ fontSize: '10px' }}>
+                                    {ticket.ticket_id ? 
+                                      `...${ticket.ticket_id.toString().slice(-8)}` : 
+                                      '정보 없음'
+                                    }
+                                  </code>
+                                </td>
+                                <td>{getStatusBadge(ticket.status)}</td>
+                                <td>{getSourceBadge(ticket.source)}</td>
+                                <td style={{ fontSize: '12px' }}>
+                                  {formatDateTime(ticket.created_at)}
+                                </td>
+                                <td style={{ fontSize: '12px' }}>
+                                  {formatDateTime(ticket.used_at)}
+                                </td>
+                                <td style={{ fontSize: '11px' }}>
+                                  {ticket.memo || '-'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-center p-4">
+                      <i className="fas fa-inbox fa-3x text-muted mb-3"></i>
+                      <p className="text-muted mb-0">
+                        이 선수는 현재 보유한 SEAT권이 없습니다.
+                      </p>
+                      <small className="text-muted">
+                        SEAT권이 발급되면 여기에 표시됩니다.
+                      </small>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+
+              {/* 추가 정보 (선택적) */}
+              {playerSeatStats?.tournament_stats && playerSeatStats.tournament_stats.length > 0 && (
+                <Card className="mb-3">
+                  <Card.Header>
+                    <h6 className="mb-0 fw-bold">
+                      <i className="fas fa-trophy me-2"></i>
+                      토너먼트별 SEAT권 이력
+                    </h6>
+                  </Card.Header>
+                  <Card.Body>
+                    <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                      <Table responsive striped size="sm">
+                        <thead>
+                          <tr>
+                            <th>토너먼트</th>
+                            <th>시작일</th>
+                            <th>활성</th>
+                            <th>사용됨</th>
+                            <th>총계</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {playerSeatStats.tournament_stats.map((tournamentStat, index) => (
+                            <tr key={tournamentStat.tournament_id || index}>
+                              <td style={{ fontSize: '12px' }}>
+                                {tournamentStat.tournament_name}
+                              </td>
+                              <td style={{ fontSize: '11px' }}>
+                                {tournamentStat.tournament_start_time ? 
+                                  new Date(tournamentStat.tournament_start_time).toLocaleDateString('ko-KR') : 
+                                  '-'
+                                }
+                              </td>
+                              <td>
+                                <span className="badge bg-success">
+                                  {tournamentStat.active_tickets}매
+                                </span>
+                              </td>
+                              <td>
+                                <span className="badge bg-secondary">
+                                  {tournamentStat.used_tickets}매
+                                </span>
+                              </td>
+                              <td>
+                                <span className="badge bg-primary">
+                                  {tournamentStat.total_tickets}매
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    </div>
+                  </Card.Body>
+                </Card>
+              )}
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowSeatInfoModal(false)}
+            disabled={seatInfoModalLoading}
+            size="lg"
+          >
+            <i className="fas fa-times me-1"></i>
+            닫기
+          </Button>
+          <Button
+            variant="outline-primary"
+            onClick={() => {
+              if (selectedPlayerForSeatInfo) {
+                fetchPlayerSeatInfo(selectedPlayerForSeatInfo.tournamentId, selectedPlayerForSeatInfo);
+              }
+            }}
+            disabled={seatInfoModalLoading}
+            size="lg"
+          >
+            {seatInfoModalLoading ? (
+              <>
+                <Spinner as="span" animation="border" size="sm" className="me-2" />
+                새로고침 중...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-redo me-1"></i>
+                새로고침
               </>
             )}
           </Button>
