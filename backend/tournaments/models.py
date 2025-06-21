@@ -22,6 +22,9 @@ class Tournament(models.Model):
     # 시작 시간
     start_time = models.DateTimeField(verbose_name='시작 시간')
     
+    # 종료 시간
+    end_time = models.DateTimeField(verbose_name='종료 시간', null=True, blank=True)
+    
     # 필요 좌석권 수 (바이인)
     buy_in = models.IntegerField(default=1, verbose_name='바이인(필요 좌석권 수)')
     
