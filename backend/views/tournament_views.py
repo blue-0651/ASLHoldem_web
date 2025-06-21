@@ -236,6 +236,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
         """
         try:
             from seats.models import TournamentTicketDistribution
+            from stores.models import Store
             
             print("=== store_tournaments API 호출됨 ===")
             print(f"요청 사용자: {request.user}")
@@ -248,18 +249,9 @@ class TournamentViewSet(viewsets.ModelViewSet):
                 return Response({"error": "로그인이 필요합니다."}, 
                               status=status.HTTP_401_UNAUTHORIZED)
             
-            # 매장 관리자 권한 확인
-            print(f"사용자 속성: {dir(user)}")
-            print(f"hasattr(user, 'stores'): {hasattr(user, 'stores')}")
-            print(f"user.is_store_owner: {getattr(user, 'is_store_owner', False)}")
-            
-            # 사용자의 매장 정보 가져오기
-            if hasattr(user, 'stores'):
-                store = user.stores.first()
-                print(f"user.stores.first(): {store}")
-            else:
-                store = None
-                print("user.stores 속성이 없음")
+            # 사용자의 매장 정보 가져오기 (다른 API와 동일한 방식으로 수정)
+            store = Store.objects.filter(owner=user).first()
+            print(f"사용자가 소유한 매장: {store}")
             
             if not store:
                 print("매장 관리자 권한 없음 - 매장이 없음")
@@ -268,14 +260,27 @@ class TournamentViewSet(viewsets.ModelViewSet):
             
             print(f"매장 정보: {store}")
             
-            # Django ORM을 사용하여 토너먼트 목록 조회
+            # 🔧 수정: 본사에서 해당 매장에 SEAT권이 발급된 토너먼트들만 조회
+            # TournamentTicketDistribution 테이블에서 해당 매장에 배분된 토너먼트만 반환
             tournaments = Tournament.objects.filter(
                 ticket_distributions__store=store
             ).select_related().prefetch_related(
                 'ticket_distributions'
             ).distinct().order_by('-start_time')
             
-            print(f"조회된 토너먼트 수: {tournaments.count()}")
+            print(f"🎯 해당 매장({store.name})에 배분된 토너먼트 수: {tournaments.count()}")
+            
+            # 각 토너먼트의 배분 정보 디버깅
+            for t in tournaments:
+                dist = t.ticket_distributions.filter(store=store).first()
+                print(f"  - {t.name}: 배분량={dist.allocated_quantity if dist else 0}, 보유량={dist.remaining_quantity if dist else 0}")
+            
+            if tournaments.count() == 0:
+                print("⚠️ 이 매장에 배분된 토너먼트가 없습니다.")
+                # 빈 리스트 반환 (배분된 토너먼트가 없으면 SEAT권 발급 불가)
+                return Response([])
+            
+            print(f"✅ 최종 반환할 토너먼트 수: {tournaments.count()}")
             
             # 응답 데이터 구성
             response_data = []
@@ -303,18 +308,22 @@ class TournamentViewSet(viewsets.ModelViewSet):
                     tournament_data.update({
                         'allocated_quantity': distribution.allocated_quantity,
                         'remaining_quantity': distribution.remaining_quantity,
+                        'distributed_quantity': distribution.distributed_quantity,
                         'distribution_created_at': distribution.created_at
                     })
                 else:
                     tournament_data.update({
                         'allocated_quantity': 0,
                         'remaining_quantity': 0,
+                        'distributed_quantity': 0,
                         'distribution_created_at': None
                     })
                 
                 response_data.append(tournament_data)
+                print(f"추가된 토너먼트 데이터: {tournament_data}")
             
             print(f"최종 응답 데이터 수: {len(response_data)}")
+            print(f"최종 응답 데이터 전체: {response_data}")
             return Response(response_data)
             
         except Exception as e:
