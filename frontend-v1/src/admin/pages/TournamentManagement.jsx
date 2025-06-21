@@ -3229,90 +3229,64 @@ const TournamentManagement = () => {
         <Modal.Body>
           {selectedPlayerForSeatInfo && (
             <>
-              {/* 선수 기본 정보 */}
-              <Card className="mb-4 border-primary">
-                <Card.Header className="bg-primary-subtle">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <h6 className="mb-0 text-primary fw-bold">
-                      <i className="fas fa-user me-2"></i>
-                      선수 정보
-                    </h6>
-                    {seatInfoModalLoading && (
-                      <Spinner animation="border" size="sm" variant="primary" />
-                    )}
+              {/* 선수 기본 정보 - 한 라인으로 간단 표시 */}
+              <div className="mb-3 p-3 border border-primary rounded bg-primary-subtle">
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center">
+                    <i className="fas fa-user-circle fa-2x text-primary me-3"></i>
+                    <div>
+                      <h6 className="mb-1 fw-bold text-primary">
+                        {selectedPlayerForSeatInfo.playerName}
+                      </h6>
+                      <small className="text-muted">
+                        <i className="fas fa-phone me-1"></i>
+                        {selectedPlayerForSeatInfo.playerPhone || '등록된 전화번호 없음'}
+                      </small>
+                    </div>
                   </div>
-                </Card.Header>
-                                 <Card.Body>
-                   <Row>
-                     <Col md={6}>
-                       <div className="text-center p-3">
-                         <div className="mb-2">
-                           <i className="fas fa-user-circle fa-3x text-primary"></i>
-                         </div>
-                         <h5 className="fw-bold text-primary">
-                           {selectedPlayerForSeatInfo.playerName}
-                         </h5>
-                         <small className="text-muted">선수명</small>
-                       </div>
-                     </Col>
-                     <Col md={6}>
-                       <div className="text-center p-3">
-                         <div className="mb-2">
-                           <i className="fas fa-phone fa-2x text-success"></i>
-                         </div>
-                         <h6 className="fw-bold">
-                           {selectedPlayerForSeatInfo.playerPhone || '등록된 전화번호 없음'}
-                         </h6>
-                         <small className="text-muted">연락처</small>
-                       </div>
-                     </Col>
-                   </Row>
-                 </Card.Body>
-              </Card>
+                  {seatInfoModalLoading && (
+                    <Spinner animation="border" size="sm" variant="primary" />
+                  )}
+                </div>
+              </div>
 
-              {/* SEAT권 보유 현황 요약 */}
+              {/* SEAT권 보유 현황 요약 - 한 라인으로 간단 표시 */}
               {playerSeatStats && (
-                <Alert variant="info" className="mb-4">
-                  <Alert.Heading className="h6 mb-3">
-                    <i className="fas fa-chart-bar me-2"></i>
-                    SEAT권 보유 현황 요약
-                  </Alert.Heading>
-                  <Row className="text-center">
-                    <Col md={3}>
-                      <div className="d-flex flex-column">
-                        <span className="text-muted small">총 SEAT권</span>
-                        <strong className="fs-4 text-primary">
+                <div className="mb-3 p-3 border border-info rounded bg-info-subtle">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center">
+                      <i className="fas fa-chart-bar fa-lg text-info me-3"></i>
+                      <span className="fw-bold text-info">SEAT권 현황:</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-4">
+                      <div className="d-flex align-items-center">
+                        <span className="small text-muted me-1">총</span>
+                        <span className="badge bg-primary fs-6">
                           {playerSeatStats.overall_stats?.total_tickets || 0}매
-                        </strong>
+                        </span>
                       </div>
-                    </Col>
-                    <Col md={3}>
-                      <div className="d-flex flex-column">
-                        <span className="text-muted small">활성 SEAT권</span>
-                        <strong className="fs-4 text-success">
+                      <div className="d-flex align-items-center">
+                        <span className="small text-muted me-1">활성</span>
+                        <span className="badge bg-success fs-6">
                           {playerSeatStats.overall_stats?.active_tickets || 0}매
-                        </strong>
+                        </span>
                       </div>
-                    </Col>
-                    <Col md={3}>
-                      <div className="d-flex flex-column">
-                        <span className="text-muted small">사용된 SEAT권</span>
-                        <strong className="fs-4 text-secondary">
+                      <div className="d-flex align-items-center">
+                        <span className="small text-muted me-1">사용</span>
+                        <span className="badge bg-secondary fs-6">
                           {playerSeatStats.overall_stats?.used_tickets || 0}매
-                        </strong>
+                        </span>
                       </div>
-                    </Col>
-                    <Col md={3}>
-                      <div className="d-flex flex-column">
-                        <span className="text-muted small">기타 상태</span>
-                        <strong className="fs-4 text-warning">
+                      <div className="d-flex align-items-center">
+                        <span className="small text-muted me-1">기타</span>
+                        <span className="badge bg-warning fs-6">
                           {(playerSeatStats.overall_stats?.expired_tickets || 0) + 
                            (playerSeatStats.overall_stats?.cancelled_tickets || 0)}매
-                        </strong>
+                        </span>
                       </div>
-                    </Col>
-                  </Row>
-                </Alert>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* SEAT권 상세 목록 */}
