@@ -56,6 +56,7 @@ const TournamentManagement = () => {
     id: null,
     name: '',
     startDateTime: new Date(),
+    endDateTime: new Date(),
     buy_in: '',
     ticket_quantity: '',
     description: '',
@@ -100,6 +101,7 @@ const TournamentManagement = () => {
   const [formData, setFormData] = useState({
     name: '',
     startDateTime: new Date(),
+    endDateTime: new Date(),
     buy_in: '',
     ticket_quantity: '',
     description: '',
@@ -1019,13 +1021,22 @@ const TournamentManagement = () => {
         return;
       }
 
+      // 종료 시간이 시작 시간보다 이후인지 검증
+      if (formData.endDateTime && formData.endDateTime <= formData.startDateTime) {
+        setError('종료 시간은 시작 시간보다 늦어야 합니다.');
+        setLoading(false);
+        return;
+      }
+
       // 날짜 & 시간 포맷
       const startDateTime = formData.startDateTime.toISOString();
+      const endDateTime = formData.endDateTime ? formData.endDateTime.toISOString() : null;
 
       // 폼 데이터 준비 (현재 백엔드는 단일 매장만 지원하므로 첫 번째 매장 사용)
       const tournamentData = {
         name: formData.name,
         start_time: startDateTime,
+        end_time: endDateTime,
         buy_in: formData.buy_in,
         ticket_quantity: formData.ticket_quantity,
         description: formData.description || "",
@@ -1040,6 +1051,7 @@ const TournamentManagement = () => {
       setFormData({
         name: '',
         startDateTime: new Date(),
+        endDateTime: new Date(),
         buy_in: '',
         ticket_quantity: '',
         description: '',
@@ -1862,10 +1874,12 @@ const TournamentManagement = () => {
   const openCreateModal = () => {
     // 현재 날짜와 시간 설정
     const now = new Date();
+    const endTime = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6시간 후
 
     setFormData({
       name: '',
       startDateTime: now,
+      endDateTime: endTime,
       buy_in: '',
       ticket_quantity: '',
       description: '',
@@ -1882,11 +1896,17 @@ const TournamentManagement = () => {
     // start_time을 Date 객체로 변환
     const startDateTime = new Date(tournament.start_time);
     
+    // end_time을 Date 객체로 변환 (없으면 시작 시간 + 6시간)
+    const endDateTime = tournament.end_time 
+      ? new Date(tournament.end_time) 
+      : new Date(startDateTime.getTime() + 6 * 60 * 60 * 1000); // 6시간 후
+    
     setEditingTournament(tournament);
     setEditFormData({
       id: tournament.id,
       name: tournament.name || '',
       startDateTime: startDateTime,
+      endDateTime: endDateTime,
       buy_in: tournament.buy_in || '',
       ticket_quantity: tournament.ticket_quantity || '',
       description: tournament.description || '',
@@ -1921,13 +1941,22 @@ const TournamentManagement = () => {
         return;
       }
 
+      // 종료 시간이 시작 시간보다 이후인지 검증
+      if (editFormData.endDateTime && editFormData.endDateTime <= editFormData.startDateTime) {
+        setError('종료 시간은 시작 시간보다 늦어야 합니다.');
+        setEditModalLoading(false);
+        return;
+      }
+
       // 날짜 & 시간 포맷
       const startDateTime = editFormData.startDateTime.toISOString();
+      const endDateTime = editFormData.endDateTime ? editFormData.endDateTime.toISOString() : null;
 
       // 수정할 토너먼트 데이터 준비
       const updateData = {
         name: editFormData.name,
         start_time: startDateTime,
+        end_time: endDateTime,
         buy_in: editFormData.buy_in,
         ticket_quantity: editFormData.ticket_quantity,
         description: editFormData.description || "",
@@ -2290,7 +2319,7 @@ const TournamentManagement = () => {
             </Row>
 
             <Row>
-              <Col md={12}>
+              <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>
                     시작 날짜 및 시간 <span className="text-danger">*</span>
@@ -2307,7 +2336,7 @@ const TournamentManagement = () => {
                       minDate={new Date()}
                       maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
                       className="form-control w-100"
-                      placeholderText="날짜와 시간을 선택해주세요"
+                      placeholderText="시작 날짜와 시간 선택"
                       required
                       autoComplete="off"
                       showPopperArrow={false}
@@ -2322,10 +2351,44 @@ const TournamentManagement = () => {
                     />
                   </div>
                   <Form.Text className="text-muted">
-                    <i className="fas fa-info-circle me-1"></i>
-                    토너먼트 시작 날짜와 시간을 선택해주세요. (오늘 이후만 선택 가능)
-                    <br />
-                    <small>💡 15분 단위로 시간 선택이 가능합니다.</small>
+                    <i className="fas fa-clock me-1"></i>
+                    토너먼트 시작 시간
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>
+                    종료 날짜 및 시간
+                  </Form.Label>
+                  <div className="w-100">
+                    <DatePicker
+                      selected={formData.endDateTime}
+                      onChange={(date) => setFormData({...formData, endDateTime: date})}
+                      showTimeSelect
+                      timeFormat="HH:mm"
+                      timeIntervals={15}
+                      dateFormat="yyyy년 MM월 dd일 HH:mm"
+                      locale={ko}
+                      minDate={formData.startDateTime || new Date()}
+                      maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
+                      className="form-control w-100"
+                      placeholderText="종료 날짜와 시간 선택"
+                      autoComplete="off"
+                      showPopperArrow={false}
+                      popperPlacement="bottom-start"
+                      todayButton="오늘"
+                      timeCaption="시간"
+                      calendarStartDay={0}
+                      shouldCloseOnSelect={false}
+                      showMonthDropdown
+                      showYearDropdown
+                      dropdownMode="select"
+                    />
+                  </div>
+                  <Form.Text className="text-muted">
+                    <i className="fas fa-clock me-1"></i>
+                    토너먼트 종료 시간 (선택사항)
                   </Form.Text>
                 </Form.Group>
               </Col>
@@ -2778,43 +2841,77 @@ const TournamentManagement = () => {
                   </Col>
                 </Row>
 
-                <Row>
-                  <Col md={12}>
+                                <Row>
+                  <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label>
                         시작 날짜 및 시간 <span className="text-danger">*</span>
                       </Form.Label>
-                                             <div className="w-100">
-                         <DatePicker
-                           selected={editFormData.startDateTime}
-                           onChange={(date) => setEditFormData({...editFormData, startDateTime: date})}
-                           showTimeSelect
-                           timeFormat="HH:mm"
-                           timeIntervals={15}
-                           dateFormat="yyyy년 MM월 dd일 HH:mm"
-                           locale={ko}
-                           maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
-                           className="form-control w-100"
-                           placeholderText="날짜와 시간을 선택해주세요"
-                           required
-                           autoComplete="off"
-                           showPopperArrow={false}
-                           popperPlacement="bottom-start"
-                           todayButton="오늘"
-                           timeCaption="시간"
-                           calendarStartDay={0}
-                           shouldCloseOnSelect={false}
-                           showMonthDropdown
-                           showYearDropdown
-                           dropdownMode="select"
-                         />
-                       </div>
-                                             <Form.Text className="text-muted">
-                         <i className="fas fa-info-circle me-1"></i>
-                         토너먼트 시작 날짜와 시간을 선택해주세요.
-                         <br />
-                         <small>💡 15분 단위로 시간 선택이 가능합니다.</small>
-                       </Form.Text>
+                      <div className="w-100">
+                        <DatePicker
+                          selected={editFormData.startDateTime}
+                          onChange={(date) => setEditFormData({...editFormData, startDateTime: date})}
+                          showTimeSelect
+                          timeFormat="HH:mm"
+                          timeIntervals={15}
+                          dateFormat="yyyy년 MM월 dd일 HH:mm"
+                          locale={ko}
+                          maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
+                          className="form-control w-100"
+                          placeholderText="시작 날짜와 시간 선택"
+                          required
+                          autoComplete="off"
+                          showPopperArrow={false}
+                          popperPlacement="bottom-start"
+                          todayButton="오늘"
+                          timeCaption="시간"
+                          calendarStartDay={0}
+                          shouldCloseOnSelect={false}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                        />
+                      </div>
+                      <Form.Text className="text-muted">
+                        <i className="fas fa-clock me-1"></i>
+                        토너먼트 시작 시간
+                      </Form.Text>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>
+                        종료 날짜 및 시간
+                      </Form.Label>
+                      <div className="w-100">
+                        <DatePicker
+                          selected={editFormData.endDateTime}
+                          onChange={(date) => setEditFormData({...editFormData, endDateTime: date})}
+                          showTimeSelect
+                          timeFormat="HH:mm"
+                          timeIntervals={15}
+                          dateFormat="yyyy년 MM월 dd일 HH:mm"
+                          locale={ko}
+                          minDate={editFormData.startDateTime}
+                          maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 1))}
+                          className="form-control w-100"
+                          placeholderText="종료 날짜와 시간 선택"
+                          autoComplete="off"
+                          showPopperArrow={false}
+                          popperPlacement="bottom-start"
+                          todayButton="오늘"
+                          timeCaption="시간"
+                          calendarStartDay={0}
+                          shouldCloseOnSelect={false}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                        />
+                      </div>
+                      <Form.Text className="text-muted">
+                        <i className="fas fa-clock me-1"></i>
+                        토너먼트 종료 시간 (선택사항)
+                      </Form.Text>
                     </Form.Group>
                   </Col>
                 </Row>
