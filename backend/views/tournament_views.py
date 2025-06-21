@@ -232,8 +232,9 @@ class TournamentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def store_tournaments(self, request):
         """
-        현재 로그인한 매장 관리자의 매장 토너먼트 목록을 반환합니다.
-        본사에서 좌석권이 배분된 모든 토너먼트를 반환합니다 (allocated_quantity가 0이어도 포함).
+        매장 관리자 또는 관리자의 토너먼트 목록을 반환합니다.
+        - 매장 관리자: 본사에서 SEAT권이 배분된 매장 토너먼트만 반환
+        - 시스템 관리자: 모든 토너먼트 반환
         """
         try:
             from seats.models import TournamentTicketDistribution
@@ -250,83 +251,118 @@ class TournamentViewSet(viewsets.ModelViewSet):
                 return Response({"error": "로그인이 필요합니다."}, 
                               status=status.HTTP_401_UNAUTHORIZED)
             
-            # 사용자의 매장 정보 가져오기 (다른 API와 동일한 방식으로 수정)
-            store = Store.objects.filter(owner=user).first()
-            print(f"사용자가 소유한 매장: {store}")
+            print(f"사용자 정보: ID={user.id}, 스태프={user.is_staff}, 슈퍼유저={user.is_superuser}, 매장관리자={user.is_store_owner}")
             
-            if not store:
-                print("매장 관리자 권한 없음 - 매장이 없음")
-                return Response({"error": "매장 관리자 권한이 없습니다."}, 
-                              status=status.HTTP_403_FORBIDDEN)
+            # 관리자 권한 확인 (스태프 또는 슈퍼유저)
+            is_admin = user.is_staff or user.is_superuser
             
-            print(f"매장 정보: {store}")
-            
-            # 🔧 수정: 본사에서 해당 매장에 SEAT권이 발급된 토너먼트들만 조회
-            # TournamentTicketDistribution 테이블에서 해당 매장에 배분된 토너먼트만 반환
-            tournaments = Tournament.objects.filter(
-                ticket_distributions__store=store
-            ).select_related().prefetch_related(
-                'ticket_distributions'
-            ).distinct().order_by('-start_time')
-            
-            print(f"🎯 해당 매장({store.name})에 배분된 토너먼트 수: {tournaments.count()}")
-            
-            # 각 토너먼트의 배분 정보 디버깅
-            for t in tournaments:
-                dist = t.ticket_distributions.filter(store=store).first()
-                print(f"  - {t.name}: 배분량={dist.allocated_quantity if dist else 0}, 보유량={dist.remaining_quantity if dist else 0}")
-            
-            if tournaments.count() == 0:
-                print("⚠️ 이 매장에 배분된 토너먼트가 없습니다.")
-                # 빈 리스트 반환 (배분된 토너먼트가 없으면 SEAT권 발급 불가)
-                return Response([])
-            
-            print(f"✅ 최종 반환할 토너먼트 수: {tournaments.count()}")
-            
-            # 응답 데이터 구성
-            response_data = []
-            for tournament in tournaments:
-                print(f"처리 중인 토너먼트: {tournament.name}")
+            if is_admin:
+                print("🔧 관리자 권한 - 모든 토너먼트 조회")
+                # 관리자는 모든 토너먼트 조회 가능
+                tournaments = Tournament.objects.all().order_by('-start_time')
                 
-                # 해당 매장의 배분 정보 조회
-                distribution = tournament.ticket_distributions.filter(store=store).first()
-                print(f"배분 정보: {distribution}")
-                
-                tournament_data = {
-                    'id': tournament.id,
-                    'name': tournament.name,
-                    'start_time': tournament.start_time,
-                    'end_time': tournament.end_time,
-                    'buy_in': tournament.buy_in,
-                    'ticket_quantity': tournament.ticket_quantity,
-                    'description': tournament.description,
-                    'status': tournament.status,
-                    'created_at': tournament.created_at,
-                    'updated_at': tournament.updated_at,
-                }
-                
-                # 배분 정보 추가
-                if distribution:
-                    tournament_data.update({
-                        'allocated_quantity': distribution.allocated_quantity,
-                        'remaining_quantity': distribution.remaining_quantity,
-                        'distributed_quantity': distribution.distributed_quantity,
-                        'distribution_created_at': distribution.created_at
-                    })
-                else:
-                    tournament_data.update({
-                        'allocated_quantity': 0,
-                        'remaining_quantity': 0,
+                response_data = []
+                for tournament in tournaments:
+                    tournament_data = {
+                        'id': tournament.id,
+                        'name': tournament.name,
+                        'start_time': tournament.start_time,
+                        'end_time': tournament.end_time,
+                        'buy_in': tournament.buy_in,
+                        'ticket_quantity': tournament.ticket_quantity,
+                        'description': tournament.description,
+                        'status': tournament.status,
+                        'created_at': tournament.created_at,
+                        'updated_at': tournament.updated_at,
+                        # 관리자는 배분 정보가 없으므로 기본값 설정
+                        'allocated_quantity': tournament.ticket_quantity,
+                        'remaining_quantity': tournament.ticket_quantity,
                         'distributed_quantity': 0,
-                        'distribution_created_at': None
-                    })
+                        'distribution_created_at': tournament.created_at
+                    }
+                    response_data.append(tournament_data)
                 
-                response_data.append(tournament_data)
-                print(f"추가된 토너먼트 데이터: {tournament_data}")
+                print(f"✅ 관리자 - 전체 토너먼트 수: {len(response_data)}")
+                return Response(response_data)
             
-            print(f"최종 응답 데이터 수: {len(response_data)}")
-            print(f"최종 응답 데이터 전체: {response_data}")
-            return Response(response_data)
+            else:
+                print("🏪 매장 관리자 권한 - 매장 배분 토너먼트 조회")
+                # 사용자의 매장 정보 가져오기
+                store = Store.objects.filter(owner=user).first()
+                print(f"사용자가 소유한 매장: {store}")
+                
+                if not store:
+                    print("매장 관리자 권한 없음 - 매장이 없음")
+                    return Response({"error": "매장 관리자 권한이 없습니다."}, 
+                                  status=status.HTTP_403_FORBIDDEN)
+                
+                print(f"매장 정보: {store}")
+                
+                # 본사에서 해당 매장에 SEAT권이 발급된 토너먼트들만 조회
+                tournaments = Tournament.objects.filter(
+                    ticket_distributions__store=store
+                ).select_related().prefetch_related(
+                    'ticket_distributions'
+                ).distinct().order_by('-start_time')
+                
+                print(f"🎯 해당 매장({store.name})에 배분된 토너먼트 수: {tournaments.count()}")
+                
+                # 각 토너먼트의 배분 정보 디버깅
+                for t in tournaments:
+                    dist = t.ticket_distributions.filter(store=store).first()
+                    print(f"  - {t.name}: 배분량={dist.allocated_quantity if dist else 0}, 보유량={dist.remaining_quantity if dist else 0}")
+                
+                if tournaments.count() == 0:
+                    print("⚠️ 이 매장에 배분된 토너먼트가 없습니다.")
+                    # 빈 리스트 반환 (배분된 토너먼트가 없으면 SEAT권 발급 불가)
+                    return Response([])
+                
+                print(f"✅ 최종 반환할 토너먼트 수: {tournaments.count()}")
+                
+                # 응답 데이터 구성
+                response_data = []
+                for tournament in tournaments:
+                    print(f"처리 중인 토너먼트: {tournament.name}")
+                    
+                    # 해당 매장의 배분 정보 조회
+                    distribution = tournament.ticket_distributions.filter(store=store).first()
+                    print(f"배분 정보: {distribution}")
+                    
+                    tournament_data = {
+                        'id': tournament.id,
+                        'name': tournament.name,
+                        'start_time': tournament.start_time,
+                        'end_time': tournament.end_time,
+                        'buy_in': tournament.buy_in,
+                        'ticket_quantity': tournament.ticket_quantity,
+                        'description': tournament.description,
+                        'status': tournament.status,
+                        'created_at': tournament.created_at,
+                        'updated_at': tournament.updated_at,
+                    }
+                    
+                    # 배분 정보 추가
+                    if distribution:
+                        tournament_data.update({
+                            'allocated_quantity': distribution.allocated_quantity,
+                            'remaining_quantity': distribution.remaining_quantity,
+                            'distributed_quantity': distribution.distributed_quantity,
+                            'distribution_created_at': distribution.created_at
+                        })
+                    else:
+                        tournament_data.update({
+                            'allocated_quantity': 0,
+                            'remaining_quantity': 0,
+                            'distributed_quantity': 0,
+                            'distribution_created_at': None
+                        })
+                    
+                    response_data.append(tournament_data)
+                    print(f"추가된 토너먼트 데이터: {tournament_data}")
+                
+                print(f"최종 응답 데이터 수: {len(response_data)}")
+                print(f"최종 응답 데이터 전체: {response_data}")
+                return Response(response_data)
             
         except Exception as e:
             print(f"매장 토너먼트 목록 조회 오류: {str(e)}")
@@ -412,17 +448,40 @@ def get_dashboard_stats_simple(request):
     대시보드 통계 조회 API (단순 GET 방식, OPTIONS 방지)
     - 총 토너먼트 수
     - 활성 매장 수
+    - 등록 선수 수 (활성 사용자)
+    - SEAT권 보유 수 (활성 SEAT권)
     """
     try:
+        from accounts.models import User
+        from seats.models import SeatTicket
+        
         # 총 토너먼트 수 계산
         tournament_count = Tournament.objects.count()
         
         # 활성 매장 수 계산
         active_store_count = Store.objects.count()
         
+        # 등록 선수 수 계산 (활성 사용자만)
+        player_count = User.objects.filter(is_active=True).count()
+        
+        # SEAT권 보유 수 계산 (활성 SEAT권만)
+        ticket_count = SeatTicket.objects.filter(status='ACTIVE').count()
+        
+        # 오늘 등록한 사용자 수 계산
+        from django.utils import timezone
+        from datetime import date
+        today = date.today()
+        today_registrations = User.objects.filter(
+            date_joined__date=today,
+            is_active=True
+        ).count()
+        
         result = {
             'tournament_count': tournament_count,
             'active_store_count': active_store_count,
+            'player_count': player_count,
+            'ticket_count': ticket_count,
+            'today_registrations': today_registrations
         }
         
         return Response(result)

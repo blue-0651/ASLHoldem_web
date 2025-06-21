@@ -354,11 +354,9 @@ export const userAPI = {
     return API.post('/accounts/users/get_user/', data);
   },
   
-  // 전화번호로 사용자 조회 (FormData 방식)
+  // 전화번호로 사용자 조회 (GET 방식)
   getUserByPhone: (phone) => {
-    const formData = new FormData();
-    formData.append('phone', phone);
-    return API.post('/accounts/users/get_user_by_phone/', formData);
+    return API.get('/store/search-user/', { params: { phone } });
   },
   
   // 사용자 통계 조회
