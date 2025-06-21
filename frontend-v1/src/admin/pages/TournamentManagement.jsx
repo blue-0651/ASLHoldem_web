@@ -290,7 +290,7 @@ const TournamentManagement = () => {
         ? seatTicketResult.value 
         : { data: { user_summaries: [], ticket_stats: {} } };
 
-      // 🆕 티켓 상세 정보 처리 (매장 정보 포함)
+                // 🆕 티켓 상세 정보 처리 (매장 정보 포함)
       const ticketDetailsResponse = ticketDetailsResult.status === 'fulfilled' 
         ? ticketDetailsResult.value 
         : { data: [] };
@@ -311,6 +311,8 @@ const TournamentManagement = () => {
           console.warn('⚠️ 예상과 다른 티켓 상세 API 응답 구조:', ticketDetailsResponse.data);
         }
       }
+
+
       
       // 안전하게 매장 매핑 생성 (다양한 필드명 지원)
       if (Array.isArray(ticketDetailsData) && ticketDetailsData.length > 0) {
@@ -526,6 +528,7 @@ const TournamentManagement = () => {
             // 🔥 활성 티켓이 있거나 사용된 티켓이 있는 경우 모두 표시 (SEAT권 사용 수량 확인 가능)
             if (activeTickets > 0 || usedTickets > 0) {
               playerRows.push({
+                userId: group.userId, // 🔥 userId 필드 - SEAT권 정보 조회 필수
                 playerName: group.userName || '이름 없음',
                 playerPhone: group.userPhone || '',
                 hasTicket: activeTickets > 0 ? 'Y' : 'N', // 활성 티켓이 있으면 Y, 사용된 티켓만 있으면 N
@@ -1998,11 +2001,16 @@ const TournamentManagement = () => {
       setPlayerSeatTickets([]);
       setPlayerSeatStats(null);
 
-      console.log('🎫 선수 SEAT권 정보 조회 시작:', {
-        playerName: participant.playerName,
-        userId: participant.userId,
-        tournamentId: tournamentId
-      });
+      // 🚨 필수 파라미터 검증
+      if (!tournamentId || !participant.userId) {
+        const missingParams = [];
+        if (!tournamentId) missingParams.push('tournamentId');
+        if (!participant.userId) missingParams.push('participant.userId');
+        
+        throw new Error(`필수 파라미터 누락: ${missingParams.join(', ')}`);
+      }
+
+      console.log('🎫 SEAT권 정보 조회:', participant.playerName);
 
       // 1. 사용자별 SEAT권 목록 조회 (모든 상태)
       const ticketsResponse = await seatTicketAPI.getTicketsByTournament(tournamentId, {
@@ -2013,8 +2021,7 @@ const TournamentManagement = () => {
       // 2. 사용자 통계 조회
       const statsResponse = await seatTicketAPI.getUserStats(participant.userId, tournamentId);
 
-      console.log('✅ SEAT권 목록 조회 완료:', ticketsResponse.data);
-      console.log('✅ 사용자 통계 조회 완료:', statsResponse.data);
+      // API 응답 처리
 
       // API 응답 구조 안전하게 처리
       let ticketsData = [];
@@ -2035,10 +2042,7 @@ const TournamentManagement = () => {
       setPlayerSeatTickets(sortedTickets);
       setPlayerSeatStats(statsResponse.data);
 
-      console.log(`📊 ${participant.playerName} 선수 SEAT권 정보 로딩 완료:`, {
-        총티켓수: sortedTickets.length,
-        통계정보: statsResponse.data.overall_stats
-      });
+      console.log(`✅ ${participant.playerName} 선수 SEAT권 정보 로딩 완료 (${sortedTickets.length}개)`);
 
     } catch (err) {
       console.error('❌ 선수 SEAT권 정보 조회 실패:', err);
@@ -2054,10 +2058,18 @@ const TournamentManagement = () => {
 
   // 🆕 SEAT권 정보 모달 열기 핸들러
   const handleOpenSeatInfoModal = (tournamentId, participant) => {
-    console.log('🎫 SEAT권 정보 모달 열기:', {
-      tournamentId,
-      participant
-    });
+    // 🚨 필수 파라미터 검증
+    if (!participant.userId) {
+      console.error('❌ SEAT권 정보 조회 실패: 선수의 userId가 누락되었습니다.', participant);
+      setError('선수의 사용자 ID 정보가 누락되어 SEAT권 정보를 조회할 수 없습니다. 데이터를 다시 로딩해주세요.');
+      return;
+    }
+
+    if (!tournamentId) {
+      console.error('❌ SEAT권 정보 조회 실패: tournamentId가 누락되었습니다.');
+      setError('토너먼트 정보가 누락되었습니다.');
+      return;
+    }
 
     setSelectedPlayerForSeatInfo({
       ...participant,
