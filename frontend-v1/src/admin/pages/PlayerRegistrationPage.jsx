@@ -24,7 +24,7 @@ const PlayerRegistrationPage = () => {
   const [selectedTournament, setSelectedTournament] = useState('');
   const [allTournaments, setAllTournaments] = useState([]);
   const [storeTournaments, setStoreTournaments] = useState([]);
-  const [tournamentFilter, setTournamentFilter] = useState('all');
+  const [tournamentFilter, setTournamentFilter] = useState('all'); // 초기값을 'all'로 변경
   
   // 사용자 검색 관련
   const [phoneSearchLoading, setPhoneSearchLoading] = useState(false);
@@ -79,11 +79,21 @@ const PlayerRegistrationPage = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
+      console.log('🔗 API 호출 시작 - URL: /api/v1/store/tournaments/');
+      console.log('🔑 헤더 정보:', headers);
+      
       const storeResponse = await axios.get('/api/v1/store/tournaments/', { headers });
+      
+      console.log('📊 API 응답 상태:', storeResponse.status);
+      console.log('📊 API 응답 헤더:', storeResponse.headers);
+      console.log('📊 API 응답 원본 데이터:', storeResponse.data);
+      console.log('📊 API 응답 데이터 타입:', typeof storeResponse.data);
+      console.log('📊 API 응답 배열 여부:', Array.isArray(storeResponse.data));
+      
       const storeData = Array.isArray(storeResponse.data) ? storeResponse.data : [];
       
       console.log('✅ 토너먼트 목록 조회 완료:', storeData.length, '개');
-      console.log('토너먼트 데이터:', storeData);
+      console.log('토너먼트 데이터 상세:', storeData);
       
       if (isAdmin) {
         console.log('🔧 관리자 권한으로 모든 토너먼트 조회됨');
@@ -96,24 +106,44 @@ const PlayerRegistrationPage = () => {
       // 전체 토너먼트 목록 가져오기
       let allData = [];
       try {
+        console.log('🌐 전체 토너먼트 목록 조회 시작');
         const allResponse = await tournamentAPI.getAllTournaments();
+        console.log('🌐 전체 토너먼트 API 응답:', allResponse);
         allData = Array.isArray(allResponse.data) ? allResponse.data : [];
         setAllTournaments(allData);
         console.log('✅ 전체 토너먼트 목록 조회 완료:', allData.length, '개');
       } catch (allErr) {
         console.warn('⚠️ 전체 토너먼트 목록 로드 실패:', allErr);
+        console.warn('⚠️ 전체 토너먼트 오류 상세:', {
+          message: allErr.message,
+          response: allErr.response,
+          status: allErr.response?.status,
+          data: allErr.response?.data
+        });
         allData = storeData; // 실패 시 매장 토너먼트로 대체
         setAllTournaments(storeData);
       }
       
-      // 초기 필터에 따른 토너먼트 설정 (전체 토너먼트 로드 후 적용)
-      updateTournamentsByFilter('all');
+      // 초기 필터에 따른 토너먼트 설정 - 전체 토너먼트 우선
+      console.log('🎯 초기 토너먼트 필터 적용 시작');
+      // 기본적으로 전체 토너먼트 필터 적용
+      console.log('🌐 기본 설정 - 전체 토너먼트 필터 적용');
+      updateTournamentsByFilter('all', storeData);
       
       // 통계 데이터 로드
       await loadStats(allData.length > 0 ? allData : storeData);
       
     } catch (err) {
       console.error('❌ 초기 데이터 로드 오류:', err);
+      console.error('❌ 오류 상세 정보:', {
+        message: err.message,
+        response: err.response,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        config: err.config
+      });
+      
       let errorMessage = '데이터를 불러오는 중 오류가 발생했습니다.';
       
       if (err.response) {
@@ -130,17 +160,25 @@ const PlayerRegistrationPage = () => {
           } else {
             errorMessage = '권한이 부족합니다. 관리자에게 문의하세요.';
           }
+        } else if (err.response.status === 404) {
+          errorMessage = 'API 엔드포인트를 찾을 수 없습니다. 시스템 관리자에게 문의하세요.';
+        } else if (err.response.status === 500) {
+          errorMessage = '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
         } else if (err.response.data?.error) {
           errorMessage = err.response.data.error;
         }
       } else if (err.code === 'NETWORK_ERROR' || err.message.includes('Network Error')) {
         errorMessage = '네트워크 연결을 확인해주세요.';
+      } else if (err.code === 'ECONNREFUSED') {
+        errorMessage = '서버에 연결할 수 없습니다. 서버 상태를 확인해주세요.';
       }
       
       setError(errorMessage);
       setStoreTournaments([]);
       setAllTournaments([]);
       setTournaments([]);
+      // 에러 시 기본 필터를 'all'로 설정
+      setTournamentFilter('all');
     } finally {
       setLoading(false);
     }
@@ -150,39 +188,70 @@ const PlayerRegistrationPage = () => {
    * 필터에 따른 토너먼트 목록 업데이트
    */
   const updateTournamentsByFilter = (filterType, storeData = null) => {
+    console.log(`🔄 토너먼트 필터 업데이트 시작 - 필터 타입: ${filterType}`);
+    console.log(`📊 입력 매개변수:`, { filterType, storeData });
+    console.log(`📊 현재 상태:`, { 
+      storeTournaments: storeTournaments.length, 
+      allTournaments: allTournaments.length 
+    });
+    
     let filteredTournaments = [];
     const sourceStoreTournaments = Array.isArray(storeData) ? storeData : Array.isArray(storeTournaments) ? storeTournaments : [];
+    
+    console.log(`📊 소스 데이터:`, { 
+      sourceStoreTournaments: sourceStoreTournaments.length,
+      isStoreDataProvided: !!storeData 
+    });
     
     try {
       switch (filterType) {
         case 'store':
           filteredTournaments = sourceStoreTournaments;
+          console.log(`🏪 매장 토너먼트 필터 적용 - 결과: ${filteredTournaments.length}개`);
           break;
         case 'all':
-          filteredTournaments = Array.isArray(allTournaments) ? allTournaments : [];
+          // 전체 토너먼트가 없으면 매장 토너먼트를 대체로 사용
+          const hasAllTournaments = Array.isArray(allTournaments) && allTournaments.length > 0;
+          filteredTournaments = hasAllTournaments ? allTournaments : sourceStoreTournaments;
+          console.log(`🌐 전체 토너먼트 필터 적용 - 결과: ${filteredTournaments.length}개 (전체 토너먼트 사용: ${hasAllTournaments})`);
           break;
         case 'today':
           const today = new Date();
           const todayStr = today.toISOString().split('T')[0];
+          console.log(`📅 오늘 날짜: ${todayStr}`);
           
           filteredTournaments = sourceStoreTournaments.filter(tournament => {
             const tournamentDate = new Date(tournament.start_time).toISOString().split('T')[0];
-            return tournamentDate === todayStr;
+            const isToday = tournamentDate === todayStr;
+            console.log(`  - ${tournament.name}: ${tournamentDate} === ${todayStr} ? ${isToday}`);
+            return isToday;
           });
+          console.log(`📅 오늘 토너먼트 필터 적용 - 결과: ${filteredTournaments.length}개`);
           break;
         default:
           filteredTournaments = sourceStoreTournaments;
+          console.log(`⚙️ 기본 필터 적용 - 결과: ${filteredTournaments.length}개`);
       }
+      
+      console.log(`✅ 필터링된 토너먼트 목록:`, filteredTournaments.map(t => ({
+        id: t.id,
+        name: t.name,
+        start_time: t.start_time,
+        status: t.status
+      })));
       
       setTournaments(filteredTournaments);
       
       // 선택된 토너먼트가 필터된 목록에 없으면 초기화
       if (selectedTournament && Array.isArray(filteredTournaments) && !filteredTournaments.find(t => t.id.toString() === selectedTournament.toString())) {
+        console.log(`⚠️ 선택된 토너먼트(${selectedTournament})가 필터된 목록에 없음 - 초기화`);
         setSelectedTournament('');
+      } else if (selectedTournament) {
+        console.log(`✅ 선택된 토너먼트(${selectedTournament})가 필터된 목록에 존재`);
       }
       
     } catch (err) {
-      console.error('토너먼트 필터링 오류:', err);
+      console.error('❌ 토너먼트 필터링 오류:', err);
       setError('토너먼트 목록 필터링 중 오류가 발생했습니다.');
       setTournaments([]);
     }
@@ -1054,14 +1123,14 @@ const PlayerRegistrationPage = () => {
             {/* 제출 버튼 - 휴대폰 번호 검색 후에만 표시 */}
             {(phoneSearched || foundUser) && (
               <div className="d-grid gap-2">
-                                 {(() => {
-                   // SEAT권 부족 여부 확인
-                   const selectedTournamentData = Array.isArray(tournaments) ? tournaments.find(t => t.id.toString() === selectedTournament.toString()) : null;
-                   const requiredTickets = selectedTournamentData?.buy_in || 1;
-                   const availableTickets = foundUser?.ticketInfo?.active_tickets || 0;
-                   const canParticipate = foundUser ? availableTickets >= requiredTickets : true; // 신규 사용자는 참가 가능
-                   const isDisabled = loading || phoneSearchLoading || (foundUser && !canParticipate);
-                  
+                {(() => {
+                  // SEAT권 부족 여부 확인
+                  const selectedTournamentData = Array.isArray(tournaments) ? tournaments.find(t => t.id.toString() === selectedTournament.toString()) : null;
+                  const requiredTickets = selectedTournamentData?.buy_in || 1;
+                  const availableTickets = foundUser?.ticketInfo?.active_tickets || 0;
+                  const canParticipate = foundUser ? availableTickets >= requiredTickets : true; // 신규 사용자는 참가 가능
+                  const isDisabled = loading || phoneSearchLoading || (foundUser && !canParticipate);
+                 
                   return (
                     <Button 
                       variant={canParticipate ? "primary" : "danger"} 
@@ -1104,4 +1173,4 @@ const PlayerRegistrationPage = () => {
   );
 };
 
-export default PlayerRegistrationPage; 
+export default PlayerRegistrationPage;

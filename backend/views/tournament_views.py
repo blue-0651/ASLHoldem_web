@@ -315,7 +315,8 @@ class TournamentViewSet(viewsets.ModelViewSet):
                 if tournaments.count() == 0:
                     print("⚠️ 이 매장에 배분된 토너먼트가 없습니다.")
                     # 빈 리스트 반환 (배분된 토너먼트가 없으면 SEAT권 발급 불가)
-                    return Response([])
+                    print("📤 빈 배열 응답 반환")
+                    return Response([], status=status.HTTP_200_OK)
                 
                 print(f"✅ 최종 반환할 토너먼트 수: {tournaments.count()}")
                 
