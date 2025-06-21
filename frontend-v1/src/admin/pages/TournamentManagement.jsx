@@ -265,7 +265,7 @@ const TournamentManagement = () => {
         dashboardAPI.getPlayerMapping(tournamentId),
         distributionAPI.getSummaryByTournament(tournamentId),
         seatTicketAPI.getTournamentSummary(tournamentId),
-        seatTicketAPI.getTicketsByTournament(tournamentId, { status: 'ACTIVE' }) // 🆕 매장 정보 획득용
+        seatTicketAPI.getTicketsByTournament(tournamentId) // 🔥 status 필터 제거하여 모든 상태의 SEAT권 가져오기 (사용된 티켓 포함)
       ]);
 
       // 각 API 결과 처리 (실패한 것은 기본값 사용)
@@ -516,12 +516,12 @@ const TournamentManagement = () => {
             const usedTickets = group.tickets.filter(t => t.status === 'USED').length;
             const totalTickets = group.tickets.length;
             
-            // 활성 티켓이 있는 경우만 표시
-            if (activeTickets > 0) {
+            // 🔥 활성 티켓이 있거나 사용된 티켓이 있는 경우 모두 표시 (SEAT권 사용 수량 확인 가능)
+            if (activeTickets > 0 || usedTickets > 0) {
               playerRows.push({
                 playerName: group.userName || '이름 없음',
                 playerPhone: group.userPhone || '',
-                hasTicket: 'Y',
+                hasTicket: activeTickets > 0 ? 'Y' : 'N', // 활성 티켓이 있으면 Y, 사용된 티켓만 있으면 N
                 storeName: group.storeName,
                 storeId: group.storeId,
                 ticketCount: activeTickets,
@@ -535,9 +535,9 @@ const TournamentManagement = () => {
           
           // 🔍 디버깅: 매장별 그룹핑 결과 로그
           if (!isPreload && playerRows.length > 0) {
-            console.log('🏪 매장별 시트권 그룹핑 결과:');
+            console.log('🏪 매장별 시트권 그룹핑 결과 (활성/사용된 티켓 모두 포함):');
             playerRows.forEach((row, idx) => {
-              console.log(`  ${idx + 1}. ${row.playerName} @ ${row.storeName}: ${row.activeTickets}매 (사용: ${row.usedTickets}매)`);
+              console.log(`  ${idx + 1}. ${row.playerName} @ ${row.storeName}: 활성 ${row.activeTickets}매, 사용 ${row.usedTickets}매, 총 ${row.totalTickets}매`);
             });
           }
           
