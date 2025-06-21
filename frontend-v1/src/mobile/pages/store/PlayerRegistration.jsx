@@ -215,6 +215,62 @@ const PlayerRegistration = () => {
 
 
   /**
+   * 토너먼트 참가 여부 확인
+   * @param {string} phone - 휴대폰 번호
+   * @param {string} tournamentId - 토너먼트 ID
+   */
+  const checkTournamentParticipation = async (phone, tournamentId) => {
+    if (!phone || !tournamentId) return;
+    
+    try {
+      // SEAT권 정보와 함께 참가 여부도 확인
+      const [ticketResponse, participationResponse] = await Promise.all([
+        api.get('/store/user-tickets/', {
+          params: { 
+            phone_number: phone,
+            tournament_id: tournamentId
+          }
+        }),
+        api.get('/store/check-participation/', {
+          params: {
+            phone_number: phone,
+            tournament_id: tournamentId
+          }
+        }).catch(err => {
+          // 참가 여부 확인 API가 없는 경우 기본값 반환
+          console.warn('참가 여부 확인 API 호출 실패, 기본값 사용:', err);
+          return { data: { is_registered: false, registration_info: null } };
+        })
+      ]);
+      
+      setFoundUser(prev => ({
+        ...prev,
+        ticketInfo: ticketResponse.data,
+        participationInfo: participationResponse.data
+      }));
+      
+    } catch (err) {
+      console.warn('토너먼트 정보 조회 실패:', err);
+      // 에러 발생 시에도 기본 SEAT권 정보는 유지
+      try {
+        const ticketResponse = await api.get('/store/user-tickets/', {
+          params: { 
+            phone_number: phone,
+            tournament_id: tournamentId
+          }
+        });
+        setFoundUser(prev => ({
+          ...prev,
+          ticketInfo: ticketResponse.data,
+          participationInfo: { is_registered: false, registration_info: null }
+        }));
+      } catch (ticketErr) {
+        console.warn('SEAT권 정보 조회도 실패:', ticketErr);
+      }
+    }
+  };
+
+  /**
    * 휴대폰 번호로 사용자 검색
    * @param {string} phone - 검색할 휴대폰 번호
    */
@@ -248,22 +304,9 @@ const PlayerRegistration = () => {
           gender_digit: response.data.user.gender_digit || ''
         });
         
-        // 선택된 토너먼트가 있으면 해당 토너먼트의 SEAT권 현황도 조회
+        // 선택된 토너먼트가 있으면 해당 토너먼트의 SEAT권 현황과 참가 여부도 조회
         if (selectedTournament) {
-          try {
-            const ticketResponse = await api.get('/store/user-tickets/', {
-              params: { 
-                phone_number: phone,
-                tournament_id: selectedTournament
-              }
-            });
-            setFoundUser(prev => ({
-              ...prev,
-              ticketInfo: ticketResponse.data
-            }));
-          } catch (ticketErr) {
-            console.warn('SEAT권 정보 조회 실패:', ticketErr);
-          }
+          await checkTournamentParticipation(phone, selectedTournament);
         }
       } else {
         setFoundUser(null);
@@ -368,8 +411,14 @@ const PlayerRegistration = () => {
    * 토너먼트 선택 핸들러
    * 토너먼트 선택 드롭다운에서 값이 변경될 때 호출됩니다.
    */
-  const handleTournamentChange = (e) => {
-    setSelectedTournament(e.target.value);
+  const handleTournamentChange = async (e) => {
+    const tournamentId = e.target.value;
+    setSelectedTournament(tournamentId);
+    
+    // 토너먼트가 선택되고 사용자 정보가 있으면 참가 여부 확인
+    if (tournamentId && foundUser) {
+      await checkTournamentParticipation(foundUser.phone, tournamentId);
+    }
   };
 
   /**
@@ -427,22 +476,9 @@ const PlayerRegistration = () => {
         });
         setPhoneSearched(true);
         
-        // 선택된 토너먼트가 있으면 해당 토너먼트의 SEAT권 현황도 조회
+        // 선택된 토너먼트가 있으면 해당 토너먼트의 SEAT권 현황과 참가 여부도 조회
         if (selectedTournament) {
-          try {
-            const ticketResponse = await api.get('/store/user-tickets/', {
-              params: { 
-                phone_number: userInfo.phone,
-                tournament_id: selectedTournament
-              }
-            });
-            setFoundUser(prev => ({
-              ...prev,
-              ticketInfo: ticketResponse.data
-            }));
-          } catch (ticketErr) {
-            console.warn('SEAT권 정보 조회 실패:', ticketErr);
-          }
+          await checkTournamentParticipation(userInfo.phone, selectedTournament);
         }
         
         // QR 스캔 성공 후 자동으로 토너먼트 참가 처리
@@ -531,6 +567,8 @@ const PlayerRegistration = () => {
         setLoading(false);
         return;
       }
+      
+
 
       // API 요청 데이터 준비
       const requestData = {
@@ -581,52 +619,7 @@ const PlayerRegistration = () => {
     }
   };
 
-  /**
-   * SEAT권 지급 핸들러
-   */
-  const handleGrantTicket = async (quantity = 1) => {
-    if (!foundUser || !selectedTournament) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await api.post('/store/grant-ticket/', {
-        user_id: foundUser.id,
-        tournament_id: selectedTournament,
-        quantity: quantity,
-        source: 'ADMIN',
-        memo: '매장에서 지급'
-      });
-      
-      if (response.data.success) {
-        // SEAT권 정보 다시 조회
-        const ticketResponse = await api.get('/store/user-tickets/', {
-          params: { 
-            phone_number: foundUser.phone,
-            tournament_id: selectedTournament
-          }
-        });
-        
-        setFoundUser(prev => ({
-          ...prev,
-          ticketInfo: ticketResponse.data
-        }));
-        
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      }
-    } catch (err) {
-      console.error('SEAT권 지급 오류:', err);
-      if (err.response?.data?.error) {
-        setError(err.response.data.error);
-      } else {
-        setError('SEAT권 지급 중 오류가 발생했습니다.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   return (
     <div className="asl-mobile-container">
@@ -738,33 +731,48 @@ const PlayerRegistration = () => {
                               </Badge>
                             </div>
                           </div>
-                          {foundUser.ticketInfo.active_tickets === 0 && (
-                            <div className="mt-1">
-                              <small className="text-danger">
-                                <i className="fas fa-exclamation-triangle me-1"></i>
-                                사용 가능한 SEAT권이 없습니다. SEAT권을 먼저 지급해주세요.
-                              </small>
-                              <div className="mt-2">
-                                <Button 
-                                  variant="outline-primary" 
-                                  size="sm"
-                                  onClick={() => handleGrantTicket(1)}
-                                  disabled={loading}
-                                >
-                                  <i className="fas fa-plus me-1"></i>
-                                  SEAT권 1개 지급
-                                </Button>
+                          
+                          {/* 토너먼트 참가 여부 표시 */}
+                          {selectedTournament && foundUser.participationInfo && (
+                            <div className="mt-2 p-2 rounded" style={{backgroundColor: foundUser.participationInfo.is_registered ? '#fff3cd' : '#d1ecf1'}}>
+                              <div className="d-flex align-items-center">
+                                {foundUser.participationInfo.is_registered ? (
+                                  <>
+                                    <i className="fas fa-user-check text-warning me-2"></i>
+                                                                         <div className="flex-grow-1">
+                                       <small className="text-warning fw-bold">
+                                         이미 이 토너먼트에 참가되어 있습니다 (중복 참가 가능)
+                                       </small>
+                                       {foundUser.participationInfo.registration_info && (
+                                         <div className="mt-1">
+                                           <small className="text-muted">
+                                             최근 참가일시: {new Date(foundUser.participationInfo.registration_info.created_at).toLocaleString()}
+                                           </small>
+                                         </div>
+                                       )}
+                                     </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="fas fa-user-plus text-info me-2"></i>
+                                    <small className="text-info fw-bold">
+                                      이 토너먼트에 참가 가능합니다
+                                    </small>
+                                  </>
+                                )}
                               </div>
                             </div>
                           )}
-                          {foundUser.ticketInfo.active_tickets > 0 && (
-                            <div className="mt-1">
-                              <small className="text-success">
-                                <i className="fas fa-check me-1"></i>
-                                토너먼트 참가 가능합니다.
-                              </small>
-                            </div>
-                          )}
+                          
+                          <div className="mt-1">
+                            <small className="text-success">
+                              <i className="fas fa-check me-1"></i>
+                              토너먼트 참가 가능합니다.
+                              {foundUser.participationInfo?.is_registered && (
+                                <span className="text-info"> (중복 참가 허용)</span>
+                              )}
+                            </small>
+                          </div>
                         </div>
                       )}
                     </div>
