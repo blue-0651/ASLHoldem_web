@@ -7,11 +7,12 @@ Pillow>=10.3.0
 django-allauth==0.58.2
 django-rest-auth==0.9.5
 django-filter==25.1
-drf-yasg==1.21.7
+drf-yasg==1.21.8
 channels==4.0.0
 channels-redis==4.1.0
 pytest-django==4.7.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
 djangorestframework-simplejwt==5.5.0
-qrcode==7.4.2 
+qrcode==7.4.2
+setuptools>=70.0.0 

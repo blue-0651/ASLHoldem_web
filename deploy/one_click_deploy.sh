@@ -248,6 +248,13 @@ log_step "9/10 백엔드 설정 중..."
 cd $PROJECT_DIR/backend
 sudo -u $PROJECT_NAME $PYTHON_CMD -m venv .venv
 sudo -u $PROJECT_NAME .venv/bin/pip install --upgrade pip
+
+# Python 3.13 호환성을 위한 setuptools 설치
+if [[ "$ACTUAL_PYTHON_VERSION" == "3.13" ]]; then
+    log_info "Python 3.13 호환성을 위해 setuptools를 먼저 설치합니다..."
+    sudo -u $PROJECT_NAME .venv/bin/pip install --upgrade setuptools>=70.0.0
+fi
+
 sudo -u $PROJECT_NAME .venv/bin/pip install -r requirements.txt
 
 sudo -u $PROJECT_NAME .venv/bin/python manage.py makemigrations || true
