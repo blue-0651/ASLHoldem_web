@@ -2,10 +2,20 @@
 
 # 🚀 ASL Holdem 원클릭 배포 스크립트
 # Ubuntu 20.04/22.04 LTS에서 실행
+#
+# 사용법:
+# 1. 기본값 사용: ./one_click_deploy.sh
+# 2. 도메인 지정: ./one_click_deploy.sh www.kasl.co.kr
+# 3. 도메인+이메일: ./one_click_deploy.sh www.kasl.co.kr admin@kasl.co.kr
+#
+# 서버 정보:
+# IP: 141.164.36.65
+# 도메인: www.kasl.co.kr
 
 set -e
 
 echo "🚀 ASL Holdem 원클릭 배포 시작!"
+echo "서버 IP: 141.164.36.65"
 echo "이 스크립트는 모든 것을 자동으로 설치합니다."
 echo ""
 
@@ -32,17 +42,30 @@ log_step() {
     echo -e "${BLUE}[STEP]${NC} $1"
 }
 
-# 도메인 입력 받기
-read -p "🌐 도메인명을 입력하세요 (예: example.com): " DOMAIN
-if [ -z "$DOMAIN" ]; then
-    DOMAIN="localhost"
-    log_warn "도메인이 입력되지 않아 localhost로 설정됩니다."
+# 도메인 설정 (기본값: www.kasl.co.kr)
+DEFAULT_DOMAIN="www.kasl.co.kr"
+if [ -n "$1" ]; then
+    DOMAIN="$1"
+    log_info "매개변수로 전달된 도메인 사용: $DOMAIN"
+else
+    read -p "🌐 도메인명을 입력하세요 (기본값: $DEFAULT_DOMAIN): " DOMAIN
+    if [ -z "$DOMAIN" ]; then
+        DOMAIN="$DEFAULT_DOMAIN"
+        log_info "기본 도메인 사용: $DOMAIN"
+    fi
 fi
 
-# 관리자 이메일 입력 받기
-read -p "📧 관리자 이메일을 입력하세요: " ADMIN_EMAIL
-if [ -z "$ADMIN_EMAIL" ]; then
-    ADMIN_EMAIL="admin@$DOMAIN"
+# 관리자 이메일 설정
+DEFAULT_EMAIL="admin@kasl.co.kr"
+if [ -n "$2" ]; then
+    ADMIN_EMAIL="$2"
+    log_info "매개변수로 전달된 이메일 사용: $ADMIN_EMAIL"
+else
+    read -p "📧 관리자 이메일을 입력하세요 (기본값: $DEFAULT_EMAIL): " ADMIN_EMAIL
+    if [ -z "$ADMIN_EMAIL" ]; then
+        ADMIN_EMAIL="$DEFAULT_EMAIL"
+        log_info "기본 이메일 사용: $ADMIN_EMAIL"
+    fi
 fi
 
 # 변수 설정

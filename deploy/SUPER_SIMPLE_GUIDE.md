@@ -14,12 +14,13 @@
 5. 서버 생성 완료까지 1-2분 대기
 
 ### 2단계: 서버 접속 (1분)
-1. Vultr 대시보드에서 서버 IP 주소 확인
-2. 터미널(Mac) 또는 PuTTY(Windows)로 접속:
+1. 터미널(Mac) 또는 PuTTY(Windows)로 접속:
    ```bash
-   ssh root@서버IP주소
+   ssh root@141.164.36.65
    ```
-3. 처음 접속시 비밀번호는 Vultr 대시보드에서 확인
+2. 처음 접속시 비밀번호는 Vultr 대시보드에서 확인
+3. 서버 IP: **141.164.36.65**
+4. 도메인: **www.kasl.co.kr**
 
 ### 3단계: 원클릭 배포 실행 (10분)
 서버에 접속한 후, 아래 **한 줄**만 복사해서 붙여넣기:
@@ -39,8 +40,8 @@ curl -fsSL https://raw.githubusercontent.com/blue-0651/ASLHoldem_web/master/depl
 ## 🎉 완료!
 
 배포가 끝나면 웹사이트에 접속할 수 있습니다:
-- **메인 사이트**: http://서버IP주소
-- **관리자 페이지**: http://서버IP주소/admin/
+- **메인 사이트**: http://www.kasl.co.kr 또는 http://141.164.36.65
+- **관리자 페이지**: http://www.kasl.co.kr/admin/ 또는 http://141.164.36.65/admin/
 
 ---
 
