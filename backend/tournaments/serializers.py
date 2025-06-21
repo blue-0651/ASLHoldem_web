@@ -15,7 +15,7 @@ class TournamentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Tournament
-        fields = ['id', 'name', 'start_time', 'buy_in', 
+        fields = ['id', 'name', 'start_time', 'end_time', 'buy_in', 
                   'ticket_quantity', 'description', 'status', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -33,6 +33,7 @@ class TournamentParticipantsResponseSerializer(serializers.Serializer):
     tournament_id = serializers.IntegerField(read_only=True)
     tournament_name = serializers.CharField(read_only=True)
     start_time = serializers.DateTimeField(read_only=True)
+    end_time = serializers.DateTimeField(read_only=True)
     status = serializers.CharField(read_only=True)
     ticket_quantity = serializers.IntegerField(read_only=True)
     participant_count = serializers.IntegerField(read_only=True)
