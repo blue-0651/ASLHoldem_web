@@ -19,7 +19,7 @@ $maintenance-text-color: #e4dfdf;
 }
 
 .maintenance-bg {
-  background: linear-gradient(to bottom, $maintenance-body-bg, $maintenance-body-bg-end);
+  background: white; /* 모바일 로그인 박스와 동일한 흰색 배경 */
 }
 
 
