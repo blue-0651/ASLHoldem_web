@@ -7,8 +7,9 @@ $asl-admin-body-bg-end: #FDF5E6;
 $asl-admin-text-color: #333333; // 모바일과 동일한 어두운 텍스트 색상으로 변경
 
 .asl-admin-text {
-  color: $asl-admin-text-color;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6); /* 검은색 그림자, 약한 흐림 효과 */
+  color: $asl-admin-text-color !important;
+  text-shadow: none; /* 그림자 제거로 가독성 향상 */
+  font-weight: 500;
 }
 
 .asl-admin-card-bg {
@@ -82,6 +83,7 @@ $asl-admin-text-color: #333333; // 모바일과 동일한 어두운 텍스트 �
     margin-bottom: 0;
     padding: 8px;
     box-shadow: 0 2px 18px -2px rgba(0, 0, 0, 0.5);
+    background-color: white !important; /* 카드 배경을 흰색으로 명시적 설정 */
 
     .card-body {
       padding: 20px 25px 20px 25px;
@@ -89,6 +91,24 @@ $asl-admin-text-color: #333333; // 모바일과 동일한 어두운 텍스트 �
     @media (-ms-high-contrast: none), (-ms-high-contrast: active) {
       display: block;
     }
+  }
+
+  /* 입력 필드 및 버튼 스타일 개선 */
+  .form-control {
+    color: #333 !important;
+    background-color: white !important;
+    border: 1px solid #ccc !important;
+  }
+
+  .btn {
+    color: white !important;
+    border: none !important;
+  }
+
+  .input-group-text {
+    background-color: #f8f9fa !important;
+    border: 1px solid #ccc !important;
+    color: #495057 !important;
   }
 
   > div {

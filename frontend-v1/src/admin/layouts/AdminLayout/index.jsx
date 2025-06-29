@@ -84,6 +84,7 @@ const AdminLayout = () => {
         <div className={mainClass.join(' ')}>
           <div className="pcoded-content">
             <div className="pcoded-inner-content">
+              <Breadcrumb />
               <Outlet />
             </div>
           </div>
