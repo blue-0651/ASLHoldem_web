@@ -1,10 +1,10 @@
 /**  =====================
 관리자 페이지 공통 스타일 파일  css start
 ==========================  **/
-$asl-admin-body-bg: #b5002e; // change
-$asl-admin-body-bg-start: #7a0e29;
-$asl-admin-body-bg-end: #581728;
-$asl-admin-text-color: #e4dfdf;
+$asl-admin-body-bg: #F8F8FF; // 모바일과 동일한 아이보리색으로 변경
+$asl-admin-body-bg-start: #F8F8FF;
+$asl-admin-body-bg-end: #FDF5E6;
+$asl-admin-text-color: #333333; // 모바일과 동일한 어두운 텍스트 색상으로 변경
 
 .asl-admin-text {
   color: $asl-admin-text-color;
