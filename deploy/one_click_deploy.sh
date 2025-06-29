@@ -288,6 +288,8 @@ sudo -u $PROJECT_NAME .venv/bin/python manage.py collectstatic --noinput
 log_step "10/10 프론트엔드 빌드 중..."
 cd $PROJECT_DIR/frontend-v1
 sudo -u $PROJECT_NAME npm install
+# 기존 빌드 폴더 제거
+rm -rf dist
 sudo -u $PROJECT_NAME npm run build
 
 # Gunicorn 설정
