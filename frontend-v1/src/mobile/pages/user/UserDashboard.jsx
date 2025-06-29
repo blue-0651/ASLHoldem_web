@@ -25,7 +25,7 @@ const UserDashboard = () => {
   return (
     <div className="asl-mobile-container">
       {/* MobileHeader 컴포넌트 사용 */}
-      <MobileHeader title="ASL 홀덤" />
+      <MobileHeader title="ASL 리그" />
       
       {/* 컨텐츠 영역 */}
       <Container className="asl-mobile-content">
@@ -33,7 +33,7 @@ const UserDashboard = () => {
           <Col>
             <div className="asl-welcome-card">
               <h2>환영합니다, {getDisplayName(user, '사용자')}님!</h2>
-              <p>ASL 홀덤에서 즐거운 시간을 보내세요.</p>
+              <p>ASL 리그에서 즐거운 시간을 보내세요.</p>
             </div>
           </Col>
         </Row>

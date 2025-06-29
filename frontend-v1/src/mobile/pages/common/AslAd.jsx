@@ -119,8 +119,8 @@ const AslAd = () => {
           <Card.Body>
             <div className="asl-ad-header-content">
               <div className="text-center">
-                <h3 className="mb-2" style={{ color: '#333', fontWeight: '700' }}>Asian Sports League</h3>
-                <p className="text-muted mb-3">최고의 홀덤 경험을 만나보세요</p>
+                <h3 className="mb-2" style={{ color: '#333', fontWeight: '700' }}>아시안 스포츠 리그</h3>
+                <p className="text-muted mb-3">최고의 경험을 만나보세요</p>
               </div>
               <div className="text-center">
                 <Button 
@@ -161,8 +161,8 @@ const AslAd = () => {
         <Card className="asl-mobile-card mb-3">
           <Card.Body>
             <div className="text-center mb-3">
-              <h5 style={{ color: '#333', fontWeight: '600' }}>인기 매장</h5>
-              <p className="text-muted small">다양한 테마의 홀덤 매장을 둘러보세요</p>
+              <h5 style={{ color: '#333', fontWeight: '600' }}>인기 스토어</h5>
+              
             </div>
             <div className="asl-ad-stores-gallery">
               {getCurrentStores().map((store, index) => (
@@ -234,7 +234,7 @@ const AslAd = () => {
           </div>
           
           <div className="business-info">
-            <p><small>대표자: 김기성 | 사업자등록번호: 533-87-03532</small></p>
+            <p><small>대표자: 강기성 | 사업자등록번호: 533-87-03532</small></p>
             <p><small>주소: 서울특별시 송파구 중대로 207, 2층 201-제이480호(가락동, 대명빌딩)</small></p>
             <p><small>업태: 서비스업 | 종목: 전자, 컴퓨터 소프트웨어 개발 및 대여업</small></p>     
           </div>
