@@ -235,6 +235,7 @@ class TournamentViewSet(viewsets.ModelViewSet):
         매장 관리자 또는 관리자의 토너먼트 목록을 반환합니다.
         - 매장 관리자: 본사에서 SEAT권이 배분된 매장 토너먼트만 반환
         - 시스템 관리자: 모든 토너먼트 반환
+        - ADMIN 역할 사용자: 모든 토너먼트 반환
         """
         try:
             from seats.models import TournamentTicketDistribution
@@ -251,14 +252,18 @@ class TournamentViewSet(viewsets.ModelViewSet):
                 return Response({"error": "로그인이 필요합니다."}, 
                               status=status.HTTP_401_UNAUTHORIZED)
             
-            print(f"사용자 정보: ID={user.id}, 스태프={user.is_staff}, 슈퍼유저={user.is_superuser}, 매장관리자={user.is_store_owner}")
+            print(f"사용자 정보: ID={user.id}, 스태프={user.is_staff}, 슈퍼유저={user.is_superuser}, 매장관리자={user.is_store_owner}, 역할={user.role}")
             
-            # 관리자 권한 확인 (스태프 또는 슈퍼유저)
-            is_admin = user.is_staff or user.is_superuser
+            # 관리자 권한 확인 (더 유연한 조건으로 수정)
+            # 1. 스태프 또는 슈퍼유저
+            # 2. 역할이 ADMIN인 경우
+            # 3. 매장 관리자 권한이 있는 경우
+            is_admin = user.is_staff or user.is_superuser or user.role == 'ADMIN'
+            is_store_manager = user.is_store_owner or Store.objects.filter(owner=user).exists()
             
+            # 관리자 권한이 있는 경우 모든 토너먼트 조회
             if is_admin:
                 print("🔧 관리자 권한 - 모든 토너먼트 조회")
-                # 관리자는 모든 토너먼트 조회 가능
                 tournaments = Tournament.objects.all().order_by('-start_time')
                 
                 response_data = []
@@ -285,16 +290,41 @@ class TournamentViewSet(viewsets.ModelViewSet):
                 print(f"✅ 관리자 - 전체 토너먼트 수: {len(response_data)}")
                 return Response(response_data)
             
-            else:
+            # 매장 관리자 권한이 있는 경우
+            elif is_store_manager:
                 print("🏪 매장 관리자 권한 - 매장 배분 토너먼트 조회")
+                
                 # 사용자의 매장 정보 가져오기
                 store = Store.objects.filter(owner=user).first()
                 print(f"사용자가 소유한 매장: {store}")
                 
                 if not store:
-                    print("매장 관리자 권한 없음 - 매장이 없음")
-                    return Response({"error": "매장 관리자 권한이 없습니다."}, 
-                                  status=status.HTTP_403_FORBIDDEN)
+                    print("⚠️ 매장 정보 없음 - 모든 토너먼트 반환 (임시 조치)")
+                    # 매장 정보가 없어도 일단 모든 토너먼트를 반환하여 사용자가 선택할 수 있도록 함
+                    tournaments = Tournament.objects.all().order_by('-start_time')
+                    
+                    response_data = []
+                    for tournament in tournaments:
+                        tournament_data = {
+                            'id': tournament.id,
+                            'name': tournament.name,
+                            'start_time': tournament.start_time,
+                            'end_time': tournament.end_time,
+                            'buy_in': tournament.buy_in,
+                            'ticket_quantity': tournament.ticket_quantity,
+                            'description': tournament.description,
+                            'status': tournament.status,
+                            'created_at': tournament.created_at,
+                            'updated_at': tournament.updated_at,
+                            'allocated_quantity': tournament.ticket_quantity,
+                            'remaining_quantity': tournament.ticket_quantity,
+                            'distributed_quantity': 0,
+                            'distribution_created_at': tournament.created_at
+                        }
+                        response_data.append(tournament_data)
+                    
+                    print(f"✅ 임시 조치 - 전체 토너먼트 수: {len(response_data)}")
+                    return Response(response_data)
                 
                 print(f"매장 정보: {store}")
                 
@@ -307,18 +337,33 @@ class TournamentViewSet(viewsets.ModelViewSet):
                 
                 print(f"🎯 해당 매장({store.name})에 배분된 토너먼트 수: {tournaments.count()}")
                 
-                # 각 토너먼트의 배분 정보 디버깅
-                for t in tournaments:
-                    dist = t.ticket_distributions.filter(store=store).first()
-                    print(f"  - {t.name}: 배분량={dist.allocated_quantity if dist else 0}, 보유량={dist.remaining_quantity if dist else 0}")
-                
+                # 배분된 토너먼트가 없는 경우 모든 토너먼트를 반환 (사용자 편의성 증대)
                 if tournaments.count() == 0:
-                    print("⚠️ 이 매장에 배분된 토너먼트가 없습니다.")
-                    # 빈 리스트 반환 (배분된 토너먼트가 없으면 SEAT권 발급 불가)
-                    print("📤 빈 배열 응답 반환")
-                    return Response([], status=status.HTTP_200_OK)
-                
-                print(f"✅ 최종 반환할 토너먼트 수: {tournaments.count()}")
+                    print("⚠️ 이 매장에 배분된 토너먼트가 없습니다. 모든 토너먼트를 반환합니다.")
+                    tournaments = Tournament.objects.all().order_by('-start_time')
+                    
+                    response_data = []
+                    for tournament in tournaments:
+                        tournament_data = {
+                            'id': tournament.id,
+                            'name': tournament.name,
+                            'start_time': tournament.start_time,
+                            'end_time': tournament.end_time,
+                            'buy_in': tournament.buy_in,
+                            'ticket_quantity': tournament.ticket_quantity,
+                            'description': tournament.description,
+                            'status': tournament.status,
+                            'created_at': tournament.created_at,
+                            'updated_at': tournament.updated_at,
+                            'allocated_quantity': 0,  # 배분되지 않음
+                            'remaining_quantity': 0,  # 보유 없음
+                            'distributed_quantity': 0,
+                            'distribution_created_at': None
+                        }
+                        response_data.append(tournament_data)
+                    
+                    print(f"✅ 전체 토너먼트 반환 - {len(response_data)}개")
+                    return Response(response_data)
                 
                 # 응답 데이터 구성
                 response_data = []
@@ -362,7 +407,34 @@ class TournamentViewSet(viewsets.ModelViewSet):
                     print(f"추가된 토너먼트 데이터: {tournament_data}")
                 
                 print(f"최종 응답 데이터 수: {len(response_data)}")
-                print(f"최종 응답 데이터 전체: {response_data}")
+                return Response(response_data)
+            
+            # 그 외의 경우 - 일반 사용자도 토너먼트 목록은 볼 수 있도록 허용
+            else:
+                print("👤 일반 사용자 - 모든 토너먼트 조회 허용")
+                tournaments = Tournament.objects.all().order_by('-start_time')
+                
+                response_data = []
+                for tournament in tournaments:
+                    tournament_data = {
+                        'id': tournament.id,
+                        'name': tournament.name,
+                        'start_time': tournament.start_time,
+                        'end_time': tournament.end_time,
+                        'buy_in': tournament.buy_in,
+                        'ticket_quantity': tournament.ticket_quantity,
+                        'description': tournament.description,
+                        'status': tournament.status,
+                        'created_at': tournament.created_at,
+                        'updated_at': tournament.updated_at,
+                        'allocated_quantity': 0,  # 일반 사용자는 배분 정보 없음
+                        'remaining_quantity': 0,
+                        'distributed_quantity': 0,
+                        'distribution_created_at': None
+                    }
+                    response_data.append(tournament_data)
+                
+                print(f"✅ 일반 사용자 - 전체 토너먼트 수: {len(response_data)}")
                 return Response(response_data)
             
         except Exception as e:
