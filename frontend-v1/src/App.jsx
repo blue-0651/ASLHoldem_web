@@ -175,8 +175,8 @@ function App() {
           </Route>
         )}
 
-        {/* 기본 리다이렉트 - 모바일 디바이스면 모바일 경로로 */}
-        <Route path="/" element={isMobile ? <Navigate to="/mobile/advertisement" replace /> : <Navigate to="/dashboard" replace />} />
+        {/* 루트 경로 - 모바일은 광고 페이지, 데스크톱은 관리자 로그인 페이지 */}
+        <Route path="/" element={isMobile ? <Navigate to="/mobile/advertisement" replace /> : <LoginPage />} />
         <Route path="*" element={isMobile ? <Navigate to="/mobile/advertisement" replace /> : <Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>

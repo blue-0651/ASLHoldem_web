@@ -11,8 +11,8 @@ const IS_STORE_OWNER_KEY = 'is_store_owner';
 const getBaseURL = () => {
   // 개발 환경에서 현재 호스트의 IP를 사용
   if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    // 모바일 환경에서는 현재 호스트의 IP를 사용하되 포트는 8000으로 변경
-    return `http://${window.location.hostname}:8000`;
+    // 배포 환경에서는 Nginx 프록시를 통해 접근 (포트 없이)
+    return `http://${window.location.hostname}`;
   }
   // 로컬 개발 환경
   return 'http://localhost:8000';
