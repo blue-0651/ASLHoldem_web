@@ -97,6 +97,7 @@ const BannerManagementPage = () => {
       return false;
     }
     
+    // 배너 추가 시에만 이미지 필수 검증 (수정 시에는 선택사항)
     if (!formData.image && !currentBanner) {
       showAlert('배너 이미지를 선택해주세요.', 'danger');
       return false;
@@ -120,8 +121,6 @@ const BannerManagementPage = () => {
     return true;
   };
 
-
-
   // 배너 추가
   const handleAddBanner = async (e) => {
     e.preventDefault();
@@ -137,8 +136,8 @@ const BannerManagementPage = () => {
         title: formData.title.trim(),
         description: formData.description.trim(),
         store: parseInt(formData.store),
-        start_date: formData.start_date,
-        end_date: formData.end_date,
+        start_date: new Date(formData.start_date + 'T00:00:00').toISOString(),
+        end_date: new Date(formData.end_date + 'T23:59:59').toISOString(),
         is_active: Boolean(formData.is_active)
       };
       
@@ -198,23 +197,36 @@ const BannerManagementPage = () => {
     setLoading(true);
     
     try {
-      const dataToSend = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        store: parseInt(formData.store),
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        is_active: Boolean(formData.is_active)
-      };
+      // FormData 생성 - 모든 필수 필드를 항상 포함
+      const formDataToSend = new FormData();
       
+      // 필수 필드들을 항상 포함 (빈 값 체크 후)
+      formDataToSend.append('title', formData.title.trim());
+      formDataToSend.append('description', formData.description.trim() || '');
+      formDataToSend.append('store', parseInt(formData.store));
+      
+      // 날짜를 DateTime 형식으로 변환 (ISO 8601 형식)
+      const startDateTime = new Date(formData.start_date + 'T00:00:00').toISOString();
+      const endDateTime = new Date(formData.end_date + 'T23:59:59').toISOString();
+      formDataToSend.append('start_date', startDateTime);
+      formDataToSend.append('end_date', endDateTime);
+      
+      formDataToSend.append('is_active', Boolean(formData.is_active));
+      
+      // 이미지 처리: 새로 선택한 경우 새 이미지, 아니면 기존 이미지 URL
       if (formData.image) {
-        dataToSend.image = formData.image;
+        formDataToSend.append('image', formData.image);
+      } else if (currentBanner && currentBanner.image) {
+        // 기존 이미지 URL을 보내기 (백엔드에서 처리 필요)
+        formDataToSend.append('existing_image_url', currentBanner.image);
       }
 
-      console.log('📤 배너 수정 - 전송할 데이터:', dataToSend);
-      console.log('📤 이미지 파일:', formData.image ? formData.image.name : 'None');
+      console.log('📤 배너 수정 - 전송할 FormData:');
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(`  ${key}:`, value);
+      }
 
-      await bannerAPI.updateBanner(currentBanner.id, dataToSend);
+      await bannerAPI.updateBanner(currentBanner.id, formDataToSend);
       showAlert('배너가 성공적으로 수정되었습니다.');
       fetchBanners();
       setShowEditModal(false);

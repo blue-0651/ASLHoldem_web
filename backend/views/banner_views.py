@@ -84,6 +84,29 @@ class BannerViewSet(viewsets.ModelViewSet):
             # 관리자인 경우 요청된 매장으로 설정
             serializer.save()
 
+    def update(self, request, *args, **kwargs):
+        """
+        배너 수정 - 기존 이미지 유지 처리
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        # 이미지 처리: 새 이미지가 없고 existing_image_url이 있으면 기존 이미지 유지
+        if 'image' not in request.data and 'existing_image_url' in request.data:
+            # 기존 이미지를 request.data에 추가 (mutable하게 만들기)
+            request.data._mutable = True
+            request.data['image'] = instance.image
+            request.data._mutable = False
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+
     def perform_update(self, serializer):
         """
         배너 수정 시 권한 확인
