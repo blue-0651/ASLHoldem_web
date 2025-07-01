@@ -489,6 +489,20 @@ export const bannerAPI = {
 
   // 배너 수정
   updateBanner: (id, data) => {
+    // data가 이미 FormData 객체인 경우 그대로 사용
+    if (data instanceof FormData) {
+      // 디버깅을 위한 FormData 내용 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📤 배너 수정 (ID: ${id}) - 전송할 FormData:`);
+        for (let [key, value] of data.entries()) {
+          console.log(`  ${key}:`, value);
+        }
+      }
+      
+      return API.put(`/banners/${id}/`, data);
+    }
+    
+    // data가 일반 객체인 경우 FormData로 변환
     const formData = new FormData();
     Object.keys(data).forEach((key) => {
       if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
