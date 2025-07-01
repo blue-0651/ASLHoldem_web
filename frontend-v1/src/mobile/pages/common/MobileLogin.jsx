@@ -127,7 +127,7 @@ const MobileLogin = () => {
         <Card className="asl-mobile-login-card">
           <Card.Body>
             <div className="text-center mb-4">
-              <h2 className="mb-2">ASL 홀덤</h2>
+              <h2 className="mb-2">ASL</h2>
               <p className="text-muted">계정에 로그인하세요</p>
             </div>
             

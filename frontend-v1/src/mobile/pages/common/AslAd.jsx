@@ -119,8 +119,8 @@ const AslAd = () => {
           <Card.Body>
             <div className="asl-ad-header-content">
               <div className="text-center">
-                <h3 className="mb-2" style={{ color: '#333', fontWeight: '700' }}>아시안 스포츠 리그</h3>
-                <p className="text-muted mb-3">최고의 경험을 만나보세요</p>
+                <h3 className="mb-2" style={{ color: '#333', fontWeight: '700' }}>ASIAN SPORTS LEAGUE</h3>
+                <p className="text-muted mb-3">아시안 스포츠 리그</p>
               </div>
               <div className="text-center">
                 <Button 
