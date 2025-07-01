@@ -33,6 +33,7 @@ const BannerManagementPage = () => {
     start_date: '',
     end_date: '',
     is_active: true,
+    is_main_tournament: false,
     image: null
   });
 
@@ -138,7 +139,8 @@ const BannerManagementPage = () => {
         store: parseInt(formData.store),
         start_date: new Date(formData.start_date + 'T00:00:00').toISOString(),
         end_date: new Date(formData.end_date + 'T23:59:59').toISOString(),
-        is_active: Boolean(formData.is_active)
+        is_active: Boolean(formData.is_active),
+        is_main_tournament: Boolean(formData.is_main_tournament)
       };
       
       if (formData.image) {
@@ -212,6 +214,7 @@ const BannerManagementPage = () => {
       formDataToSend.append('end_date', endDateTime);
       
       formDataToSend.append('is_active', Boolean(formData.is_active));
+      formDataToSend.append('is_main_tournament', Boolean(formData.is_main_tournament));
       
       // 이미지 처리: 새로 선택한 경우 새 이미지, 아니면 기존 이미지 URL
       if (formData.image) {
@@ -293,6 +296,22 @@ const BannerManagementPage = () => {
     }
   };
 
+  // 메인 토너먼트 배너로 설정
+  const setAsMainTournament = async (banner) => {
+    try {
+      const response = await bannerAPI.setAsMainTournament(banner.id);
+      showAlert(`'${banner.title}' 배너가 메인 토너먼트 배너로 설정되었습니다.`);
+      fetchBanners();
+    } catch (error) {
+      console.error('메인 토너먼트 배너 설정 실패:', error);
+      let errorMessage = '메인 토너먼트 배너 설정에 실패했습니다.';
+      if (error.response?.data?.error) {
+        errorMessage += ` (${error.response.data.error})`;
+      }
+      showAlert(errorMessage, 'danger');
+    }
+  };
+
   // 폼 초기화
   const resetForm = () => {
     setFormData({
@@ -302,6 +321,7 @@ const BannerManagementPage = () => {
       start_date: '',
       end_date: '',
       is_active: true,
+      is_main_tournament: false,
       image: null
     });
     setCurrentBanner(null);
@@ -317,6 +337,7 @@ const BannerManagementPage = () => {
       start_date: banner.start_date ? banner.start_date.split('T')[0] : '',
       end_date: banner.end_date ? banner.end_date.split('T')[0] : '',
       is_active: banner.is_active,
+      is_main_tournament: banner.is_main_tournament || false,
       image: null
     });
     setShowEditModal(true);
@@ -370,6 +391,7 @@ const BannerManagementPage = () => {
                           <th>설명</th>
                           <th>기간</th>
                           <th>상태</th>
+                          <th>메인 배너</th>
                           <th>작업</th>
                         </tr>
                       </thead>
@@ -407,6 +429,17 @@ const BannerManagementPage = () => {
                               </Badge>
                             </td>
                             <td>
+                              {banner.is_main_tournament ? (
+                                <Badge bg="warning" className="text-dark">
+                                  🏆 메인 배너
+                                </Badge>
+                              ) : (
+                                <Badge bg="light" className="text-muted">
+                                  일반 배너
+                                </Badge>
+                              )}
+                            </td>
+                            <td>
                               <Button 
                                 variant="outline-primary" 
                                 size="sm" 
@@ -418,9 +451,25 @@ const BannerManagementPage = () => {
                               <Button 
                                 variant="outline-danger" 
                                 size="sm"
+                                className="me-2"
                                 onClick={() => openDeleteModal(banner)}
                               >
                                 삭제
+                              </Button>
+                              <Button 
+                                variant={banner.is_main_tournament ? "secondary" : "warning"}
+                                size="sm"
+                                disabled={banner.is_main_tournament || !banner.is_active}
+                                onClick={() => setAsMainTournament(banner)}
+                                title={
+                                  banner.is_main_tournament 
+                                    ? "이미 메인 배너로 설정됨" 
+                                    : !banner.is_active 
+                                    ? "활성화된 배너만 메인 배너로 설정 가능" 
+                                    : "메인 토너먼트 배너로 설정"
+                                }
+                              >
+                                {banner.is_main_tournament ? "메인 설정됨" : "메인으로 설정"}
                               </Button>
                             </td>
                           </tr>
@@ -526,6 +575,19 @@ const BannerManagementPage = () => {
                   onChange={handleInputChange}
                 />
               </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  name="is_main_tournament"
+                  label="메인 토너먼트 배너로 설정"
+                  checked={formData.is_main_tournament}
+                  onChange={handleInputChange}
+                />
+                <Form.Text className="text-muted">
+                  메인 토너먼트 배너는 하나만 설정할 수 있습니다. 새로 설정하면 기존 메인 배너는 해제됩니다.
+                </Form.Text>
+              </Form.Group>
             </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" onClick={() => setShowAddModal(false)}>
@@ -629,6 +691,19 @@ const BannerManagementPage = () => {
                   checked={formData.is_active}
                   onChange={handleInputChange}
                 />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  name="is_main_tournament"
+                  label="메인 토너먼트 배너로 설정"
+                  checked={formData.is_main_tournament}
+                  onChange={handleInputChange}
+                />
+                <Form.Text className="text-muted">
+                  메인 토너먼트 배너는 하나만 설정할 수 있습니다. 새로 설정하면 기존 메인 배너는 해제됩니다.
+                </Form.Text>
               </Form.Group>
             </Modal.Body>
             <Modal.Footer>

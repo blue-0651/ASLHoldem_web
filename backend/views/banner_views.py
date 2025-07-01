@@ -285,3 +285,62 @@ class BannerViewSet(viewsets.ModelViewSet):
                 {"error": f"배너 상태 변경 중 오류가 발생했습니다: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def set_as_main_tournament(self, request, pk=None):
+        """
+        특정 배너를 메인 토너먼트 배너로 설정
+        관리자만 접근 가능
+        """
+        try:
+            banner = self.get_object()
+            
+            # 기존 메인 토너먼트 배너들을 모두 False로 변경
+            Banner.objects.filter(is_main_tournament=True).update(is_main_tournament=False)
+            
+            # 선택된 배너를 메인 토너먼트 배너로 설정
+            banner.is_main_tournament = True
+            banner.save()
+            
+            serializer = self.get_serializer(banner)
+            return Response({
+                'message': f"'{banner.title}' 배너가 메인 토너먼트 배너로 설정되었습니다.",
+                'banner': serializer.data
+            })
+        except Exception as e:
+            return Response(
+                {"error": f"메인 토너먼트 배너 설정 중 오류가 발생했습니다: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def main_tournament(self, request):
+        """
+        현재 메인 토너먼트 배너로 설정된 활성화된 배너 반환
+        모든 사용자 접근 가능
+        """
+        try:
+            now = timezone.now()
+            main_tournament_banner = Banner.objects.filter(
+                is_main_tournament=True,
+                is_active=True,
+                start_date__lte=now,
+                end_date__gte=now
+            ).select_related('store').first()
+            
+            if not main_tournament_banner:
+                return Response({
+                    'message': '현재 설정된 메인 토너먼트 배너가 없습니다.',
+                    'banner': None
+                })
+            
+            serializer = self.get_serializer(main_tournament_banner)
+            return Response({
+                'message': '메인 토너먼트 배너를 성공적으로 조회했습니다.',
+                'banner': serializer.data
+            })
+        except Exception as e:
+            return Response(
+                {"error": f"메인 토너먼트 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

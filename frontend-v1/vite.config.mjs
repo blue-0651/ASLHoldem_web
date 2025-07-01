@@ -24,9 +24,10 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0', // 또는 host: true
       proxy: {
         '/api': {
-          target: process.env.VITE_API_URL || 'http://localhost:8000',
+          target: process.env.VITE_API_URL || 'http://127.0.0.1:8000',
           changeOrigin: true,
-          secure: false
+          secure: false,
+          ws: true,
           // 필요한 경우 경로 재작성
           // rewrite: (path) => path.replace(/^\/api/, '')
         }

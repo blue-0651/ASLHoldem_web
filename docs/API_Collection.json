@@ -2771,6 +2771,249 @@
       ]
     },
     {
+      "name": "🎯 배너 관리 API",
+      "description": "배너 관리 관련 API 엔드포인트",
+      "item": [
+        {
+          "name": "메인 토너먼트 배너 조회",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/banners/main_tournament/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "banners",
+                "main_tournament",
+                ""
+              ]
+            },
+            "description": "현재 설정된 메인 토너먼트 배너를 조회합니다.\n\n🔧 2025.01 업데이트: 중복 호출 방지 로직 추가\n- React Strict Mode로 인한 개발 모드 중복 호출 이슈 해결\n- 프론트엔드에서 useRef와 마운트 상태 체크로 안정성 개선\n\n⚡ 주요 특징:\n- 🔓 인증 불필요 (AllowAny 권한)\n- 📱 모바일 광고 페이지에서 주로 사용\n- 🎪 is_main_tournament=True로 설정된 배너만 반환\n- 🕐 현재 활성화된 메인 배너만 조회 (is_active=True, 기간 내)\n\n사용처:\n- AslAd.jsx 컴포넌트의 토너먼트 정보 섹션\n- 모바일 광고 화면 메인 배너 표시\n\n응답 데이터:\n- banner: 메인 토너먼트 배너 정보\n  - id: 배너 ID\n  - title: 배너 제목\n  - description: 배너 설명\n  - image: 배너 이미지 URL\n  - store: 연관 매장 정보\n  - is_active: 활성화 상태\n  - is_main_tournament: 메인 토너먼트 배너 여부\n  - start_date: 시작일\n  - end_date: 종료일\n\n응답:\n- 200: 성공적으로 메인 배너를 반환 (배너가 없으면 banner: null)\n- 500: 서버 오류"
+          },
+          "response": [
+            {
+              "name": "메인 배너 있음",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/banners/main_tournament/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "banners",
+                    "main_tournament",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"banner\": {\n        \"id\": 1,\n        \"title\": \"2025 ASL 챔피언십\",\n        \"description\": \"대한민국 최대 규모의 홀덤 토너먼트가 시작됩니다!\",\n        \"image\": \"/media/banners/main_tournament_2025.jpg\",\n        \"store\": {\n            \"id\": 1,\n            \"name\": \"강남점\",\n            \"address\": \"서울시 강남구 테헤란로 123\"\n        },\n        \"is_active\": true,\n        \"is_main_tournament\": true,\n        \"start_date\": \"2025-01-01\",\n        \"end_date\": \"2025-12-31\",\n        \"created_at\": \"2025-01-15T10:30:00Z\",\n        \"updated_at\": \"2025-01-15T10:30:00Z\"\n    }\n}"
+            },
+            {
+              "name": "메인 배너 없음",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/banners/main_tournament/",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "banners",
+                    "main_tournament",
+                    ""
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n    \"banner\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "활성 배너 목록 조회",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/banners/active/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "banners",
+                "active",
+                ""
+              ]
+            },
+            "description": "현재 활성화된 모든 배너 목록을 조회합니다.\n\n⚡ 주요 특징:\n- 🔓 인증 불필요 (AllowAny 권한)\n- 📅 현재 날짜 기준으로 활성화된 배너만 반환\n- 🏪 매장별 필터링 가능 (store_id 파라미터)\n- 📊 생성일 기준 내림차순 정렬\n\n쿼리 파라미터:\n- store_id (선택): 특정 매장의 배너만 조회\n\n응답:\n- 200: 성공적으로 활성 배너 목록을 반환\n- 500: 서버 오류"
+          },
+          "response": []
+        },
+        {
+          "name": "배너 목록 조회 (관리자용)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "JWT 액세스 토큰 (로그인 필요)"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/banners/?is_active=true&store_id=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "banners",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "is_active",
+                  "value": "true",
+                  "description": "활성 배너만 조회 (true/false)"
+                },
+                {
+                  "key": "store_id",
+                  "value": "1",
+                  "description": "매장별 필터링"
+                },
+                {
+                  "key": "start_date",
+                  "value": "2025-01-01",
+                  "disabled": true,
+                  "description": "시작일 필터 (YYYY-MM-DD)"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2025-12-31",
+                  "disabled": true,
+                  "description": "종료일 필터 (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "관리자용 배너 목록을 조회합니다.\n\n🔐 권한 요구사항:\n- 🔑 JWT 토큰 인증 필요\n- 🏪 매장 관리자: 자신의 매장 배너만 조회 가능\n- 👑 시스템 관리자: 모든 배너 조회 가능\n\n🔍 필터링 옵션:\n- is_active: 활성화 상태별 필터링\n- store_id: 매장별 필터링\n- start_date/end_date: 기간별 필터링\n\n응답:\n- 200: 성공적으로 배너 목록을 반환\n- 401: 인증되지 않은 요청\n- 403: 권한 없음"
+          },
+          "response": []
+        },
+        {
+          "name": "배너 생성",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "JWT 액세스 토큰 (로그인 필요)"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "새 토너먼트 배너",
+                  "type": "text",
+                  "description": "배너 제목"
+                },
+                {
+                  "key": "description",
+                  "value": "새로운 토너먼트를 소개하는 배너입니다.",
+                  "type": "text",
+                  "description": "배너 설명"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "description": "배너 이미지 파일"
+                },
+                {
+                  "key": "store",
+                  "value": "1",
+                  "type": "text",
+                  "description": "매장 ID (관리자만 설정 가능)"
+                },
+                {
+                  "key": "is_active",
+                  "value": "true",
+                  "type": "text",
+                  "description": "활성화 상태"
+                },
+                {
+                  "key": "is_main_tournament",
+                  "value": "false",
+                  "type": "text",
+                  "description": "메인 토너먼트 배너 여부"
+                },
+                {
+                  "key": "start_date",
+                  "value": "2025-01-15",
+                  "type": "text",
+                  "description": "시작일 (YYYY-MM-DD)"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2025-12-31",
+                  "type": "text",
+                  "description": "종료일 (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/banners/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "banners",
+                ""
+              ]
+            },
+            "description": "새로운 배너를 생성합니다.\n\n🔐 권한 처리:\n- 매장 관리자: 자신의 매장으로 자동 설정\n- 시스템 관리자: 요청된 매장으로 설정\n\n📝 필수 필드:\n- title: 배너 제목\n- image: 배너 이미지 파일\n- start_date/end_date: 배너 표시 기간\n\n응답:\n- 201: 성공적으로 배너를 생성\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한 없음"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "📢 공지사항 관리 API",
       "item": [
         {

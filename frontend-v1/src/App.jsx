@@ -76,24 +76,6 @@ function App() {
         />
         <Route path="/maintenance" element={<Maintenance />} />
 
-        {/* 로그인 데모 페이지: 테스트 용으로 만든 페이지 */}
-        {/*<Route path="/demo/mobile/sampleLogin" element={<SampleLogin />} />*/}
-        {/*<Route path="/demo/mobile/userlogin" element={<UserLoginPage />} />*/}
-        {/*<Route path="/demo/mobile/storelogin" element={<StoreLoginPage />} />*/}
-
-        {/* 로그인 실제 페이지: 바로가기로 만들어 놓은 실제는 라우터 삭제 필요 */}
-        {/*<Route path="/demo/mobile/login" element={<MobileLoginPage />} />*/}
-        {/*<Route path="/demo/mobile/signup" element={<MobileSignUpPage />} />*/}
-
-        {/* 데모용 UI 소스 작업 */}
-        {/* <Route path="/demo/admin/" element={<ProtectedRoute />} >
-          <Route element={<Layout />}>
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="tournaments" element={<TournamentManagement />} />
-            <Route path="stores" element={<StoreManagement />} />
-          </Route>
-        </Route> */}
-
         {/* 모바일 디바이스에서 관리자 페이지로 접근 시도 시 모바일 페이지로 리다이렉트 */}
         {isMobile && (
           <>

@@ -563,6 +563,24 @@ export const bannerAPI = {
     }
     
     return API.get('/banners/', { params });
+  },
+
+  // 메인 토너먼트 배너로 설정 (관리자만)
+  setAsMainTournament: (id) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📤 메인 토너먼트 배너 설정 (ID: ${id})`);
+    }
+    
+    return API.post(`/banners/${id}/set_as_main_tournament/`);
+  },
+
+  // 현재 메인 토너먼트 배너 조회 (모든 사용자)
+  getMainTournamentBanner: () => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📤 메인 토너먼트 배너 조회');
+    }
+    
+    return API.get('/banners/main_tournament/');
   }
 };
 

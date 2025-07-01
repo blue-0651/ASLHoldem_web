@@ -98,6 +98,9 @@ class Banner(models.Model):
     # 활성화 여부
     is_active = models.BooleanField(default=True)
     
+    # 메인 토너먼트 배너 여부
+    is_main_tournament = models.BooleanField(default=False, verbose_name='메인 토너먼트 배너', help_text='메인 토너먼트 배너로 사용할지 여부를 결정합니다.')
+    
     # 생성 시간
     created_at = models.DateTimeField(auto_now_add=True)
     
