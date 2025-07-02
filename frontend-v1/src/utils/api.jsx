@@ -581,6 +581,15 @@ export const bannerAPI = {
     }
     
     return API.get('/banners/main_tournament/');
+  },
+
+  // 인기 스토어 갤러리용 배너 조회 (모든 사용자)
+  getStoreGalleryBanners: () => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📤 인기 스토어 갤러리 배너 조회');
+    }
+    
+    return API.get('/banners/store-gallery/');
   }
 };
 

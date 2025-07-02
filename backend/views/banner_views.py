@@ -344,3 +344,33 @@ class BannerViewSet(viewsets.ModelViewSet):
                 {"error": f"메인 토너먼트 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny], url_path='store-gallery')
+    def store_gallery(self, request):
+        """
+        인기 스토어 갤러리용 배너 목록 조회
+        모든 사용자 접근 가능 (로그인 불필요)
+        """
+        try:
+            now = timezone.now()
+            store_gallery_banners = Banner.objects.filter(
+                is_store_gallery=True,
+                is_active=True,
+                start_date__lte=now,
+                end_date__gte=now
+            ).select_related('store').order_by('-created_at')
+            
+            # 최대 8개로 제한 (AslAd.jsx에서 사용)
+            store_gallery_banners = store_gallery_banners[:8]
+            
+            serializer = self.get_serializer(store_gallery_banners, many=True)
+            return Response({
+                'message': '인기 스토어 갤러리 배너를 성공적으로 조회했습니다.',
+                'banners': serializer.data,
+                'total_count': store_gallery_banners.count()
+            })
+        except Exception as e:
+            return Response(
+                {"error": f"인기 스토어 갤러리 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

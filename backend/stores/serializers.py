@@ -24,7 +24,7 @@ class BannerSerializer(serializers.ModelSerializer):
         model = Banner
         fields = [
             'id', 'store', 'store_name', 'image', 'title', 'description',
-            'start_date', 'end_date', 'is_active', 'is_main_tournament', 'created_at'
+            'start_date', 'end_date', 'is_active', 'is_main_tournament', 'is_store_gallery', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
 

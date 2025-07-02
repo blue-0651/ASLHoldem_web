@@ -768,52 +768,53 @@ const PlayerRegistration = () => {
                             </Badge>
                           </div>
                         </div>
-                          
-                          {/* 토너먼트 참가 여부 표시 */}
-                          {selectedTournament && (
-                            <div className="mt-2 p-2 rounded" style={{
-                              backgroundColor: foundUser.participationInfo === null ? '#f8f9fa' : 
-                                             foundUser.participationInfo?.is_registered ? '#fff3cd' : 
-                                             (foundUser.ticketInfo?.active_tickets >= (tournaments.find(t => t.id.toString() === selectedTournament.toString())?.buy_in || 1)) ? '#d1ecf1' : '#f8d7da'
-                            }}>
-                              <div className="d-flex align-items-center">
-                                {foundUser.participationInfo === null ? (
-                                  <>
-                                    <i className="fas fa-spinner fa-spin text-muted me-2"></i>
-                                    <small className="text-muted fw-bold">
-                                      토너먼트 참가 여부 확인 중...
+                        {/* 토너먼트 참가 여부 표시 */}
+                        {selectedTournament && (
+                          <div className="mt-2 p-2 rounded" style={{
+                            backgroundColor: foundUser.participationInfo === null ? '#f8f9fa' : 
+                                           foundUser.participationInfo?.is_registered ? '#fff3cd' : 
+                                           (foundUser.ticketInfo?.active_tickets >= (tournaments.find(t => t.id.toString() === selectedTournament.toString())?.buy_in || 1)) ? '#d1ecf1' : '#f8d7da'
+                          }}>
+                            <div className="d-flex align-items-center">
+                              {foundUser.participationInfo === null ? (
+                                <>
+                                  <i className="fas fa-spinner fa-spin text-muted me-2"></i>
+                                  <small className="text-muted fw-bold">
+                                    토너먼트 참가 여부 확인 중...
+                                  </small>
+                                </>
+                              ) : foundUser.participationInfo?.is_registered ? (
+                                <>
+                                  <i className="fas fa-user-check text-warning me-2"></i>
+                                  <div className="flex-grow-1">
+                                    <small className="text-warning fw-bold">
+                                      이미 이 토너먼트에 참가되어 있습니다 (중복 참가 가능)
                                     </small>
-                                  </>
-                                ) : foundUser.participationInfo?.is_registered ? (
-                                  <>
-                                    <i className="fas fa-user-check text-warning me-2"></i>
-                                    <div className="flex-grow-1">
-                                      <small className="text-warning fw-bold">
-                                        이미 이 토너먼트에 참가되어 있습니다 (중복 참가 가능)
-                                      </small>
-                                      {foundUser.participationInfo.registration_info && (
-                                        <div className="mt-1">
-                                          <small className="text-muted">
-                                            최근 참가일시: {new Date(foundUser.participationInfo.registration_info.created_at).toLocaleString()}
-                                          </small>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </>
-                                ) : (() => {
-                                  const selectedTournamentData = tournaments.find(t => t.id.toString() === selectedTournament.toString());
-                                  const requiredTickets = selectedTournamentData?.buy_in || 1;
-                                  const availableTickets = foundUser.ticketInfo?.active_tickets || 0;
-                                  const canParticipate = availableTickets >= requiredTickets;
-                                  
-                                  return canParticipate ? (
+                                    {foundUser.participationInfo.registration_info && (
+                                      <div className="mt-1">
+                                        <small className="text-muted">
+                                          최근 참가일시: {new Date(foundUser.participationInfo.registration_info.created_at).toLocaleString()}
+                                        </small>
+                                      </div>
+                                    )}
+                                  </div>
+                                </>
+                              ) : (() => {
+                                const selectedTournamentData = tournaments.find(t => t.id.toString() === selectedTournament.toString());
+                                const requiredTickets = selectedTournamentData?.buy_in || 1;
+                                const availableTickets = foundUser.ticketInfo?.active_tickets || 0;
+                                const canParticipate = availableTickets >= requiredTickets;
+                                if (canParticipate) {
+                                  return (
                                     <>
                                       <i className="fas fa-user-plus text-info me-2"></i>
                                       <small className="text-info fw-bold">
                                         이 토너먼트에 참가 가능합니다
                                       </small>
                                     </>
-                                  ) : (
+                                  );
+                                } else {
+                                  return (
                                     <>
                                       <i className="fas fa-times-circle text-danger me-2"></i>
                                       <div className="flex-grow-1">
@@ -828,49 +829,45 @@ const PlayerRegistration = () => {
                                       </div>
                                     </>
                                   );
-                                })()}
-                              </div>
+                                }
+                              })()}
                             </div>
-                          )}
-                          
-                          <div className="mt-1">
-                            {(() => {
-                              if (foundUser.participationInfo === null) {
-                                return (
-                                  <small className="text-muted">
-                                    <i className="fas fa-spinner fa-spin me-1"></i>
-                                    참가 여부 확인 중...
-                                  </small>
-                                );
-                              }
-                              
-                              const selectedTournamentData = tournaments.find(t => t.id.toString() === selectedTournament.toString());
-                              const requiredTickets = selectedTournamentData?.buy_in || 1;
-                              const availableTickets = foundUser.ticketInfo?.active_tickets || 0;
-                              const canParticipate = availableTickets >= requiredTickets;
-                              
-                              if (!canParticipate) {
-                                return (
-                                  <small className="text-danger">
-                                    <i className="fas fa-times me-1"></i>
-                                    SEAT권 부족으로 참가할 수 없습니다.
-                                  </small>
-                                );
-                              }
-                              
+                          </div>
+                        )}
+                        <div className="mt-1">
+                          {(() => {
+                            if (foundUser.participationInfo === null) {
                               return (
-                                <small className="text-success">
-                                  <i className="fas fa-check me-1"></i>
-                                  토너먼트 참가 가능합니다.
-                                  {foundUser.participationInfo?.is_registered && (
-                                    <span className="text-info"> (중복 참가 허용)</span>
-                                  )}
+                                <small className="text-muted">
+                                  <i className="fas fa-spinner fa-spin me-1"></i>
+                                  참가 여부 확인 중...
                                 </small>
                               );
-                            })()}
-                          </div>
+                            }
+                            const selectedTournamentData = tournaments.find(t => t.id.toString() === selectedTournament.toString());
+                            const requiredTickets = selectedTournamentData?.buy_in || 1;
+                            const availableTickets = foundUser.ticketInfo?.active_tickets || 0;
+                            const canParticipate = availableTickets >= requiredTickets;
+                            if (!canParticipate) {
+                              return (
+                                <small className="text-danger">
+                                  <i className="fas fa-times me-1"></i>
+                                  SEAT권 부족으로 참가할 수 없습니다.
+                                </small>
+                              );
+                            }
+                            return (
+                              <small className="text-success">
+                                <i className="fas fa-check me-1"></i>
+                                토너먼트 참가 가능합니다.
+                                {foundUser.participationInfo?.is_registered && (
+                                  <span className="text-info"> (중복 참가 허용)</span>
+                                )}
+                              </small>
+                            );
+                          })()}
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </Alert>
@@ -1022,7 +1019,7 @@ const PlayerRegistration = () => {
                       기존 회원 정보
                     </Card.Title>
                     
-                                         <Row className="mb-2">
+                    <Row className="mb-2">
                        <Col xs={3}><strong>이름:</strong></Col>
                        <Col xs={9}>
                          {foundUser.last_name && foundUser.first_name ? 

@@ -101,6 +101,9 @@ class Banner(models.Model):
     # 메인 토너먼트 배너 여부
     is_main_tournament = models.BooleanField(default=False, verbose_name='메인 토너먼트 배너', help_text='메인 토너먼트 배너로 사용할지 여부를 결정합니다.')
     
+    # 인기 스토어 갤러리 배너 여부
+    is_store_gallery = models.BooleanField(default=False, verbose_name='인기 스토어 갤러리 배너', help_text='인기 스토어 갤러리에 표시될 배너인지 여부를 결정합니다.')
+    
     # 생성 시간
     created_at = models.DateTimeField(auto_now_add=True)
     

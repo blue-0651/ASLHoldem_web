@@ -35,8 +35,14 @@ const AslAd = () => {
   const [bannerLoading, setBannerLoading] = useState(true);
   const [bannerError, setBannerError] = useState(null);
 
-  // 매장 데이터 (8개로 확장)
-  const stores = [
+  // 인기 스토어 갤러리 상태 관리
+  const [storesList, setStoresList] = useState([]);
+  const [storesLoading, setStoresLoading] = useState(true);
+  const [storesError, setStoresError] = useState(null);
+  const isStoreApiCalledRef = useRef(false);
+
+  // 기본 매장 데이터 (API 호출 실패 시 대비용)
+  const defaultStores = [
     { 
       name: '골프클럽 라운지', 
       image: galleryImg1,
@@ -87,6 +93,63 @@ const AslAd = () => {
     'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v9/icons/samsung.svg',
   ];
 
+  // 인기 스토어 갤러리 배너 불러오기
+  const fetchStoreGalleryBanners = async () => {
+    // 이미 API 호출 중이거나 완료된 경우 중복 호출 방지
+    if (isStoreApiCalledRef.current || storesLoading === false) {
+      console.log('🔄 중복 API 호출 방지: 스토어 갤러리 이미 처리 중이거나 완료됨');
+      return;
+    }
+
+    try {
+      isStoreApiCalledRef.current = true;
+      setStoresLoading(true);
+      setStoresError(null);
+      
+      console.log('📤 인기 스토어 갤러리 배너 조회 시작');
+      const response = await bannerAPI.getStoreGalleryBanners();
+      
+      // 컴포넌트가 언마운트된 경우 상태 업데이트 방지
+      if (!isMountedRef.current) {
+        console.log('⚠️ 컴포넌트 언마운트됨: 스토어 갤러리 상태 업데이트 취소');
+        return;
+      }
+      
+      if (response.data.banners && response.data.banners.length > 0) {
+        // 배너 데이터를 매장 형태로 변환
+        const transformedStores = response.data.banners.map(banner => ({
+          id: banner.id,
+          name: banner.title || banner.store_name || '매장명 없음',
+          image: banner.image,
+          description: banner.description || '매장 설명이 없습니다.'
+        }));
+        
+        setStoresList(transformedStores);
+        console.log('✅ 인기 스토어 갤러리 배너 로드 성공', transformedStores.length, '개');
+      } else {
+        // API에서 데이터가 없으면 기본 데이터 사용
+        setStoresList(defaultStores);
+        console.log('ℹ️ 설정된 갤러리 배너가 없어 기본 데이터 사용');
+      }
+    } catch (error) {
+      console.error('❌ 인기 스토어 갤러리 배너 불러오기 실패:', error);
+      
+      // 컴포넌트가 언마운트된 경우 상태 업데이트 방지
+      if (!isMountedRef.current) {
+        return;
+      }
+      
+      setStoresError('스토어 갤러리를 불러오는데 실패했습니다.');
+      // 에러 발생 시 기본 데이터 사용
+      setStoresList(defaultStores);
+    } finally {
+      // 컴포넌트가 언마운트된 경우 상태 업데이트 방지
+      if (isMountedRef.current) {
+        setStoresLoading(false);
+      }
+    }
+  };
+
   // 메인 토너먼트 배너 불러오기
   const fetchMainTournamentBanner = async () => {
     // 이미 API 호출 중이거나 완료된 경우 중복 호출 방지
@@ -134,13 +197,17 @@ const AslAd = () => {
     }
   };
 
-  // 컴포넌트 마운트 시 메인 토너먼트 배너 불러오기
+  // 컴포넌트 마운트 시 메인 토너먼트 배너 및 스토어 갤러리 불러오기
   useEffect(() => {
     isMountedRef.current = true;
     
     // 컴포넌트 마운트 후 한 번만 실행
     if (!isApiCalledRef.current) {
       fetchMainTournamentBanner();
+    }
+    
+    if (!isStoreApiCalledRef.current) {
+      fetchStoreGalleryBanners();
     }
 
     // cleanup 함수
@@ -150,22 +217,25 @@ const AslAd = () => {
     };
   }, []);
 
-  // 2초마다 자동 슬라이딩
+  // 2초마다 자동 슬라이딩 (데이터가 로드된 후에만 실행)
   useEffect(() => {
+    if (storesList.length === 0) return; // 데이터가 없으면 슬라이더 실행하지 않음
+    
     const interval = setInterval(() => {
       setCurrentSlide(prev => {
-        // 4개씩 보여주므로, 총 슬라이드 수는 stores.length - 3
-        const maxSlide = stores.length - 4;
+        // 4개씩 보여주므로, 총 슬라이드 수는 storesList.length - 3
+        const maxSlide = Math.max(0, storesList.length - 4);
         return prev >= maxSlide ? 0 : prev + 1;
       });
     }, 2000); // 2초마다 실행
 
     return () => clearInterval(interval); // 컴포넌트 언마운트 시 정리
-  }, [stores.length]);
+  }, [storesList.length]);
 
   // 현재 슬라이드에 따른 매장 4개 선택
   const getCurrentStores = () => {
-    return stores.slice(currentSlide, currentSlide + 4);
+    if (storesList.length === 0) return [];
+    return storesList.slice(currentSlide, currentSlide + 4);
   };
 
   const handleLogin = () => {
@@ -293,40 +363,80 @@ const AslAd = () => {
           <Card.Body>
             <div className="text-center mb-3">
               <h5 style={{ color: '#333', fontWeight: '600' }}>인기 스토어</h5>
-              
+              {storesError && (
+                <p className="text-warning small">
+                  ⚠️ {storesError} (기본 데이터로 표시됩니다)
+                </p>
+              )}
             </div>
-            <div className="asl-ad-stores-gallery">
-              {getCurrentStores().map((store, index) => (
-                <div 
-                  key={`${currentSlide}-${index}`}
-                  className="asl-ad-store-item asl-ad-store-slide-in"
-                  onClick={() => handleStoreClick(store)}
-                >
-                  <div className="asl-ad-store-image-wrapper">
-                    <img 
-                      src={store.image} 
-                      alt={store.name}
-                      className="asl-ad-store-image"
-                    />
-                    <div className="asl-ad-store-overlay">
-                      <span className="asl-ad-store-name">{store.name}</span>
-                      <p className="asl-ad-store-description">{store.description}</p>
-                    </div>
+            
+            {storesLoading ? (
+              <div className="text-center py-4" style={{ minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div>
+                  <div className="spinner-border text-primary mb-2" role="status">
+                    <span className="visually-hidden">로딩중...</span>
                   </div>
+                  <p className="text-muted small">인기 스토어를 불러오는 중...</p>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <>
+                <div className="asl-ad-stores-gallery">
+                  {getCurrentStores().map((store, index) => (
+                    <div 
+                      key={store.id ? `store-${store.id}-${index}` : `${currentSlide}-${index}`}
+                      className="asl-ad-store-item asl-ad-store-slide-in"
+                      onClick={() => handleStoreClick(store)}
+                    >
+                      <div className="asl-ad-store-image-wrapper">
+                        <img 
+                          src={store.image} 
+                          alt={store.name}
+                          className="asl-ad-store-image"
+                          onError={(e) => {
+                            // 이미지 로드 실패 시 기본 이미지 사용
+                            e.target.src = galleryImg1;
+                          }}
+                        />
+                        <div className="asl-ad-store-overlay">
+                          <span className="asl-ad-store-name">{store.name}</span>
+                          <p className="asl-ad-store-description">{store.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
-            {/* 페이지 인디케이터 */}
-            <div className="asl-ad-stores-indicators">
-              {Array.from({ length: stores.length - 3 }, (_, index) => (
-                <div 
-                  key={index}
-                  className={`asl-ad-indicator ${currentSlide === index ? 'active' : ''}`}
-                  onClick={() => setCurrentSlide(index)}
-                />
-              ))}
-            </div>
+                {/* 페이지 인디케이터 */}
+                {storesList.length > 4 && (
+                  <div className="asl-ad-stores-indicators">
+                    {Array.from({ length: Math.max(1, storesList.length - 3) }, (_, index) => (
+                      <div 
+                        key={index}
+                        className={`asl-ad-indicator ${currentSlide === index ? 'active' : ''}`}
+                        onClick={() => setCurrentSlide(index)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* 다시 시도 버튼 (에러 상태일 때만 표시) */}
+                {storesError && (
+                  <div className="text-center mt-3">
+                    <button 
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => {
+                        // 다시 시도 시 API 호출 플래그 리셋
+                        isStoreApiCalledRef.current = false;
+                        fetchStoreGalleryBanners();
+                      }}
+                    >
+                      인기 스토어 다시 불러오기
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </Card.Body>
         </Card>
 

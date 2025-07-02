@@ -34,6 +34,7 @@ const BannerManagementPage = () => {
     end_date: '',
     is_active: true,
     is_main_tournament: false,
+    is_store_gallery: false,
     image: null
   });
 
@@ -140,7 +141,8 @@ const BannerManagementPage = () => {
         start_date: new Date(formData.start_date + 'T00:00:00').toISOString(),
         end_date: new Date(formData.end_date + 'T23:59:59').toISOString(),
         is_active: Boolean(formData.is_active),
-        is_main_tournament: Boolean(formData.is_main_tournament)
+        is_main_tournament: Boolean(formData.is_main_tournament),
+        is_store_gallery: Boolean(formData.is_store_gallery)
       };
       
       if (formData.image) {
@@ -215,6 +217,7 @@ const BannerManagementPage = () => {
       
       formDataToSend.append('is_active', Boolean(formData.is_active));
       formDataToSend.append('is_main_tournament', Boolean(formData.is_main_tournament));
+      formDataToSend.append('is_store_gallery', Boolean(formData.is_store_gallery));
       
       // 이미지 처리: 새로 선택한 경우 새 이미지, 아니면 기존 이미지 URL
       if (formData.image) {
@@ -322,6 +325,7 @@ const BannerManagementPage = () => {
       end_date: '',
       is_active: true,
       is_main_tournament: false,
+      is_store_gallery: false,
       image: null
     });
     setCurrentBanner(null);
@@ -338,6 +342,7 @@ const BannerManagementPage = () => {
       end_date: banner.end_date ? banner.end_date.split('T')[0] : '',
       is_active: banner.is_active,
       is_main_tournament: banner.is_main_tournament || false,
+      is_store_gallery: banner.is_store_gallery || false,
       image: null
     });
     setShowEditModal(true);
@@ -392,6 +397,7 @@ const BannerManagementPage = () => {
                           <th>기간</th>
                           <th>상태</th>
                           <th>메인 배너</th>
+                          <th>갤러리 배너</th>
                           <th>작업</th>
                         </tr>
                       </thead>
@@ -432,6 +438,17 @@ const BannerManagementPage = () => {
                               {banner.is_main_tournament ? (
                                 <Badge bg="warning" className="text-dark">
                                   🏆 메인 배너
+                                </Badge>
+                              ) : (
+                                <Badge bg="light" className="text-muted">
+                                  일반 배너
+                                </Badge>
+                              )}
+                            </td>
+                            <td>
+                              {banner.is_store_gallery ? (
+                                <Badge bg="info" className="text-white">
+                                  🏪 갤러리 배너
                                 </Badge>
                               ) : (
                                 <Badge bg="light" className="text-muted">
@@ -588,6 +605,19 @@ const BannerManagementPage = () => {
                   메인 토너먼트 배너는 하나만 설정할 수 있습니다. 새로 설정하면 기존 메인 배너는 해제됩니다.
                 </Form.Text>
               </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  name="is_store_gallery"
+                  label="인기 스토어 갤러리용 배너로 설정"
+                  checked={formData.is_store_gallery}
+                  onChange={handleInputChange}
+                />
+                <Form.Text className="text-muted">
+                  인기 스토어 갤러리에 표시될 배너로 설정합니다. 최대 8개까지 표시됩니다.
+                </Form.Text>
+              </Form.Group>
             </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" onClick={() => setShowAddModal(false)}>
@@ -703,6 +733,19 @@ const BannerManagementPage = () => {
                 />
                 <Form.Text className="text-muted">
                   메인 토너먼트 배너는 하나만 설정할 수 있습니다. 새로 설정하면 기존 메인 배너는 해제됩니다.
+                </Form.Text>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Check
+                  type="checkbox"
+                  name="is_store_gallery"
+                  label="인기 스토어 갤러리용 배너로 설정"
+                  checked={formData.is_store_gallery}
+                  onChange={handleInputChange}
+                />
+                <Form.Text className="text-muted">
+                  인기 스토어 갤러리에 표시될 배너로 설정합니다. 최대 8개까지 표시됩니다.
                 </Form.Text>
               </Form.Group>
             </Modal.Body>
