@@ -289,17 +289,22 @@ class BannerViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAdminUser])
     def set_as_main_tournament(self, request, pk=None):
         """
-        특정 배너를 메인 토너먼트 배너로 설정
+        특정 배너를 메인 토너먼트 배너로 설정 (메인에 표시되는 배너로 선택)
         관리자만 접근 가능
         """
         try:
             banner = self.get_object()
             
-            # 기존 메인 토너먼트 배너들을 모두 False로 변경
-            Banner.objects.filter(is_main_tournament=True).update(is_main_tournament=False)
+            # 해당 배너가 메인 토너먼트 배너가 아니라면 먼저 메인 토너먼트 배너로 설정
+            if not banner.is_main_tournament:
+                banner.is_main_tournament = True
+                banner.save()
             
-            # 선택된 배너를 메인 토너먼트 배너로 설정
-            banner.is_main_tournament = True
+            # 기존 메인 선택 배너들을 모두 False로 변경
+            Banner.objects.filter(is_main_selected=True).update(is_main_selected=False)
+            
+            # 선택된 배너를 메인 선택 배너로 설정
+            banner.is_main_selected = True
             banner.save()
             
             serializer = self.get_serializer(banner)
@@ -316,13 +321,13 @@ class BannerViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def main_tournament(self, request):
         """
-        현재 메인 토너먼트 배너로 설정된 활성화된 배너 반환
+        현재 메인으로 선택된 활성화된 배너 반환
         모든 사용자 접근 가능
         """
         try:
             now = timezone.now()
             main_tournament_banner = Banner.objects.filter(
-                is_main_tournament=True,
+                is_main_selected=True,
                 is_active=True,
                 start_date__lte=now,
                 end_date__gte=now

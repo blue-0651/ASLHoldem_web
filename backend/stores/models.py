@@ -104,6 +104,9 @@ class Banner(models.Model):
     # 인기 스토어 갤러리 배너 여부
     is_store_gallery = models.BooleanField(default=False, verbose_name='인기 스토어 갤러리 배너', help_text='인기 스토어 갤러리에 표시될 배너인지 여부를 결정합니다.')
     
+    # 메인 토너먼트 배너 중 메인에 표시되는 배너 여부
+    is_main_selected = models.BooleanField(default=False, verbose_name='메인 선택 배너', help_text='메인 토너먼트 배너 중에서 실제로 메인에 표시되는 배너인지 여부를 결정합니다.')
+    
     # 생성 시간
     created_at = models.DateTimeField(auto_now_add=True)
     

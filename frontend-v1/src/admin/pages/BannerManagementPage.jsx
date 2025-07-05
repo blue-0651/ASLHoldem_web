@@ -33,8 +33,9 @@ const BannerManagementPage = () => {
     start_date: '',
     end_date: '',
     is_active: true,
-    is_main_tournament: false,
+    is_main_tournament: true,
     is_store_gallery: false,
+    banner_type: 'main_tournament', // 'main_tournament', 'store_gallery'
     image: null
   });
 
@@ -81,10 +82,21 @@ const BannerManagementPage = () => {
   // 폼 데이터 변경 핸들러
   const handleInputChange = (e) => {
     const { name, value, type, checked, files } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : type === 'file' ? files[0] : value
-    }));
+    
+    if (name === 'banner_type') {
+      // 배너 종류 변경 시 관련 불린 값들 업데이트
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        is_main_tournament: value === 'main_tournament',
+        is_store_gallery: value === 'store_gallery'
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : type === 'file' ? files[0] : value
+      }));
+    }
   };
 
   // 폼 검증
@@ -302,18 +314,36 @@ const BannerManagementPage = () => {
   // 메인 토너먼트 배너로 설정
   const setAsMainTournament = async (banner) => {
     try {
+      setLoading(true);
+      console.log('📤 메인 토너먼트 배너 설정 시작:', banner.title);
+      
       const response = await bannerAPI.setAsMainTournament(banner.id);
+      
+      console.log('✅ 메인 토너먼트 배너 설정 성공');
       showAlert(`'${banner.title}' 배너가 메인 토너먼트 배너로 설정되었습니다.`);
-      fetchBanners();
+      fetchBanners(); // 목록 새로고침
     } catch (error) {
-      console.error('메인 토너먼트 배너 설정 실패:', error);
+      console.error('❌ 메인 토너먼트 배너 설정 실패:', error);
+      
       let errorMessage = '메인 토너먼트 배너 설정에 실패했습니다.';
-      if (error.response?.data?.error) {
-        errorMessage += ` (${error.response.data.error})`;
+      if (error.response?.data) {
+        console.error('백엔드 에러 응답:', error.response.data);
+        if (error.response.data.error) {
+          errorMessage += ` (${error.response.data.error})`;
+        } else if (error.response.data.detail) {
+          errorMessage += ` (${error.response.data.detail})`;
+        } else if (error.response.data.message) {
+          errorMessage += ` (${error.response.data.message})`;
+        }
       }
+      
       showAlert(errorMessage, 'danger');
+    } finally {
+      setLoading(false);
     }
   };
+
+
 
   // 폼 초기화
   const resetForm = () => {
@@ -324,8 +354,9 @@ const BannerManagementPage = () => {
       start_date: '',
       end_date: '',
       is_active: true,
-      is_main_tournament: false,
+      is_main_tournament: true,
       is_store_gallery: false,
+      banner_type: 'main_tournament',
       image: null
     });
     setCurrentBanner(null);
@@ -334,6 +365,12 @@ const BannerManagementPage = () => {
   // 편집 모달 열기
   const openEditModal = (banner) => {
     setCurrentBanner(banner);
+    
+    // 일반 배너(is_main_tournament=false, is_store_gallery=false)를 갤러리 배너로 분류
+    const bannerType = banner.is_main_tournament ? 'main_tournament' : 'store_gallery';
+    const isMainTournament = banner.is_main_tournament || false;
+    const isStoreGallery = banner.is_store_gallery || (!banner.is_main_tournament);
+    
     setFormData({
       title: banner.title || '',
       description: banner.description || '',
@@ -341,8 +378,9 @@ const BannerManagementPage = () => {
       start_date: banner.start_date ? banner.start_date.split('T')[0] : '',
       end_date: banner.end_date ? banner.end_date.split('T')[0] : '',
       is_active: banner.is_active,
-      is_main_tournament: banner.is_main_tournament || false,
-      is_store_gallery: banner.is_store_gallery || false,
+      is_main_tournament: isMainTournament,
+      is_store_gallery: isStoreGallery,
+      banner_type: bannerType,
       image: null
     });
     setShowEditModal(true);
@@ -387,112 +425,187 @@ const BannerManagementPage = () => {
                     <p className="text-muted">등록된 배너가 없습니다.</p>
                   </div>
                 ) : (
-                                      <Table responsive hover>
-                      <thead>
-                        <tr>
-                          <th>이미지</th>
-                          <th>제목</th>
-                          <th>매장</th>
-                          <th>설명</th>
-                          <th>기간</th>
-                          <th>상태</th>
-                          <th>메인 배너</th>
-                          <th>갤러리 배너</th>
-                          <th>작업</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {banners.map((banner) => (
-                          <tr key={banner.id}>
-                            <td>
-                              {banner.image && (
-                                <Image 
-                                  src={banner.image} 
-                                  alt={banner.title}
-                                  thumbnail
-                                  style={{ width: '100px', height: '60px', objectFit: 'cover' }}
-                                />
-                              )}
-                            </td>
-                            <td>{banner.title}</td>
-                            <td>
-                              {stores.find(store => store.id === banner.store)?.name || `ID: ${banner.store}`}
-                            </td>
-                            <td>{banner.description}</td>
-                            <td>
-                              <small>
-                                {banner.start_date && new Date(banner.start_date).toLocaleDateString()} ~ <br/>
-                                {banner.end_date && new Date(banner.end_date).toLocaleDateString()}
-                              </small>
-                            </td>
-                            <td>
-                              <Badge 
-                                bg={banner.is_active ? 'success' : 'secondary'}
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => toggleBannerStatus(banner)}
+                  <>
+                    {/* 메인 토너먼트 배너 목록 */}
+                    <div className="mb-4">
+                      <h6 className="mb-3">🏆 메인 토너먼트 배너 목록</h6>
+                      {banners.filter(banner => banner.is_main_tournament).length === 0 ? (
+                        <div className="text-center py-3">
+                          <p className="text-muted">메인 토너먼트 배너가 없습니다.</p>
+                        </div>
+                      ) : (
+                        <Table responsive hover>
+                          <thead>
+                            <tr>
+                              <th style={{ width: '120px', minWidth: '120px' }}>이미지</th>
+                              <th style={{ width: '20%', minWidth: '150px' }}>제목</th>
+                              <th style={{ width: '25%', minWidth: '200px' }}>설명</th>
+                              <th style={{ width: '150px', minWidth: '150px' }}>기간</th>
+                              <th style={{ width: '80px', minWidth: '80px' }}>상태</th>
+                              <th style={{ width: '120px', minWidth: '120px' }}>메인 설정</th>
+                              <th style={{ width: '150px', minWidth: '150px' }}>작업</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {banners.filter(banner => banner.is_main_tournament).map((banner) => (
+                              <tr 
+                                key={banner.id}
+                                className={banner.is_main_selected ? 'table-warning' : ''}
+                                style={banner.is_main_selected ? { 
+                                  borderLeft: '4px solid #ffc107',
+                                  backgroundColor: '#fff3cd'
+                                } : {}}
                               >
-                                {banner.is_active ? '활성' : '비활성'}
-                              </Badge>
-                            </td>
-                            <td>
-                              {banner.is_main_tournament ? (
-                                <Badge bg="warning" className="text-dark">
-                                  🏆 메인 배너
-                                </Badge>
-                              ) : (
-                                <Badge bg="light" className="text-muted">
-                                  일반 배너
-                                </Badge>
-                              )}
-                            </td>
-                            <td>
-                              {banner.is_store_gallery ? (
-                                <Badge bg="info" className="text-white">
-                                  🏪 갤러리 배너
-                                </Badge>
-                              ) : (
-                                <Badge bg="light" className="text-muted">
-                                  일반 배너
-                                </Badge>
-                              )}
-                            </td>
-                            <td>
-                              <Button 
-                                variant="outline-primary" 
-                                size="sm" 
-                                className="me-2"
-                                onClick={() => openEditModal(banner)}
-                              >
-                                수정
-                              </Button>
-                              <Button 
-                                variant="outline-danger" 
-                                size="sm"
-                                className="me-2"
-                                onClick={() => openDeleteModal(banner)}
-                              >
-                                삭제
-                              </Button>
-                              <Button 
-                                variant={banner.is_main_tournament ? "secondary" : "warning"}
-                                size="sm"
-                                disabled={banner.is_main_tournament || !banner.is_active}
-                                onClick={() => setAsMainTournament(banner)}
-                                title={
-                                  banner.is_main_tournament 
-                                    ? "이미 메인 배너로 설정됨" 
-                                    : !banner.is_active 
-                                    ? "활성화된 배너만 메인 배너로 설정 가능" 
-                                    : "메인 토너먼트 배너로 설정"
-                                }
-                              >
-                                {banner.is_main_tournament ? "메인 설정됨" : "메인으로 설정"}
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
+                                <td>
+                                  {banner.image && (
+                                    <Image 
+                                      src={banner.image} 
+                                      alt={banner.title}
+                                      thumbnail
+                                      style={{ width: '100px', height: '60px', objectFit: 'cover' }}
+                                    />
+                                  )}
+                                </td>
+                                <td>{banner.title}</td>
+                                <td>{banner.description}</td>
+                                <td>
+                                  <small>
+                                    {banner.start_date && new Date(banner.start_date).toLocaleDateString()} ~ <br/>
+                                    {banner.end_date && new Date(banner.end_date).toLocaleDateString()}
+                                  </small>
+                                </td>
+                                <td>
+                                  <Badge 
+                                    bg={banner.is_active ? 'success' : 'secondary'}
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => toggleBannerStatus(banner)}
+                                  >
+                                    {banner.is_active ? '활성' : '비활성'}
+                                  </Badge>
+                                </td>
+                                <td>
+                                  {banner.is_main_selected ? (
+                                    <Badge bg="warning" className="text-dark">
+                                      ⭐ 메인 배너
+                                    </Badge>
+                                  ) : banner.is_active ? (
+                                    <Button 
+                                      variant="outline-warning"
+                                      size="sm"
+                                      onClick={() => setAsMainTournament(banner)}
+                                      title="메인 토너먼트 배너로 설정"
+                                    >
+                                      메인으로 설정
+                                    </Button>
+                                  ) : (
+                                    <Badge bg="secondary" className="text-muted">
+                                      비활성화됨
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td>
+                                  <Button 
+                                    variant="outline-primary" 
+                                    size="sm" 
+                                    className="me-2"
+                                    onClick={() => openEditModal(banner)}
+                                  >
+                                    수정
+                                  </Button>
+                                  <Button 
+                                    variant="outline-danger" 
+                                    size="sm"
+                                    onClick={() => openDeleteModal(banner)}
+                                  >
+                                    삭제
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </Table>
+                      )}
+                    </div>
+
+                    {/* 인기 스토어 갤러리 배너 목록 */}
+                    <div className="mb-4">
+                      <h6 className="mb-3">🏪 인기 스토어 갤러리 배너 목록</h6>
+                      {banners.filter(banner => banner.is_store_gallery).length === 0 ? (
+                        <div className="text-center py-3">
+                          <p className="text-muted">인기 스토어 갤러리 배너가 없습니다.</p>
+                        </div>
+                      ) : (
+                        <Table responsive hover>
+                          <thead>
+                            <tr>
+                              <th style={{ width: '120px', minWidth: '120px' }}>이미지</th>
+                              <th style={{ width: '20%', minWidth: '150px' }}>제목</th>
+                              <th style={{ width: '25%', minWidth: '200px' }}>설명</th>
+                              <th style={{ width: '150px', minWidth: '150px' }}>기간</th>
+                              <th style={{ width: '80px', minWidth: '80px' }}>상태</th>
+                              <th style={{ width: '120px', minWidth: '120px' }}>매장</th>
+                              <th style={{ width: '150px', minWidth: '150px' }}>작업</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {banners.filter(banner => banner.is_store_gallery).map((banner) => (
+                              <tr key={banner.id}>
+                                <td>
+                                  {banner.image && (
+                                    <Image 
+                                      src={banner.image} 
+                                      alt={banner.title}
+                                      thumbnail
+                                      style={{ width: '100px', height: '60px', objectFit: 'cover' }}
+                                    />
+                                  )}
+                                </td>
+                                <td>{banner.title}</td>
+                                <td>{banner.description}</td>
+                                <td>
+                                  <small>
+                                    {banner.start_date && new Date(banner.start_date).toLocaleDateString()} ~ <br/>
+                                    {banner.end_date && new Date(banner.end_date).toLocaleDateString()}
+                                  </small>
+                                </td>
+                                <td>
+                                  <Badge 
+                                    bg={banner.is_active ? 'success' : 'secondary'}
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => toggleBannerStatus(banner)}
+                                  >
+                                    {banner.is_active ? '활성' : '비활성'}
+                                  </Badge>
+                                </td>
+                                <td>
+                                  {stores.find(store => store.id === banner.store)?.name || `ID: ${banner.store}`}
+                                </td>
+                                <td>
+                                  <Button 
+                                    variant="outline-primary" 
+                                    size="sm" 
+                                    className="me-2"
+                                    onClick={() => openEditModal(banner)}
+                                  >
+                                    수정
+                                  </Button>
+                                  <Button 
+                                    variant="outline-danger" 
+                                    size="sm"
+                                    onClick={() => openDeleteModal(banner)}
+                                  >
+                                    삭제
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </Table>
+                      )}
+                    </div>
+
+
+                  </>
                 )}
               </Card.Body>
             </Card>
@@ -594,28 +707,29 @@ const BannerManagementPage = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Check
-                  type="checkbox"
-                  name="is_main_tournament"
-                  label="메인 토너먼트 배너로 설정"
-                  checked={formData.is_main_tournament}
-                  onChange={handleInputChange}
-                />
+                <Form.Label>배너 종류 <span className="text-danger">*</span></Form.Label>
+                <div className="mt-2">
+                  <Form.Check
+                    type="radio"
+                    name="banner_type"
+                    id="banner_type_main_tournament"
+                    value="main_tournament"
+                    label="메인 토너먼트 배너"
+                    checked={formData.banner_type === 'main_tournament'}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="radio"
+                    name="banner_type"
+                    id="banner_type_store_gallery"
+                    value="store_gallery"
+                    label="인기 스토어 갤러리 배너"
+                    checked={formData.banner_type === 'store_gallery'}
+                    onChange={handleInputChange}
+                  />
+                </div>
                 <Form.Text className="text-muted">
-                  메인 토너먼트 배너는 하나만 설정할 수 있습니다. 새로 설정하면 기존 메인 배너는 해제됩니다.
-                </Form.Text>
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Check
-                  type="checkbox"
-                  name="is_store_gallery"
-                  label="인기 스토어 갤러리용 배너로 설정"
-                  checked={formData.is_store_gallery}
-                  onChange={handleInputChange}
-                />
-                <Form.Text className="text-muted">
-                  인기 스토어 갤러리에 표시될 배너로 설정합니다. 최대 8개까지 표시됩니다.
+                  메인 토너먼트 배너는 하나만 설정할 수 있습니다. 인기 스토어 갤러리 배너는 최대 8개까지 표시됩니다.
                 </Form.Text>
               </Form.Group>
             </Modal.Body>
@@ -724,28 +838,29 @@ const BannerManagementPage = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Check
-                  type="checkbox"
-                  name="is_main_tournament"
-                  label="메인 토너먼트 배너로 설정"
-                  checked={formData.is_main_tournament}
-                  onChange={handleInputChange}
-                />
+                <Form.Label>배너 종류 <span className="text-danger">*</span></Form.Label>
+                <div className="mt-2">
+                  <Form.Check
+                    type="radio"
+                    name="banner_type"
+                    id="banner_type_main_tournament_edit"
+                    value="main_tournament"
+                    label="메인 토너먼트 배너"
+                    checked={formData.banner_type === 'main_tournament'}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="radio"
+                    name="banner_type"
+                    id="banner_type_store_gallery_edit"
+                    value="store_gallery"
+                    label="인기 스토어 갤러리 배너"
+                    checked={formData.banner_type === 'store_gallery'}
+                    onChange={handleInputChange}
+                  />
+                </div>
                 <Form.Text className="text-muted">
-                  메인 토너먼트 배너는 하나만 설정할 수 있습니다. 새로 설정하면 기존 메인 배너는 해제됩니다.
-                </Form.Text>
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Check
-                  type="checkbox"
-                  name="is_store_gallery"
-                  label="인기 스토어 갤러리용 배너로 설정"
-                  checked={formData.is_store_gallery}
-                  onChange={handleInputChange}
-                />
-                <Form.Text className="text-muted">
-                  인기 스토어 갤러리에 표시될 배너로 설정합니다. 최대 8개까지 표시됩니다.
+                  메인 토너먼트 배너는 하나만 설정할 수 있습니다. 인기 스토어 갤러리 배너는 최대 8개까지 표시됩니다.
                 </Form.Text>
               </Form.Group>
             </Modal.Body>
