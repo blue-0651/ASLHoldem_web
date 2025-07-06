@@ -477,7 +477,7 @@ const BannerManagementPage = () => {
                                 <td>
                                   <Badge 
                                     bg={banner.is_active ? 'success' : 'secondary'}
-                                    style={{ cursor: 'pointer' }}
+                                    style={{ cursor: 'pointer', fontSize: '0.75rem' }}
                                     onClick={() => toggleBannerStatus(banner)}
                                   >
                                     {banner.is_active ? '활성' : '비활성'}
@@ -494,6 +494,7 @@ const BannerManagementPage = () => {
                                       size="sm"
                                       onClick={() => setAsMainTournament(banner)}
                                       title="메인 토너먼트 배너로 설정"
+                                      style={{ fontSize: '0.75rem' }}
                                     >
                                       메인으로 설정
                                     </Button>
@@ -509,6 +510,7 @@ const BannerManagementPage = () => {
                                     size="sm" 
                                     className="me-2"
                                     onClick={() => openEditModal(banner)}
+                                    style={{ fontSize: '0.75rem' }}
                                   >
                                     수정
                                   </Button>
@@ -516,6 +518,7 @@ const BannerManagementPage = () => {
                                     variant="outline-danger" 
                                     size="sm"
                                     onClick={() => openDeleteModal(banner)}
+                                    style={{ fontSize: '0.75rem' }}
                                   >
                                     삭제
                                   </Button>
@@ -527,12 +530,12 @@ const BannerManagementPage = () => {
                       )}
                     </div>
 
-                    {/* 인기 스토어 갤러리 배너 목록 */}
+                    {/* 인기 매장 배너 목록 */}
                     <div className="mb-4">
-                      <h6 className="mb-3">🏪 인기 스토어 갤러리 배너 목록</h6>
+                      <h6 className="mb-3">🏪 인기 매장 배너 목록</h6>
                       {banners.filter(banner => banner.is_store_gallery).length === 0 ? (
                         <div className="text-center py-3">
-                          <p className="text-muted">인기 스토어 갤러리 배너가 없습니다.</p>
+                          <p className="text-muted">인기 매장 배너가 없습니다.</p>
                         </div>
                       ) : (
                         <Table responsive hover>
@@ -571,7 +574,7 @@ const BannerManagementPage = () => {
                                 <td>
                                   <Badge 
                                     bg={banner.is_active ? 'success' : 'secondary'}
-                                    style={{ cursor: 'pointer' }}
+                                    style={{ cursor: 'pointer', fontSize: '0.75rem' }}
                                     onClick={() => toggleBannerStatus(banner)}
                                   >
                                     {banner.is_active ? '활성' : '비활성'}
@@ -586,6 +589,7 @@ const BannerManagementPage = () => {
                                     size="sm" 
                                     className="me-2"
                                     onClick={() => openEditModal(banner)}
+                                    style={{ fontSize: '0.75rem' }}
                                   >
                                     수정
                                   </Button>
@@ -593,6 +597,7 @@ const BannerManagementPage = () => {
                                     variant="outline-danger" 
                                     size="sm"
                                     onClick={() => openDeleteModal(banner)}
+                                    style={{ fontSize: '0.75rem' }}
                                   >
                                     삭제
                                   </Button>
