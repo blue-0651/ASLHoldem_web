@@ -71,9 +71,9 @@ const StoreDetailPage = () => {
 
   // 지도에서 매장 위치 보기
   const openMapLocation = (address) => {
-    // 주소를 인코딩하여 Google 지도로 연결
+    // 주소를 인코딩하여 카카오맵으로 연결
     const encodedAddress = encodeURIComponent(address);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+    window.open(`https://map.kakao.com/link/search/${encodedAddress}`, '_blank');
   };
 
   // 전화 걸기
