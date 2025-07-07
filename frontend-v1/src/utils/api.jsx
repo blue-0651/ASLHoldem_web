@@ -107,6 +107,9 @@ export const tournamentAPI = {
   // 토너먼트 상태별 조회
   getTournamentsByStatus: (status) => API.get(`/tournaments/?status=${status}`),
 
+  // 매장별 토너먼트 조회
+  getTournamentsByStore: (storeId) => API.get(`/tournaments/?store=${storeId}`),
+
   // 내 토너먼트 목록
   getMyTournaments: (userId) => {
     const formData = new FormData();
@@ -163,16 +166,18 @@ export const tournamentAPI = {
   }
 };
 
-// 스토어(매장) 관련 API - DEPRECATED
-// 매장 정보는 distributionAPI.getSummaryByTournament()에서 제공됩니다.
+// 스토어(매장) 관련 API
 export const storeAPI = {
-  // 모든 매장 조회 - DEPRECATED
+  // 모든 매장 조회
   getAllStores: () => API.get('/stores/'),
 
-  // 특정 매장 방문 사용자 목록 - DEPRECATED
+  // 특정 매장 정보 조회
+  getStoreById: (storeId) => API.get(`/stores/${storeId}/`),
+
+  // 특정 매장 방문 사용자 목록
   getStoreUsers: (storeId) => API.post(`/stores/${storeId}/users/`),
 
-  // 매장 이름과 사용자 이름으로 검색 - DEPRECATED
+  // 매장 이름과 사용자 이름으로 검색
   searchUserByStore: (data) => {
     const formData = new FormData();
     Object.keys(data).forEach((key) => {
@@ -181,7 +186,7 @@ export const storeAPI = {
     return API.post('/stores/search_user_by_store/', formData);
   },
 
-  // 매장별 토너먼트 SEAT권 정보 조회 - DEPRECATED
+  // 매장별 토너먼트 SEAT권 정보 조회
   getStoreTournamentTickets: (storeId) => API.get(`/stores/${storeId}/tournament_tickets/`)
 };
 
@@ -589,7 +594,7 @@ export const bannerAPI = {
       console.log('📤 인기 스토어 갤러리 배너 조회');
     }
     
-    return API.get('/banners/store-gallery/');
+    return API.get('/banners/store_gallery/');
   }
 };
 
