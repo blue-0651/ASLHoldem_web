@@ -1,42 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Badge, Alert, Spinner } from 'react-bootstrap';
-import axios from 'axios';
+import { Container, Row, Col, Card, Button, Badge, Alert, Spinner, Tabs, Tab } from 'react-bootstrap';
 import MobileHeader from '../../../components/MobileHeader';
-
-// 간소화된 API 인스턴스 생성
-const API = axios.create({
-  baseURL: '/api/v1'
-});
-
-// 요청/응답 로깅 인터셉터 추가
-API.interceptors.request.use(
-  (config) => {
-    console.log(`API 요청: ${config.method.toUpperCase()} ${config.url}`, config);
-    return config;
-  },
-  (error) => {
-    console.error('API 요청 오류:', error);
-    return Promise.reject(error);
-  }
-);
-
-API.interceptors.response.use(
-  (response) => {
-    console.log(`API 응답: ${response.status}`, response.data);
-    return response;
-  },
-  (error) => {
-    if (error.response) {
-      console.error(`API 응답 오류: ${error.response.status}`, error.response.data);
-    } else if (error.request) {
-      console.error('API 응답 없음:', error.request);
-    } else {
-      console.error('API 오류:', error.message);
-    }
-    return Promise.reject(error);
-  }
-);
+import { storeAPI, tournamentAPI } from '../../../../utils/api';
 
 const StoreDetailPage = () => {
   const { storeId } = useParams();
@@ -54,18 +20,41 @@ const StoreDetailPage = () => {
         setLoading(true);
         setError(null);
         
+        console.log('📤 매장 데이터 조회 시작:', storeId);
+        
         // 매장 정보 가져오기
-        const storeResponse = await API.get(`/stores/${storeId}/`);
+        const storeResponse = await storeAPI.getStoreById(storeId);
+        console.log('🏪 매장 정보 조회 성공:', storeResponse.data);
         setStore(storeResponse.data);
         
         // 매장의 토너먼트 목록 가져오기
-        const tournamentsResponse = await API.get(`/tournaments/?store=${storeId}`);
-        setTournaments(tournamentsResponse.data.results || []);
+        try {
+          const tournamentsResponse = await tournamentAPI.getTournamentsByStore(storeId);
+          console.log('🏆 토너먼트 목록 조회 성공:', tournamentsResponse.data);
+          setTournaments(tournamentsResponse.data.results || []);
+        } catch (tournamentErr) {
+          console.warn('⚠️ 토너먼트 목록 조회 실패:', tournamentErr);
+          setTournaments([]);
+        }
         
         setLoading(false);
       } catch (err) {
-        console.error('매장 데이터 로드 오류:', err);
-        setError('매장 정보를 불러오는 데 실패했습니다.');
+        console.error('❌ 매장 데이터 로드 오류:', err);
+        
+        // 에러 타입에 따른 메시지 설정
+        let errorMessage = '매장 정보를 불러오는 데 실패했습니다.';
+        
+        if (err.response?.status === 404) {
+          errorMessage = '해당 매장을 찾을 수 없습니다.';
+        } else if (err.response?.status === 500) {
+          errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+        } else if (err.response?.status === 403) {
+          errorMessage = '매장 정보에 접근할 권한이 없습니다.';
+        } else if (err.code === 'NETWORK_ERROR') {
+          errorMessage = '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.';
+        }
+        
+        setError(errorMessage);
         setLoading(false);
       }
     };
@@ -143,13 +132,27 @@ const StoreDetailPage = () => {
         {/* 매장 이미지 */}
         <div className="store-image-container position-relative">
           <img 
-            src={store.image || 'https://via.placeholder.com/800x400?text=매장+이미지'} 
+            src={
+              // 1순위: 배너 이미지 (스토어 갤러리용)
+              store.banner_image && store.banner_image !== 'null' && store.banner_image !== '' 
+                ? (store.banner_image.startsWith('http') ? store.banner_image : `http://localhost:8000${store.banner_image}`)
+                : // 2순위: 매장 이미지
+                  store.image && store.image !== 'null' && store.image !== '' 
+                    ? (store.image.startsWith('http') ? store.image : `/media/${store.image}`)
+                    : // 3순위: 기본 ASL 로고
+                      '/images/asl-logo-120.png'
+            }
             alt={store.name}
             className="w-100"
             style={{ 
               maxHeight: '200px', 
               objectFit: 'cover',
-              borderRadius: '0'
+              borderRadius: '0',
+              backgroundColor: '#f8f9fa'
+            }}
+            onError={(e) => {
+              console.log('이미지 로드 실패, 기본 이미지로 대체');
+              e.target.src = '/images/asl-logo-120.png';
             }}
           />
           <div className="position-absolute bottom-0 start-0 p-3 w-100" 
@@ -177,14 +180,15 @@ const StoreDetailPage = () => {
             )}
           </div>
           <div>
-            <Button 
+            {/* 전화 걸기 버튼 숨김 처리 */}
+            {/* <Button 
               variant="outline-primary" 
               size="sm"
               className="me-2"
               onClick={() => callStore(store.phone_number)}
             >
               <i className="fas fa-phone-alt me-1"></i> 전화
-            </Button>
+            </Button> */}
             <Button 
               variant="outline-success" 
               size="sm"
@@ -244,7 +248,8 @@ const StoreDetailPage = () => {
             </div>
           </Tab>
           
-          <Tab eventKey="tournaments" title="토너먼트">
+          {/* 토너먼트 탭 숨김 처리 */}
+          {/* <Tab eventKey="tournaments" title="토너먼트">
             <div className="p-3">
               {tournaments.length === 0 ? (
                 <div className="mobile-empty-state">
@@ -307,9 +312,10 @@ const StoreDetailPage = () => {
                 ))
               )}
             </div>
-          </Tab>
+          </Tab> */}
           
-          <Tab eventKey="reviews" title="리뷰">
+          {/* 리뷰 탭 숨김 처리 */}
+          {/* <Tab eventKey="reviews" title="리뷰">
             <div className="p-3">
               <div className="mobile-empty-state">
                 <i className="fas fa-comments mobile-empty-icon"></i>
@@ -322,7 +328,7 @@ const StoreDetailPage = () => {
                 </Button>
               </div>
             </div>
-          </Tab>
+          </Tab> */}
         </Tabs>
       </div>
     </div>
