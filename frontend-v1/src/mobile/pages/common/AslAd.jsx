@@ -44,41 +44,49 @@ const AslAd = () => {
   // 기본 매장 데이터 (API 호출 실패 시 대비용)
   const defaultStores = [
     { 
+      id: 'gallery-1', // 임시 ID 추가
       name: '골프클럽 라운지', 
       image: galleryImg1,
       description: '프리미엄 골프 클럽하우스에서 즐기는 홀덤'
     },
     { 
+      id: 'gallery-2', // 임시 ID 추가
       name: '낚시터 펍', 
       image: galleryImg2,
       description: '강가 낚시터에서 여유롭게 즐기는 카드게임'
     },
     { 
+      id: 'gallery-3', // 임시 ID 추가
       name: '전통 장기원', 
       image: galleryImg3,
       description: '전통 한옥에서 장기와 함께하는 홀덤'
     },
     { 
+      id: 'gallery-4', // 임시 ID 추가
       name: '홀덤펍 메인', 
       image: gangnamStore,
       description: '도심 속 프리미엄 홀덤 전문 펍'
     },
     { 
+      id: 'gallery-5', // 임시 ID 추가
       name: '리버사이드 골프', 
       image: hongdaeStore,
       description: '강변 골프클럽의 특별한 홀덤 라운지'
     },
     { 
+      id: 'gallery-6', // 임시 ID 추가
       name: '바다낚시 카페', 
       image: gundaeStore,
       description: '바다가 보이는 낚시카페의 홀덤방'
     },
     { 
+      id: 'gallery-7', // 임시 ID 추가
       name: '궁중 장기원', 
       image: apgujeongStore,
       description: '궁중 분위기의 고급 장기원 홀덤실'
     },
     { 
+      id: 'gallery-8', // 임시 ID 추가
       name: '프라이빗 홀덤', 
       image: sinchonStore,
       description: '프라이빗 룸으로 운영되는 VIP 홀덤클럽'
@@ -95,9 +103,9 @@ const AslAd = () => {
 
   // 인기 스토어 갤러리 배너 불러오기
   const fetchStoreGalleryBanners = async () => {
-    // 이미 API 호출 중이거나 완료된 경우 중복 호출 방지
-    if (isStoreApiCalledRef.current || storesLoading === false) {
-      console.log('🔄 중복 API 호출 방지: 스토어 갤러리 이미 처리 중이거나 완료됨');
+    // 이미 API 호출 중인 경우 중복 호출 방지 (완료 여부는 제외)
+    if (isStoreApiCalledRef.current) {
+      console.log('🔄 중복 API 호출 방지: 스토어 갤러리 이미 처리 중');
       return;
     }
 
@@ -108,6 +116,7 @@ const AslAd = () => {
       
       console.log('📤 인기 스토어 갤러리 배너 조회 시작');
       const response = await bannerAPI.getStoreGalleryBanners();
+      console.log('🔍 API 응답 데이터:', response.data);
       
       // 컴포넌트가 언마운트된 경우 상태 업데이트 방지
       if (!isMountedRef.current) {
@@ -117,15 +126,26 @@ const AslAd = () => {
       
       if (response.data.banners && response.data.banners.length > 0) {
         // 배너 데이터를 매장 형태로 변환
-        const transformedStores = response.data.banners.map(banner => ({
-          id: banner.id,
-          name: banner.title || banner.store_name || '매장명 없음',
-          image: banner.image,
-          description: banner.description || '매장 설명이 없습니다.'
-        }));
+        const transformedStores = response.data.banners.map(banner => {
+          // 이미지 URL 처리: 상대 경로를 완전한 URL로 변환
+          let imageUrl = banner.image;
+          if (imageUrl && !imageUrl.startsWith('http')) {
+            imageUrl = `http://localhost:8000${imageUrl}`;
+          }
+          
+          return {
+            id: banner.store_id || banner.id, // 매장 ID 우선, 없으면 배너 ID
+            name: banner.title || banner.store_name || '매장명 없음',
+            image: imageUrl,
+            description: banner.description || '매장 설명이 없습니다.',
+            store_id: banner.store_id, // 매장 ID 별도 저장
+            banner_id: banner.id // 배너 ID 별도 저장
+          };
+        });
         
         setStoresList(transformedStores);
         console.log('✅ 인기 스토어 갤러리 배너 로드 성공', transformedStores.length, '개');
+        console.log('📊 변환된 스토어 데이터:', transformedStores);
       } else {
         // API에서 데이터가 없으면 기본 데이터 사용
         setStoresList(defaultStores);
@@ -133,6 +153,11 @@ const AslAd = () => {
       }
     } catch (error) {
       console.error('❌ 인기 스토어 갤러리 배너 불러오기 실패:', error);
+      console.error('❌ 에러 상세:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       
       // 컴포넌트가 언마운트된 경우 상태 업데이트 방지
       if (!isMountedRef.current) {
@@ -201,14 +226,14 @@ const AslAd = () => {
   useEffect(() => {
     isMountedRef.current = true;
     
-    // 컴포넌트 마운트 후 한 번만 실행
-    if (!isApiCalledRef.current) {
-      fetchMainTournamentBanner();
-    }
+    // API 호출 플래그 초기화 (컴포넌트 마운트 시)
+    isApiCalledRef.current = false;
+    isStoreApiCalledRef.current = false;
     
-    if (!isStoreApiCalledRef.current) {
-      fetchStoreGalleryBanners();
-    }
+    // 컴포넌트 마운트 후 API 호출
+    console.log('🚀 AslAd 컴포넌트 마운트됨 - API 호출 시작');
+    fetchMainTournamentBanner();
+    fetchStoreGalleryBanners();
 
     // cleanup 함수
     return () => {
@@ -244,7 +269,35 @@ const AslAd = () => {
 
   const handleStoreClick = (store) => {
     console.log(`${store.name} 클릭됨`);
-    // 매장 상세 페이지로 이동하는 로직 추가 가능
+    console.log('스토어 데이터:', store);
+    
+    // 배너에서 온 데이터인지 확인 (store_id 또는 banner_id가 있는 경우)
+    if (store.store_id || store.banner_id) {
+      // 실제 매장 ID가 있는 경우 매장 상세 페이지로 이동
+      if (store.store_id) {
+        console.log('실제 매장 상세 페이지로 이동:', store.store_id);
+        navigate(`/mobile/common/store-detail/${store.store_id}`);
+      } else {
+        // 배너 ID만 있는 경우 (매장 연결 없음) 매장 검색 페이지로 이동
+        console.log('배너만 있는 스토어 클릭 - 매장 검색 페이지로 이동');
+        navigate('/mobile/common/store-search');
+      }
+    } else if (store.id) {
+      // 기본 데이터 처리 (gallery-로 시작하는 임시 ID)
+      if (typeof store.id === 'number' || (typeof store.id === 'string' && !store.id.startsWith('gallery-'))) {
+        // 실제 매장 ID인 경우 매장 상세 페이지로 이동
+        console.log('실제 매장 상세 페이지로 이동:', store.id);
+        navigate(`/mobile/common/store-detail/${store.id}`);
+      } else {
+        // 갤러리 임시 ID인 경우 매장 검색 페이지로 이동
+        console.log('갤러리 스토어 클릭 - 매장 검색 페이지로 이동');
+        navigate('/mobile/common/store-search');
+      }
+    } else {
+      // 스토어 ID가 없는 경우 매장 검색 페이지로 이동
+      console.log('스토어 ID가 없어 매장 검색 페이지로 이동합니다.');
+      navigate('/mobile/common/store-search');
+    }
   };
 
   return (
@@ -312,6 +365,8 @@ const AslAd = () => {
                       onClick={() => {
                         // 다시 시도 시 API 호출 플래그 리셋
                         isApiCalledRef.current = false;
+                        setBannerLoading(true);
+                        setBannerError(null);
                         fetchMainTournamentBanner();
                       }}
                     >
@@ -428,6 +483,8 @@ const AslAd = () => {
                       onClick={() => {
                         // 다시 시도 시 API 호출 플래그 리셋
                         isStoreApiCalledRef.current = false;
+                        setStoresLoading(true);
+                        setStoresError(null);
                         fetchStoreGalleryBanners();
                       }}
                     >
