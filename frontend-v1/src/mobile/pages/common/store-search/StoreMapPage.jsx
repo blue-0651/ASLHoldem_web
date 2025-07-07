@@ -175,6 +175,10 @@ const StoreMapPage = () => {
       const userLoc = await getUserLocation();
       const storeData = await fetchStores();
       const galleryData = await fetchGalleryImages();
+      
+      // 사용자 위치와 navigate 함수를 전역에서 접근 가능하도록 저장
+      window.currentUserLocation = userLoc;
+      window.currentNavigate = navigate;
 
       console.log('📈 초기화 완료:', {
         userLocation: userLoc,
@@ -204,16 +208,9 @@ const StoreMapPage = () => {
       // 사용자 위치 마커 추가 (항상 표시)
       console.log('👤 사용자 위치 마커 생성 시작:', userLoc);
       
-      // 더 간단하고 안정적인 마커 이미지 사용
-      const userMarkerImage = new window.kakao.maps.MarkerImage(
-        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png',
-        new window.kakao.maps.Size(40, 42),
-        { offset: new window.kakao.maps.Point(20, 42) }
-      );
-
+      // 사용자 위치 마커 (기본 카카오 마커 사용)
       const userMarker = new window.kakao.maps.Marker({
         position: new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng),
-        image: userMarkerImage,
         map: map,
         title: '내 위치',
         clickable: true,
@@ -300,8 +297,8 @@ const StoreMapPage = () => {
     if (!kakaoMapRef.current) return;
     
     try {
-      const lat = parseFloat(store.latitude);
-      const lng = parseFloat(store.longitude);
+      const lat = parseFloat(store.gps_lat);
+      const lng = parseFloat(store.gps_lng);
       
       if (isNaN(lat) || isNaN(lng)) {
         console.warn('⚠️ 매장 GPS 정보 오류:', store);
@@ -343,102 +340,67 @@ const StoreMapPage = () => {
         return;
       }
 
-      // 매장 상태에 따른 테두리 색상
-      const borderColor = store.status === 'ACTIVE' ? '#28a745' : '#dc3545';
+      // 매장 상태에 따른 색상
+      const storeColor = store.status === 'ACTIVE' ? '#007bff' : '#dc3545';
+      const statusText = store.status === 'ACTIVE' ? '영업중' : '휴업중';
       
-      // 매장 마커 이미지 (파란색)
-      const storeMarkerImage = new window.kakao.maps.MarkerImage(
-        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_blue.png',
-        new window.kakao.maps.Size(35, 39),
-        { offset: new window.kakao.maps.Point(17, 39) }
-      );
-
-      // 매장 마커 생성
-      const marker = new window.kakao.maps.Marker({
+      // POI 스타일 커스텀 오버레이 생성
+      const customOverlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(lat, lng),
-        image: storeMarkerImage,
+        content: `
+          <div style="
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: ${storeColor};
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            white-space: nowrap;
+            border: 2px solid white;
+            min-width: 60px;
+            text-align: center;
+          " onclick="window.handleStoreMarkerClick(${store.id})">
+            🏪 ${store.name}
+            <div style="
+              position: absolute;
+              bottom: -8px;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 0;
+              height: 0;
+              border-left: 8px solid transparent;
+              border-right: 8px solid transparent;
+              border-top: 8px solid ${storeColor};
+            "></div>
+          </div>
+        `,
         map: map,
-        title: store.name,
         clickable: true,
+        xAnchor: 0.5,
+        yAnchor: 1.1,
         zIndex: 5
       });
 
-      // 매장 정보창 내용
-      const infoWindowContent = `
-        <div style="padding:15px;min-width:200px;font-family:Arial,sans-serif;">
-          <div style="display:flex;align-items:center;margin-bottom:8px;">
-            <div style="width:8px;height:8px;border-radius:50%;background:${borderColor};margin-right:8px;"></div>
-            <h6 style="margin:0;color:#333;font-size:14px;font-weight:600;">
-              ${store.name}
-            </h6>
-          </div>
-          
-          <p style="margin:4px 0;font-size:12px;color:#666;line-height:1.4;">
-            📍 ${store.address || '주소 정보 없음'}
-          </p>
-          
-          ${store.description ? `
-            <p style="margin:4px 0;font-size:11px;color:#999;line-height:1.3;">
-              ${store.description}
-            </p>
-          ` : ''}
-          
-          ${store.phone_number ? `
-            <p style="margin:4px 0;font-size:11px;color:#007bff;">
-              📞 ${store.phone_number}
-            </p>
-          ` : ''}
-          
-          <div style="margin-top:10px;text-align:center;">
-            <button 
-              onclick="window.handleStoreDetailClick(${store.id})"
-              style="
-                background:#007bff;
-                color:white;
-                border:none;
-                padding:6px 12px;
-                border-radius:4px;
-                font-size:11px;
-                cursor:pointer;
-                transition:background 0.2s;
-              "
-              onmouseover="this.style.background='#0056b3'"
-              onmouseout="this.style.background='#007bff'"
-            >
-              상세 정보 보기
-            </button>
-          </div>
-        </div>
-      `;
+      console.log(`✅ POI 매장 마커 생성: ${store.name} (${lat}, ${lng})`);
 
-      // 정보창 생성
-      const infoWindow = new window.kakao.maps.InfoWindow({
-        content: infoWindowContent,
-        removable: true
-      });
-
-      // 마커 클릭 이벤트
-      window.kakao.maps.event.addListener(marker, 'click', () => {
-        console.log(`🏪 매장 마커 클릭: ${store.name}`);
-        
-        // 다른 정보창 모두 닫기
-        markersRef.current.forEach(item => {
-          if (item.infoWindow && item.type === 'store') {
-            item.infoWindow.close();
-          }
-        });
-        
-        // 현재 정보창 열기
-        infoWindow.open(map, marker);
-        
-        // 지도 중심을 클릭한 매장으로 이동
-        flyToStore(store);
-      });
+      // CustomOverlay를 marker처럼 사용하기 위한 래퍼 객체
+      const marker = {
+        customOverlay: customOverlay,
+        getPosition: () => new window.kakao.maps.LatLng(lat, lng),
+        setMap: (map) => customOverlay.setMap(map),
+        getMap: () => customOverlay.getMap(),
+        store: store
+      };
 
       // 마커 참조 저장
       markersRef.current.push({
         marker,
-        infoWindow,
         type: 'store',
         storeId: store.id
       });
@@ -446,8 +408,30 @@ const StoreMapPage = () => {
 
     console.log(`✅ 매장 마커 추가 완료: ${storeData.length}개`);
     
-    // 전역 함수로 등록 (정보창에서 사용)
-    window.handleStoreDetailClick = handleStoreDetail;
+    // 매장 데이터를 전역에서 접근 가능하도록 저장
+    window.currentStores = storeData;
+    window.currentMap = map;
+    
+    // 글로벌 POI 마커 클릭 핸들러 - 바로 매장 상세 화면으로 이동
+    if (!window.handleStoreMarkerClick) {
+      window.handleStoreMarkerClick = function(storeId) {
+        const clickedStore = window.currentStores?.find(s => s.id === storeId);
+        if (!clickedStore) {
+          console.warn(`⚠️ 매장을 찾을 수 없습니다: ID ${storeId}`);
+          return;
+        }
+        
+        console.log(`🏪 매장 마커 클릭: ${clickedStore.name} - 상세 화면으로 이동`);
+        
+        // 바로 매장 상세 화면으로 이동
+        if (window.currentNavigate) {
+          window.currentNavigate(`/mobile/common/store-detail/${storeId}`);
+        } else {
+          console.error('❌ Navigation 함수가 설정되지 않았습니다.');
+        }
+      };
+    }
+
   };
 
   // 컴포넌트 초기화
@@ -458,23 +442,6 @@ const StoreMapPage = () => {
     const initializeComponent = async () => {
       try {
         console.log('📋 컴포넌트 초기화 시작');
-        
-        // 1. 사용자 위치 정보 먼저 가져오기
-        console.log('1️⃣ 사용자 위치 정보 가져오기 시작');
-        const userLoc = await getUserLocation();
-        console.log('✅ 사용자 위치 정보 가져오기 완료:', userLoc);
-        
-        // 2. 병렬로 매장 데이터와 갤러리 이미지 가져오기
-        console.log('2️⃣ 매장 데이터 및 갤러리 이미지 가져오기 시작');
-        const [storeData, galleryData] = await Promise.allSettled([
-          fetchStores(),
-          fetchGalleryImages()
-        ]);
-        
-        console.log('✅ 데이터 로딩 완료:', {
-          stores: storeData.status === 'fulfilled' ? storeData.value?.length : 0,
-          gallery: galleryData.status === 'fulfilled' ? galleryData.value?.length : 0
-        });
         
         // 3. 지도 초기화 (약간의 지연 후)
         setTimeout(() => {
@@ -524,7 +491,7 @@ const StoreMapPage = () => {
                   ref={mapRef}
                   style={{
                     width: '100%',
-                    height: '400px',
+                    height: '720px', // 400px에서 80% 더 크게 (400 * 1.8 = 720px)
                     borderRadius: '8px',
                     border: '1px solid #ddd'
                   }}
@@ -561,9 +528,9 @@ const StoreMapPage = () => {
                           const lat = position.coords.latitude;
                           const lng = position.coords.longitude;
                           
-                          // Google 지도로 현재 위치 표시
-                          const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-                          window.open(googleMapsUrl, '_blank');
+                          // 카카오맵으로 현재 위치 표시
+                          const kakaoMapsUrl = `https://map.kakao.com/link/map/내위치,${lat},${lng}`;
+                          window.open(kakaoMapsUrl, '_blank');
                         } catch (locationError) {
                           alert('위치 정보를 가져올 수 없습니다.');
                         }
