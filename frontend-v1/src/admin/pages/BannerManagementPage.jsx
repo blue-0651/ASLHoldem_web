@@ -14,8 +14,12 @@ import {
 } from 'react-bootstrap';
 import { bannerAPI } from '../../utils/api';
 import { storeAPI } from '../../utils/api';
+import { getCurrentUser } from '../../utils/auth';
+import { useNavigate } from 'react-router-dom';
 
 const BannerManagementPage = () => {
+  const navigate = useNavigate();
+  
   // 상태 관리
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,6 +46,23 @@ const BannerManagementPage = () => {
   // 매장 목록 상태
   const [stores, setStores] = useState([]);
 
+  // 권한 확인
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (!user) {
+      showAlert('로그인이 필요합니다.', 'danger');
+      navigate('/login');
+      return;
+    }
+
+    // 관리자 또는 매장 관리자 권한 확인
+    if (!user.is_staff && !user.is_superuser && !user.is_store_owner) {
+      showAlert('배너 관리 권한이 없습니다.', 'danger');
+      navigate('/');
+      return;
+    }
+  }, [navigate]);
+
   // 배너 목록 조회
   const fetchBanners = async () => {
     setLoading(true);
@@ -50,7 +71,7 @@ const BannerManagementPage = () => {
       setBanners(response.data.results || response.data || []);
     } catch (error) {
       console.error('배너 목록 조회 실패:', error);
-      showAlert('배너 목록을 불러오는데 실패했습니다.', 'danger');
+      handleAPIError(error, '배너 목록을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -59,12 +80,66 @@ const BannerManagementPage = () => {
   // 매장 목록 조회
   const fetchStores = async () => {
     try {
-      const response = await storeAPI.getAllStores();
-      setStores(response.data.results || response.data || []);
+      const user = getCurrentUser();
+      
+      // 매장 관리자인 경우 내 매장만 조회
+      if (user && !user.is_staff && !user.is_superuser && user.is_store_owner) {
+        const response = await bannerAPI.getMyBanners();
+        if (response.data.store_info) {
+          setStores([response.data.store_info]);
+          // 폼 데이터에 자동으로 매장 설정
+          setFormData(prev => ({
+            ...prev,
+            store: response.data.store_info.id
+          }));
+        }
+      } else {
+        // 관리자인 경우 모든 매장 조회
+        const response = await storeAPI.getAllStores();
+        setStores(response.data.results || response.data || []);
+      }
     } catch (error) {
       console.error('매장 목록 조회 실패:', error);
-      showAlert('매장 목록을 불러오는데 실패했습니다.', 'danger');
+      handleAPIError(error, '매장 목록을 불러오는데 실패했습니다.');
     }
+  };
+
+  // API 에러 처리
+  const handleAPIError = (error, defaultMessage = '작업 중 오류가 발생했습니다.') => {
+    console.error('백엔드 에러 응답:', error);
+    
+    let errorMessage = defaultMessage;
+    
+    if (error.response?.status === 403) {
+      errorMessage = '권한이 없습니다. 관리자 또는 매장 관리자로 로그인해 주세요.';
+    } else if (error.response?.status === 401) {
+      errorMessage = '인증이 만료되었습니다. 다시 로그인해 주세요.';
+      // 로그인 페이지로 리다이렉트할 수도 있음
+      // navigate('/login');
+    } else if (error.response?.data) {
+      if (typeof error.response.data === 'string') {
+        errorMessage = error.response.data;
+      } else if (error.response.data.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response.data.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response.data.error) {
+        errorMessage = error.response.data.error;
+      } else {
+        // 필드별 에러 메시지 조합
+        const fieldErrors = [];
+        Object.keys(error.response.data).forEach(field => {
+          if (Array.isArray(error.response.data[field])) {
+            fieldErrors.push(`${field}: ${error.response.data[field].join(', ')}`);
+          }
+        });
+        if (fieldErrors.length > 0) {
+          errorMessage = fieldErrors.join('; ');
+        }
+      }
+    }
+    
+    showAlert(errorMessage, 'danger');
   };
 
   // 컴포넌트 마운트 시 배너 목록 및 매장 목록 조회
@@ -76,7 +151,7 @@ const BannerManagementPage = () => {
   // 알림 표시
   const showAlert = (message, variant = 'success') => {
     setAlert({ show: true, message, variant });
-    setTimeout(() => setAlert({ show: false, message: '', variant: 'success' }), 3000);
+    setTimeout(() => setAlert({ show: false, message: '', variant: 'success' }), 5000);
   };
 
   // 폼 데이터 변경 핸들러
@@ -171,32 +246,7 @@ const BannerManagementPage = () => {
       resetForm();
     } catch (error) {
       console.error('배너 추가 실패:', error);
-      
-      // 상세한 에러 메시지 표시
-      let errorMessage = '배너 추가에 실패했습니다.';
-      if (error.response?.data) {
-        console.error('백엔드 에러 응답:', error.response.data);
-        if (typeof error.response.data === 'string') {
-          errorMessage += ` (${error.response.data})`;
-        } else if (error.response.data.detail) {
-          errorMessage += ` (${error.response.data.detail})`;
-        } else if (error.response.data.message) {
-          errorMessage += ` (${error.response.data.message})`;
-        } else {
-          // 필드별 에러 메시지 조합
-          const fieldErrors = [];
-          Object.keys(error.response.data).forEach(field => {
-            if (Array.isArray(error.response.data[field])) {
-              fieldErrors.push(`${field}: ${error.response.data[field].join(', ')}`);
-            }
-          });
-          if (fieldErrors.length > 0) {
-            errorMessage += ` (${fieldErrors.join('; ')})`;
-          }
-        }
-      }
-      
-      showAlert(errorMessage, 'danger');
+      handleAPIError(error, '배너 추가에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -251,32 +301,7 @@ const BannerManagementPage = () => {
       resetForm();
     } catch (error) {
       console.error('배너 수정 실패:', error);
-      
-      // 상세한 에러 메시지 표시
-      let errorMessage = '배너 수정에 실패했습니다.';
-      if (error.response?.data) {
-        console.error('백엔드 에러 응답:', error.response.data);
-        if (typeof error.response.data === 'string') {
-          errorMessage += ` (${error.response.data})`;
-        } else if (error.response.data.detail) {
-          errorMessage += ` (${error.response.data.detail})`;
-        } else if (error.response.data.message) {
-          errorMessage += ` (${error.response.data.message})`;
-        } else {
-          // 필드별 에러 메시지 조합
-          const fieldErrors = [];
-          Object.keys(error.response.data).forEach(field => {
-            if (Array.isArray(error.response.data[field])) {
-              fieldErrors.push(`${field}: ${error.response.data[field].join(', ')}`);
-            }
-          });
-          if (fieldErrors.length > 0) {
-            errorMessage += ` (${fieldErrors.join('; ')})`;
-          }
-        }
-      }
-      
-      showAlert(errorMessage, 'danger');
+      handleAPIError(error, '배너 수정에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -293,7 +318,7 @@ const BannerManagementPage = () => {
       setShowDeleteModal(false);
     } catch (error) {
       console.error('배너 삭제 실패:', error);
-      showAlert('배너 삭제에 실패했습니다.', 'danger');
+      handleAPIError(error, '배너 삭제에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -307,7 +332,7 @@ const BannerManagementPage = () => {
       fetchBanners();
     } catch (error) {
       console.error('배너 상태 변경 실패:', error);
-      showAlert('배너 상태 변경에 실패했습니다.', 'danger');
+      handleAPIError(error, '배너 상태 변경에 실패했습니다.');
     }
   };
 
@@ -324,26 +349,11 @@ const BannerManagementPage = () => {
       fetchBanners(); // 목록 새로고침
     } catch (error) {
       console.error('❌ 메인 토너먼트 배너 설정 실패:', error);
-      
-      let errorMessage = '메인 토너먼트 배너 설정에 실패했습니다.';
-      if (error.response?.data) {
-        console.error('백엔드 에러 응답:', error.response.data);
-        if (error.response.data.error) {
-          errorMessage += ` (${error.response.data.error})`;
-        } else if (error.response.data.detail) {
-          errorMessage += ` (${error.response.data.detail})`;
-        } else if (error.response.data.message) {
-          errorMessage += ` (${error.response.data.message})`;
-        }
-      }
-      
-      showAlert(errorMessage, 'danger');
+      handleAPIError(error, '메인 토너먼트 배너 설정에 실패했습니다.');
     } finally {
       setLoading(false);
     }
   };
-
-
 
   // 폼 초기화
   const resetForm = () => {
