@@ -1,16 +1,19 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
 from django.utils import timezone
 from datetime import datetime
+import logging
 
 from stores.models import Banner, Store
 from stores.serializers import BannerSerializer
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class BannerViewSet(viewsets.ModelViewSet):
@@ -58,12 +61,20 @@ class BannerViewSet(viewsets.ModelViewSet):
             except ValueError:
                 pass
         
-        # 매장 관리자인 경우 자신의 매장 배너만 조회
+        # 관리자가 아닌 경우 권한 제한
         user = self.request.user
-        if hasattr(user, 'is_store_owner') and user.is_store_owner:
-            store = Store.objects.filter(owner=user).first()
-            if store:
-                queryset = queryset.filter(store=store)
+        if not user.is_staff and not user.is_superuser:
+            # 매장 관리자인 경우 자신의 매장 배너만 조회
+            if hasattr(user, 'is_store_owner') and user.is_store_owner:
+                store = Store.objects.filter(owner=user).first()
+                if store:
+                    queryset = queryset.filter(store=store)
+                else:
+                    # 매장이 없는 경우 빈 쿼리셋 반환
+                    queryset = queryset.none()
+            else:
+                # 일반 사용자는 배너 관리 권한 없음
+                queryset = queryset.none()
         
         return queryset
 
@@ -73,16 +84,20 @@ class BannerViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         
+        # 관리자는 모든 매장에 배너 생성 가능
+        if user.is_staff or user.is_superuser:
+            serializer.save()
+            return
+        
         # 매장 관리자인 경우 자신의 매장으로 자동 설정
         if hasattr(user, 'is_store_owner') and user.is_store_owner:
             store = Store.objects.filter(owner=user).first()
             if store:
                 serializer.save(store=store)
             else:
-                raise PermissionError("연결된 매장 정보가 없습니다.")
+                raise PermissionDenied("연결된 매장 정보가 없습니다.")
         else:
-            # 관리자인 경우 요청된 매장으로 설정
-            serializer.save()
+            raise PermissionDenied("배너 생성 권한이 없습니다.")
 
     def update(self, request, *args, **kwargs):
         """
@@ -114,11 +129,18 @@ class BannerViewSet(viewsets.ModelViewSet):
         user = self.request.user
         banner = self.get_object()
         
+        # 관리자는 모든 배너 수정 가능
+        if user.is_staff or user.is_superuser:
+            serializer.save()
+            return
+        
         # 매장 관리자인 경우 자신의 매장 배너만 수정 가능
         if hasattr(user, 'is_store_owner') and user.is_store_owner:
             store = Store.objects.filter(owner=user).first()
             if store and banner.store != store:
-                raise PermissionError("다른 매장의 배너는 수정할 수 없습니다.")
+                raise PermissionDenied("다른 매장의 배너는 수정할 수 없습니다.")
+        else:
+            raise PermissionDenied("배너 수정 권한이 없습니다.")
         
         serializer.save()
 
@@ -128,11 +150,18 @@ class BannerViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         
+        # 관리자는 모든 배너 삭제 가능
+        if user.is_staff or user.is_superuser:
+            instance.delete()
+            return
+        
         # 매장 관리자인 경우 자신의 매장 배너만 삭제 가능
         if hasattr(user, 'is_store_owner') and user.is_store_owner:
             store = Store.objects.filter(owner=user).first()
             if store and instance.store != store:
-                raise PermissionError("다른 매장의 배너는 삭제할 수 없습니다.")
+                raise PermissionDenied("다른 매장의 배너는 삭제할 수 없습니다.")
+        else:
+            raise PermissionDenied("배너 삭제 권한이 없습니다.")
         
         instance.delete()
 
@@ -185,13 +214,13 @@ class BannerViewSet(viewsets.ModelViewSet):
             
             # 권한 확인 - 매장 관리자는 자신의 매장만 조회 가능
             user = request.user
-            if hasattr(user, 'is_store_owner') and user.is_store_owner:
-                user_store = Store.objects.filter(owner=user).first()
-                if user_store and user_store.id != int(store_id):
-                    return Response(
-                        {"error": "다른 매장의 배너는 조회할 수 없습니다."}, 
-                        status=status.HTTP_403_FORBIDDEN
-                    )
+            if not user.is_staff and not user.is_superuser:
+                if hasattr(user, 'is_store_owner') and user.is_store_owner:
+                    user_store = Store.objects.filter(owner=user).first()
+                    if user_store and user_store.id != int(store_id):
+                        raise PermissionDenied("다른 매장의 배너는 조회할 수 없습니다.")
+                else:
+                    raise PermissionDenied("배너 조회 권한이 없습니다.")
             
             banners = Banner.objects.filter(store=store).order_by('-created_at')
             serializer = self.get_serializer(banners, many=True)
@@ -205,6 +234,8 @@ class BannerViewSet(viewsets.ModelViewSet):
                 'banners': serializer.data,
                 'total_count': banners.count()
             })
+        except PermissionDenied:
+            raise
         except Exception as e:
             return Response(
                 {"error": f"매장별 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
@@ -219,20 +250,25 @@ class BannerViewSet(viewsets.ModelViewSet):
         try:
             user = request.user
             
+            # 관리자는 모든 배너 조회 가능
+            if user.is_staff or user.is_superuser:
+                banners = Banner.objects.all().order_by('-created_at')
+                serializer = self.get_serializer(banners, many=True)
+                
+                return Response({
+                    'banners': serializer.data,
+                    'total_count': banners.count(),
+                    'active_count': banners.filter(is_active=True).count()
+                })
+            
             # 매장 관리자 권한 확인
             if not hasattr(user, 'is_store_owner') or not user.is_store_owner:
-                return Response(
-                    {"error": "매장 관리자 권한이 필요합니다."}, 
-                    status=status.HTTP_403_FORBIDDEN
-                )
+                raise PermissionDenied("매장 관리자 권한이 필요합니다.")
             
             # 사용자의 매장 조회
             store = Store.objects.filter(owner=user).first()
             if not store:
-                return Response(
-                    {"error": "연결된 매장 정보가 없습니다."}, 
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                raise PermissionDenied("연결된 매장 정보가 없습니다.")
             
             banners = Banner.objects.filter(store=store).order_by('-created_at')
             serializer = self.get_serializer(banners, many=True)
@@ -247,6 +283,8 @@ class BannerViewSet(viewsets.ModelViewSet):
                 'total_count': banners.count(),
                 'active_count': banners.filter(is_active=True).count()
             })
+        except PermissionDenied:
+            raise
         except Exception as e:
             return Response(
                 {"error": f"내 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
@@ -262,14 +300,15 @@ class BannerViewSet(viewsets.ModelViewSet):
             banner = self.get_object()
             user = request.user
             
-            # 권한 확인
-            if hasattr(user, 'is_store_owner') and user.is_store_owner:
-                store = Store.objects.filter(owner=user).first()
-                if store and banner.store != store:
-                    return Response(
-                        {"error": "다른 매장의 배너는 수정할 수 없습니다."}, 
-                        status=status.HTTP_403_FORBIDDEN
-                    )
+            # 관리자는 모든 배너 상태 변경 가능
+            if not user.is_staff and not user.is_superuser:
+                # 권한 확인
+                if hasattr(user, 'is_store_owner') and user.is_store_owner:
+                    store = Store.objects.filter(owner=user).first()
+                    if store and banner.store != store:
+                        raise PermissionDenied("다른 매장의 배너는 수정할 수 없습니다.")
+                else:
+                    raise PermissionDenied("배너 상태 변경 권한이 없습니다.")
             
             # 상태 토글
             banner.is_active = not banner.is_active
@@ -280,6 +319,8 @@ class BannerViewSet(viewsets.ModelViewSet):
                 'message': f"배너가 {'활성화' if banner.is_active else '비활성화'}되었습니다.",
                 'banner': serializer.data
             })
+        except PermissionDenied:
+            raise
         except Exception as e:
             return Response(
                 {"error": f"배너 상태 변경 중 오류가 발생했습니다: {str(e)}"}, 
@@ -350,32 +391,70 @@ class BannerViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny], url_path='store-gallery')
-    def store_gallery(self, request):
+    @action(detail=False, methods=['get'], url_path='store_gallery', permission_classes=[AllowAny])
+    def store_gallery_banners(self, request):
         """
-        인기 스토어 갤러리용 배너 목록 조회
-        모든 사용자 접근 가능 (로그인 불필요)
+        스토어 갤러리 배너 조회
+        광고 페이지 인기 스토어 갤러리에 표시될 배너를 조회합니다.
+        
+        ⭐ 2025.01 새로 추가: 스토어 갤러리 배너 API
+        - 광고 페이지(AslAd.jsx) 인기 스토어 갤러리 섹션용
+        - 스토어 이미지 클릭 시 매장 상세화면으로 이동 지원
+        - 매장 ID가 있는 배너는 상세화면, 없는 배너는 매장 검색 페이지로 이동
+        
+        ⚡ 특징:
+        - 인증 불필요 (AllowAny 권한)
+        - is_store_gallery=True로 설정된 배너만 반환
+        - 현재 활성화된 배너만 조회 (is_active=True, 기간 내)
+        - 생성일 기준 내림차순 정렬
+        - 최대 8개까지 표시 (슬라이딩 갤러리 UI)
         """
         try:
-            now = timezone.now()
-            store_gallery_banners = Banner.objects.filter(
-                is_store_gallery=True,
+            # 현재 날짜 기준 활성화된 스토어 갤러리 배너 조회
+            today = timezone.now().date()
+            banners = Banner.objects.filter(
                 is_active=True,
-                start_date__lte=now,
-                end_date__gte=now
-            ).select_related('store').order_by('-created_at')
+                is_store_gallery=True,  # 스토어 갤러리 배너만
+                start_date__lte=today,  # 시작일이 오늘 이전
+                end_date__gte=today     # 종료일이 오늘 이후
+            ).select_related('store').order_by('-created_at')[:8]  # 최대 8개
             
-            # 최대 8개로 제한 (AslAd.jsx에서 사용)
-            store_gallery_banners = store_gallery_banners[:8]
+            # 배너 데이터 직렬화 (상세 정보 포함)
+            banner_data = []
+            for banner in banners:
+                banner_info = {
+                    'id': banner.id,
+                    'title': banner.title,
+                    'description': banner.description,
+                    'image': banner.image.url if banner.image else None,
+                    'store_id': banner.store.id if banner.store else None,
+                    'store_name': banner.store.name if banner.store else None,
+                    'is_active': banner.is_active,
+                    'is_store_gallery': banner.is_store_gallery,
+                    'start_date': banner.start_date.isoformat() if banner.start_date else None,
+                    'end_date': banner.end_date.isoformat() if banner.end_date else None,
+                    'created_at': banner.created_at.isoformat() if banner.created_at else None,
+                }
+                
+                # 매장 정보 추가 (클릭 시 상세 페이지 이동용)
+                if banner.store:
+                    banner_info['store'] = {
+                        'id': banner.store.id,
+                        'name': banner.store.name,
+                        'address': banner.store.address if hasattr(banner.store, 'address') else None
+                    }
+                
+                banner_data.append(banner_info)
             
-            serializer = self.get_serializer(store_gallery_banners, many=True)
             return Response({
-                'message': '인기 스토어 갤러리 배너를 성공적으로 조회했습니다.',
-                'banners': serializer.data,
-                'total_count': store_gallery_banners.count()
+                'banners': banner_data,
+                'count': len(banner_data),
+                'message': f'스토어 갤러리 배너 {len(banner_data)}개를 조회했습니다.' if banner_data else '설정된 스토어 갤러리 배너가 없습니다.'
             })
+            
         except Exception as e:
-            return Response(
-                {"error": f"인기 스토어 갤러리 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"스토어 갤러리 배너 조회 실패: {str(e)}")
+            return Response({
+                'error': '스토어 갤러리 배너를 조회하는 중 오류가 발생했습니다.',
+                'banners': []
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

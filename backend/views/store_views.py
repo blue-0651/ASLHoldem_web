@@ -17,11 +17,13 @@ class StoreSerializer(serializers.ModelSerializer):
     매장 정보를 위한 시리얼라이저
     """
     tournament_count = serializers.SerializerMethodField(read_only=True)
+    banner_image = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Store
         fields = [
-            'id', 'name', 'address', 'description', 'status', 
+            'id', 'name', 'address', 'description', 'image', 'banner_image', 'status', 
+            'latitude', 'longitude',
             'phone_number', 'open_time', 'close_time', 
             'manager_name', 'manager_phone', 'max_capacity',
             'created_at', 'updated_at', 'tournament_count'
@@ -37,6 +39,20 @@ class StoreSerializer(serializers.ModelSerializer):
             return 0
         except:
             return 0
+    
+    def get_banner_image(self, obj):
+        """
+        매장의 스토어 갤러리 배너 이미지를 반환합니다.
+        매장 이미지가 없을 때 배너 이미지를 대체 이미지로 사용합니다.
+        """
+        try:
+            # is_store_gallery=True인 활성화된 배너 중 첫 번째 반환
+            banner = obj.banners.filter(is_store_gallery=True, is_active=True).first()
+            if banner and banner.image:
+                return banner.image.url
+            return None
+        except:
+            return None
 
 class StoreUserSerializer(serializers.ModelSerializer):
     """
