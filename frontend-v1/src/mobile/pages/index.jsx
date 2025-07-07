@@ -5,6 +5,7 @@ export { default as TournamentsList } from './common/tournaments-list/Tournament
 export { default as Reservations } from './common/reservations/Reservations';
 export { default as StoreSearchPage } from './common/store-search/StoreSearchPage';
 export { default as StoreDetailPage } from './common/store-search/StoreDetailPage';
+export { default as StoreMapPage } from './common/store-search/StoreMapPage';
 export { default as AslAd } from './common/AslAd';
 
 // 일반 사용자 페이지

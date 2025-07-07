@@ -57,7 +57,8 @@ const StoreSearchPage = () => {
         : '/stores/';
         
       const response = await API.get(endpoint);
-      setStores(response.data.results || []);
+      // API가 배열을 직접 반환하므로 results 래핑 없이 사용
+      setStores(response.data || []);
     } catch (err) {
       console.error('매장 데이터 로드 오류:', err);
       setError('매장 정보를 불러오는 데 실패했습니다.');
@@ -106,6 +107,23 @@ const StoreSearchPage = () => {
             </Button>
           </InputGroup>
         </Form>
+
+        {/* 보기 옵션 버튼 */}
+        <div className="d-flex gap-2 mb-4">
+          <Button 
+            variant="outline-primary" 
+            className="flex-fill d-flex align-items-center justify-content-center"
+            onClick={() => navigate('/mobile/common/store-map')}
+          >
+            <i className="fas fa-map-marked-alt me-1"></i>지도로 보기
+          </Button>
+          <Button 
+            variant="primary" 
+            className="flex-fill d-flex align-items-center justify-content-center"
+          >
+            <i className="fas fa-list me-1"></i>목록으로 보기
+          </Button>
+        </div>
         
         {/* 에러 표시 */}
         {error && (

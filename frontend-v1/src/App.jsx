@@ -42,6 +42,7 @@ import TournamentsList from './mobile/pages/common/tournaments-list/TournamentsL
 import Reservations from './mobile/pages/common/reservations/Reservations';
 import StoreSearchPage from './mobile/pages/common/store-search/StoreSearchPage';
 import StoreDetailPage from './mobile/pages/common/store-search/StoreDetailPage';
+import StoreMapPage from './mobile/pages/common/store-search/StoreMapPage';
 import AslAd from './mobile/pages/common/AslAd';
 import Settings from './mobile/pages/common/Settings';
 import UnderConstruction from './mobile/pages/common/UnderConstruction';
@@ -125,6 +126,7 @@ function App() {
         {/* 매장 검색 관련 라우트 */}
         <Route path="/mobile/common/store-search" element={<StoreSearchPage />} />
         <Route path="/mobile/common/store-detail/:storeId" element={<StoreDetailPage />} />
+        <Route path="/mobile/common/store-map" element={<StoreMapPage />} />
 
         {/* 공사중 페이지 - 개발되지 않은 기능들 */}
         <Route path="/mobile/common/under-construction" element={<UnderConstruction />} />
