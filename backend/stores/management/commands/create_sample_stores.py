@@ -27,7 +27,7 @@ class Command(BaseCommand):
                 'manager_name': '김강남',
                 'manager_phone': '010-1234-5678',
                 'open_time': '10:00',
-                'close_time': '24:00',
+                'close_time': '23:59',
                 'max_capacity': 80,
                 'latitude': 37.497942,
                 'longitude': 127.027618
@@ -40,7 +40,7 @@ class Command(BaseCommand):
                 'manager_name': '이홍대',
                 'manager_phone': '010-2345-6789',
                 'open_time': '14:00',
-                'close_time': '02:00',
+                'close_time': '01:59',
                 'max_capacity': 60,
                 'latitude': 37.550339,
                 'longitude': 126.922340
@@ -66,7 +66,7 @@ class Command(BaseCommand):
                 'manager_name': '최잠실',
                 'manager_phone': '010-4567-8901',
                 'open_time': '10:00',
-                'close_time': '24:00',
+                'close_time': '23:59',
                 'max_capacity': 100,
                 'latitude': 37.513294,
                 'longitude': 127.100076
@@ -105,7 +105,7 @@ class Command(BaseCommand):
                 'manager_name': '이서면',
                 'manager_phone': '010-7890-1234',
                 'open_time': '12:00',
-                'close_time': '24:00',
+                'close_time': '23:59',
                 'max_capacity': 65,
                 'latitude': 35.157567,
                 'longitude': 129.056189
