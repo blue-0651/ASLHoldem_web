@@ -224,6 +224,26 @@ done
 systemctl restart nginx
 log_info "Nginx 재시작 완료"
 
+# Frontend 빌드 (최신 소스코드 반영)
+echo "🔨 프론트엔드 빌드 중..."
+cd "$DEPLOY_PATH/frontend-v1"
+if [ -f "package.json" ]; then
+    echo "  - package.json 발견, npm 빌드 시작..."
+    npm run build
+    if [ $? -eq 0 ]; then
+        echo "  ✅ 프론트엔드 빌드 완료"
+    else
+        echo "  ❌ 프론트엔드 빌드 실패"
+        read -p "계속 진행하시겠습니까? (y/N): " continue_anyway
+        if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
+else
+    echo "  ⚠️ package.json이 없습니다. 프론트엔드 빌드를 건너뜁니다."
+fi
+cd "$DEPLOY_PATH"
+
 if [ "$service_restarted" = false ]; then
     log_warn "재시작할 웹 서비스를 찾지 못했습니다. 수동으로 웹 서버를 시작해야 할 수 있습니다."
 fi
