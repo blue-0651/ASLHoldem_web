@@ -56,7 +56,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'drf_yasg',    # Local apps
-    'accounts',
+    'accounts.apps.AccountsConfig',
     'tournaments',
     'stores',
     'notices',
