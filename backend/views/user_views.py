@@ -328,27 +328,43 @@ class UserSerializer(serializers.ModelSerializer):
         return [group.name for group in obj.groups.all()]
     
     def create(self, validated_data):
-        # many-to-many 필드 추출
-        groups = validated_data.pop('groups', None)
-        user_permissions = validated_data.pop('user_permissions', None)
-        password = validated_data.pop('password', None)
-        is_store_owner = validated_data.pop('is_store_owner', False)
-        
-        # username을 phone 값으로 설정 (unique constraint 해결)
-        if 'phone' in validated_data and not validated_data.get('username'):
-            validated_data['username'] = validated_data['phone']
-        
-        user = User.objects.create(**validated_data)
-        user.is_store_owner = is_store_owner
-        if password:
-            user.set_password(password)
-        # many-to-many 필드 설정
-        if groups is not None:
-            user.groups.set(groups)
-        if user_permissions is not None:
-            user.user_permissions.set(user_permissions)
-        user.save()
-        return user
+        try:
+            # many-to-many 필드 추출
+            groups = validated_data.pop('groups', None)
+            user_permissions = validated_data.pop('user_permissions', None)
+            password = validated_data.pop('password', None)
+            is_store_owner = validated_data.pop('is_store_owner', False)
+            
+            # username을 phone 값으로 설정 (unique constraint 해결)
+            if 'phone' in validated_data and not validated_data.get('username'):
+                validated_data['username'] = validated_data['phone']
+            
+            # 비밀번호가 없으면 임시 비밀번호 설정
+            if not password:
+                password = 'temp_password_123'
+            
+            # User 객체 생성
+            user = User.objects.create_user(
+                username=validated_data['username'],
+                email=validated_data.get('email', ''),
+                password=password,
+                **{k: v for k, v in validated_data.items() if k not in ['username', 'email']}
+            )
+            
+            # 추가 속성 설정
+            user.is_store_owner = is_store_owner
+            
+            # many-to-many 필드 설정
+            if groups is not None:
+                user.groups.set(groups)
+            if user_permissions is not None:
+                user.user_permissions.set(user_permissions)
+            
+            user.save()
+            return user
+        except Exception as e:
+            api_logger.error(f"사용자 생성 중 오류: {str(e)}", exc_info=True)
+            raise e
     
     def update(self, instance, validated_data):
         # many-to-many 필드 추출
@@ -395,11 +411,27 @@ class UserViewSet(viewsets.ViewSet):
         """
         새로운 사용자를 생성합니다.
         """
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            # 요청 데이터 로깅 (비밀번호 제외)
+            request_data = request.data.copy()
+            if 'password' in request_data:
+                request_data['password'] = '[HIDDEN]'
+            api_logger.info(f"회원가입 요청 데이터: {request_data}")
+            
+            serializer = UserSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save()
+                api_logger.info(f"회원가입 성공: {user.phone} (ID: {user.id})")
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                api_logger.error(f"회원가입 유효성 검사 실패: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            api_logger.error(f"회원가입 중 예외 발생: {str(e)}", exc_info=True)
+            return Response({
+                'error': '회원가입 처리 중 오류가 발생했습니다.',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['post'])
     def get_user(self, request):
