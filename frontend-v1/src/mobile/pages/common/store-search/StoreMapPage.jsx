@@ -118,21 +118,43 @@ const StoreMapPage = () => {
     }
   };
 
-  // 사용자 현재 위치 가져오기
+  // 사용자 현재 위치 가져오기 (HTTPS 지원 개선)
   const getUserLocation = () => {
     return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        console.warn('지리적 위치 서비스가 지원되지 않습니다.');
-        // 기본 위치 (서울역)
+      // 기본 위치 설정 함수
+      const useDefaultLocation = (reason = '') => {
         const defaultLocation = { lat: 37.5549, lng: 126.9706 };
+        console.log(`🏠 기본 위치 사용: ${reason || '기본값'}`, defaultLocation);
         setUserLocation(defaultLocation);
         resolve(defaultLocation);
+      };
+
+      // Geolocation API 지원 확인
+      if (!navigator.geolocation) {
+        console.warn('⚠️ 지리적 위치 서비스가 지원되지 않습니다.');
+        useDefaultLocation('Geolocation API 미지원');
+        return;
+      }
+
+      // HTTPS 환경 확인
+      const isSecureContext = window.isSecureContext || location.protocol === 'https:';
+      if (!isSecureContext) {
+        console.warn('⚠️ HTTPS가 아닌 환경에서는 위치 정보를 사용할 수 없습니다. 기본 위치를 사용합니다.');
+        useDefaultLocation('HTTP 환경 (HTTPS 필요)');
         return;
       }
 
       console.log('📍 위치 정보를 가져오는 중...');
+      
+      // 짧은 타임아웃으로 빠른 실패 처리
+      const timeoutId = setTimeout(() => {
+        console.warn('⏰ 위치 정보 요청 타임아웃');
+        useDefaultLocation('위치 요청 타임아웃');
+      }, 5000); // 5초로 단축
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          clearTimeout(timeoutId);
           const location = {
             lat: position.coords.latitude,
             lng: position.coords.longitude
@@ -142,36 +164,45 @@ const StoreMapPage = () => {
           resolve(location);
         },
         (error) => {
-          console.warn('⚠️ 위치 정보를 가져올 수 없습니다:', error.message);
-          // 기본 위치 (서울역) - 위치 권한이 거부되어도 마커 표시
-          const defaultLocation = { lat: 37.5549, lng: 126.9706 };
-          console.log('🏠 기본 위치 사용:', defaultLocation);
-          setUserLocation(defaultLocation);
-          resolve(defaultLocation);
+          clearTimeout(timeoutId);
+          console.warn('⚠️ 위치 정보를 가져올 수 없습니다:', {
+            code: error.code,
+            message: error.message
+          });
+          
+          // 에러 유형별 메시지
+          let errorReason = '';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorReason = '위치 접근 권한 거부됨';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorReason = '위치 정보 사용 불가';
+              break;
+            case error.TIMEOUT:
+              errorReason = '위치 요청 시간 초과';
+              break;
+            default:
+              errorReason = `알 수 없는 오류 (${error.message})`;
+          }
+          
+          useDefaultLocation(errorReason);
         },
         {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000
+          enableHighAccuracy: false, // 정확도보다 빠른 응답 우선
+          timeout: 4000, // 4초로 단축
+          maximumAge: 300000 // 5분간 캐시 사용
         }
       );
     });
   };
 
-  // 카카오 지도 초기화
+  // 카카오 지도 초기화 (HTTPS 환경 고려)
   const initializeMap = async () => {
-    if (!window.kakao || !window.kakao.maps) {
-      setError('카카오 지도 API를 불러오지 못했습니다. 개발자 콘솔에서 지도 서비스를 활성화해주세요.');
-      // 지도 없이도 매장 데이터는 로드
-      await getUserLocation();
-      await fetchStores();
-      await fetchGalleryImages();
-      return;
-    }
-
+    console.log('🗺️ 지도 초기화 시작');
+    
+    // 먼저 데이터를 가져옴 (지도 없이도 표시할 수 있도록)
     try {
-      console.log('🗺️ 카카오 지도 초기화 시작');
-      
       const userLoc = await getUserLocation();
       const storeData = await fetchStores();
       const galleryData = await fetchGalleryImages();
@@ -180,16 +211,35 @@ const StoreMapPage = () => {
       window.currentUserLocation = userLoc;
       window.currentNavigate = navigate;
 
-      console.log('📈 초기화 완료:', {
+      console.log('📈 데이터 로딩 완료:', {
         userLocation: userLoc,
         storeCount: storeData.length,
         galleryCount: galleryData.length
       });
 
+      // 매장 데이터가 없으면 경고 표시
       if (storeData.length === 0) {
         setError('GPS 정보가 등록된 매장이 없습니다. 매장 관리자가 위치 정보를 등록하면 지도에 표시됩니다.');
         return;
       }
+
+      // 카카오 지도 API 확인
+      if (!window.kakao || !window.kakao.maps) {
+        console.warn('⚠️ 카카오 지도 API가 로드되지 않음');
+        setError(`지도 API를 불러올 수 없습니다. 
+                  ${storeData.length}개 매장이 등록되어 있습니다. 
+                  HTTPS 환경에서 이용하시거나 페이지를 새로고침해 주세요.`);
+        return;
+      }
+
+      // 지도 컨테이너 확인
+      if (!mapRef.current) {
+        console.error('❌ 지도 컨테이너를 찾을 수 없음');
+        setError('지도 컨테이너를 초기화할 수 없습니다.');
+        return;
+      }
+
+      console.log('🗺️ 카카오 지도 생성 시작');
 
       // 지도 중심 좌표 설정 (사용자 위치 우선)
       let centerLat = userLoc.lat;
@@ -204,6 +254,8 @@ const StoreMapPage = () => {
       // 지도 생성
       const map = new window.kakao.maps.Map(mapContainer, mapOption);
       kakaoMapRef.current = map;
+      
+      console.log('✅ 카카오 지도 생성 완료');
 
       // 사용자 위치 마커 추가 (항상 표시)
       console.log('👤 사용자 위치 마커 생성 시작:', userLoc);
@@ -268,7 +320,21 @@ const StoreMapPage = () => {
 
     } catch (error) {
       console.error('❌ 지도 초기화 오류:', error);
-      setError('지도를 초기화하는 데 실패했습니다.');
+      
+      // 에러 유형에 따른 상세 메시지
+      let errorMessage = '지도를 초기화하는 데 실패했습니다.';
+      
+      if (error.message && error.message.includes('InvalidValueError')) {
+        errorMessage = '카카오 지도 API 설정에 문제가 있습니다. 관리자에게 문의해주세요.';
+      } else if (error.message && error.message.includes('Network')) {
+        errorMessage = '네트워크 연결을 확인한 후 페이지를 새로고침해주세요.';
+      } else if (!window.isSecureContext && location.protocol !== 'https:') {
+        errorMessage = `지도 서비스를 이용하려면 HTTPS 환경이 필요합니다. 
+                      현재 ${stores.length}개 매장 정보가 준비되어 있습니다.
+                      https://kasl.co.kr 에서 이용해주세요.`;
+      }
+      
+      setError(errorMessage);
     }
   };
 
