@@ -136,7 +136,7 @@ const StoreMapPage = () => {
         return;
       }
 
-      // HTTPS 환경 확인
+      // HTTPS 환경 확인 (위치 정보 사용 불가시 기본 위치 사용)
       const isSecureContext = window.isSecureContext || location.protocol === 'https:';
       if (!isSecureContext) {
         console.warn('⚠️ HTTPS가 아닌 환경에서는 위치 정보를 사용할 수 없습니다. 기본 위치를 사용합니다.');
@@ -197,17 +197,36 @@ const StoreMapPage = () => {
     });
   };
 
-  // 카카오 지도 초기화 (HTTPS 환경 고려)
+  // 카카오 지도 초기화 (HTTP/HTTPS 환경 모두 지원)
   const initializeMap = async () => {
     console.log('🗺️ 지도 초기화 시작');
     
-    // 먼저 데이터를 가져옴 (지도 없이도 표시할 수 있도록)
     try {
-      const userLoc = await getUserLocation();
-      const storeData = await fetchStores();
-      const galleryData = await fetchGalleryImages();
+      // 1. 카카오 지도 API 가용성 먼저 확인
+      console.log('🔍 카카오 지도 API 확인 중...');
+      console.log('window.kakao:', !!window.kakao);
+      console.log('window.kakao.maps:', !!(window.kakao && window.kakao.maps));
+      console.log('현재 프로토콜:', location.protocol);
+      console.log('Secure Context:', window.isSecureContext);
       
-      // 사용자 위치와 navigate 함수를 전역에서 접근 가능하도록 저장
+      // 2. 기본 데이터 로딩 (지도와 독립적으로)
+      console.log('📊 데이터 로딩 시작...');
+      const [userLoc, storeData, galleryData] = await Promise.all([
+        getUserLocation().catch(err => {
+          console.warn('위치 정보 로딩 실패, 기본값 사용:', err);
+          return { lat: 37.5549, lng: 126.9706 }; // 서울역 기본값
+        }),
+        fetchStores().catch(err => {
+          console.error('매장 데이터 로딩 실패:', err);
+          return [];
+        }),
+        fetchGalleryImages().catch(err => {
+          console.warn('갤러리 데이터 로딩 실패:', err);
+          return [];
+        })
+      ]);
+      
+      // 전역 저장
       window.currentUserLocation = userLoc;
       window.currentNavigate = navigate;
 
@@ -217,18 +236,23 @@ const StoreMapPage = () => {
         galleryCount: galleryData.length
       });
 
-      // 매장 데이터가 없으면 경고 표시
+      // 3. 매장 데이터 확인
       if (storeData.length === 0) {
         setError('GPS 정보가 등록된 매장이 없습니다. 매장 관리자가 위치 정보를 등록하면 지도에 표시됩니다.');
         return;
       }
 
-      // 카카오 지도 API 확인
+      // 4. 카카오 지도 API 상태 확인 및 처리
       if (!window.kakao || !window.kakao.maps) {
-        console.warn('⚠️ 카카오 지도 API가 로드되지 않음');
-        setError(`지도 API를 불러올 수 없습니다. 
-                  ${storeData.length}개 매장이 등록되어 있습니다. 
-                  HTTPS 환경에서 이용하시거나 페이지를 새로고침해 주세요.`);
+        console.error('❌ 카카오 지도 API 로드 실패');
+        console.log('스크립트 태그 확인:', document.querySelector('script[src*="dapi.kakao.com"]'));
+        
+        const isHttpEnv = location.protocol === 'http:';
+        const errorMessage = isHttpEnv 
+          ? `현재 ${storeData.length}개 매장이 등록되어 있습니다.\n지도 서비스는 보안상 HTTPS에서만 완전히 지원됩니다.\n\n✅ 해결 방법:\n• https://kasl.co.kr 에서 접속하세요\n• 또는 페이지를 새로고침 해보세요`
+          : `카카오 지도 API 로딩에 실패했습니다.\n${storeData.length}개 매장 정보가 준비되어 있습니다.\n\n페이지를 새로고침하거나 잠시 후 다시 시도해주세요.`;
+        
+        setError(errorMessage);
         return;
       }
 
