@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Alert, Spinner, Tabs, Tab } from 'react-bootstrap';
 import MobileHeader from '../../../components/MobileHeader';
 import { storeAPI, tournamentAPI } from '../../../../utils/api';
+import aslLogo from '../../../../assets/images/asl-logo-120.png';
 
 const StoreDetailPage = () => {
   const { storeId } = useParams();
@@ -140,7 +141,7 @@ const StoreDetailPage = () => {
                   store.image && store.image !== 'null' && store.image !== '' 
                     ? (store.image.startsWith('http') ? store.image : `/media/${store.image}`)
                     : // 3순위: 기본 ASL 로고
-                      '/images/asl-logo-120.png'
+                      aslLogo
             }
             alt={store.name}
             className="w-100"
@@ -152,7 +153,7 @@ const StoreDetailPage = () => {
             }}
             onError={(e) => {
               console.log('이미지 로드 실패, 기본 이미지로 대체');
-              e.target.src = '/images/asl-logo-120.png';
+              e.target.src = aslLogo;
             }}
           />
           <div className="position-absolute bottom-0 start-0 p-3 w-100" 
