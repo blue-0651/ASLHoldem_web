@@ -71,14 +71,6 @@ const UserDashboard = () => {
               </Card.Body>
             </Card>
           </Col>
-          <Col xs={6} className="mb-3">
-            <Card className="asl-action-card" onClick={() => navigate('/mobile/common/settings')}>
-              <Card.Body className="text-center">
-                <i className="fas fa-cog fa-2x mb-2"></i>
-                <Card.Title>환경 설정</Card.Title>
-              </Card.Body>
-            </Card>
-          </Col>
         </Row>
         
         <Row className="mb-4">

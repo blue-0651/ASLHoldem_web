@@ -82,7 +82,6 @@ const MobileHeader = ({ title, backButton = false, onBackClick, showMenuButton =
         { name: "SEAT권 발급", href: "/mobile/store/ticket-issue", icon: "fas fa-credit-card" },
         { name: "선수회원 참가", href: "/mobile/store/player-registration", icon: "fas fa-qrcode" },
         { name: "QR 코드", href: "/mobile/user/qr-code", icon: "fas fa-qrcode" },
-        { name: "환경설정", href: "/mobile/common/settings", icon: "fas fa-cog" },
         { name: "로그아웃", href: "#", icon: "fas fa-sign-out-alt", onClick: handleLogout, isLogout: true }
       ];
     } 
@@ -93,7 +92,6 @@ const MobileHeader = ({ title, backButton = false, onBackClick, showMenuButton =
         { name: "내 예약", href: "/mobile/user/myreservations", icon: "fas fa-ticket-alt" },
         { name: "매장 찾기", href: "/mobile/common/store-search", icon: "fas fa-search-location" },
         { name: "QR 코드", href: "/mobile/user/qr-code", icon: "fas fa-qrcode" },
-        { name: "환경 설정", href: "/mobile/common/settings", icon: "fas fa-cog" },
         { name: "로그아웃", href: "#", icon: "fas fa-sign-out-alt", onClick: handleLogout, isLogout: true }
       ];
     }
