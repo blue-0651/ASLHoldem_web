@@ -6,6 +6,8 @@ from django.db.models import Count, Q, Max, Sum
 
 from tournaments.models import Tournament
 from stores.models import Store
+from stores.serializers import StoreCreateSerializer, StoreUpdateSerializer
+from stores.permissions import IsAdminOrStoreOwner, IsAdminOnly
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 import datetime
@@ -94,6 +96,104 @@ class StoreViewSet(viewsets.ViewSet):
         except Store.DoesNotExist:
             return Response({"error": "해당 매장을 찾을 수 없습니다."}, 
                           status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def create(self, request):
+        """
+        새 매장을 생성합니다.
+        """
+        try:
+            # 권한 확인
+            if not request.user.is_authenticated:
+                return Response({"error": "로그인이 필요합니다."}, 
+                              status=status.HTTP_401_UNAUTHORIZED)
+            
+            # 관리자만 매장 생성 가능
+            if not (request.user.is_staff or request.user.is_superuser):
+                return Response({"error": "매장 생성 권한이 없습니다."}, 
+                              status=status.HTTP_403_FORBIDDEN)
+            
+            # 매장 생성 데이터 검증
+            serializer = StoreCreateSerializer(data=request.data)
+            if serializer.is_valid():
+                # 매장 생성
+                store = serializer.save()
+                
+                # 생성된 매장 정보 반환
+                response_serializer = StoreSerializer(store)
+                return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def update(self, request, pk=None):
+        """
+        매장 정보를 수정합니다.
+        """
+        try:
+            # 권한 확인
+            if not request.user.is_authenticated:
+                return Response({"error": "로그인이 필요합니다."}, 
+                              status=status.HTTP_401_UNAUTHORIZED)
+            
+            # 매장 조회
+            try:
+                store = Store.objects.get(pk=pk)
+            except Store.DoesNotExist:
+                return Response({"error": "해당 매장을 찾을 수 없습니다."}, 
+                              status=status.HTTP_404_NOT_FOUND)
+            
+            # 권한 확인 (관리자 또는 매장 소유자)
+            if not (request.user.is_staff or request.user.is_superuser or 
+                   (request.user.is_store_owner and store.owner == request.user)):
+                return Response({"error": "매장 수정 권한이 없습니다."}, 
+                              status=status.HTTP_403_FORBIDDEN)
+            
+            # 매장 수정 데이터 검증
+            serializer = StoreUpdateSerializer(store, data=request.data, partial=True)
+            if serializer.is_valid():
+                # 매장 수정
+                updated_store = serializer.save()
+                
+                # 수정된 매장 정보 반환
+                response_serializer = StoreSerializer(updated_store)
+                return Response(response_serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def destroy(self, request, pk=None):
+        """
+        매장을 삭제합니다. (실제로는 상태를 CLOSED로 변경)
+        """
+        try:
+            # 권한 확인
+            if not request.user.is_authenticated:
+                return Response({"error": "로그인이 필요합니다."}, 
+                              status=status.HTTP_401_UNAUTHORIZED)
+            
+            # 매장 조회
+            try:
+                store = Store.objects.get(pk=pk)
+            except Store.DoesNotExist:
+                return Response({"error": "해당 매장을 찾을 수 없습니다."}, 
+                              status=status.HTTP_404_NOT_FOUND)
+            
+            # 권한 확인 (관리자 또는 매장 소유자)
+            if not (request.user.is_staff or request.user.is_superuser or 
+                   (request.user.is_store_owner and store.owner == request.user)):
+                return Response({"error": "매장 삭제 권한이 없습니다."}, 
+                              status=status.HTTP_403_FORBIDDEN)
+            
+            # 소프트 삭제 (상태를 CLOSED로 변경)
+            store.status = 'CLOSED'
+            store.save()
+            
+            return Response({"message": f"매장 '{store.name}'이(가) 삭제되었습니다."}, 
+                          status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     

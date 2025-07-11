@@ -40,6 +40,53 @@ class StoreCreateSerializer(serializers.ModelSerializer):
             'open_time', 'close_time', 'manager_name', 'manager_phone',
             'max_capacity'
         ]
+        
+    def validate_name(self, value):
+        """매장명 유효성 검증"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("매장명은 필수 입력 사항입니다.")
+        
+        # 매장명 중복 검사
+        if Store.objects.filter(name=value.strip()).exists():
+            raise serializers.ValidationError("이미 존재하는 매장명입니다.")
+        
+        return value.strip()
+    
+    def validate_address(self, value):
+        """매장 주소 유효성 검증"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("매장 주소는 필수 입력 사항입니다.")
+        
+        return value.strip()
+    
+    def validate_phone_number(self, value):
+        """전화번호 유효성 검증"""
+        if value and not value.strip():
+            return None
+        
+        if value:
+            # 전화번호 형식 간단 검증
+            import re
+            phone_pattern = r'^(\d{2,3}-?\d{3,4}-?\d{4})$'
+            if not re.match(phone_pattern, value.strip()):
+                raise serializers.ValidationError("올바른 전화번호 형식을 입력해주세요.")
+        
+        return value.strip() if value else None
+    
+    def validate_max_capacity(self, value):
+        """최대 수용 인원 유효성 검증"""
+        if value and (value < 1 or value > 1000):
+            raise serializers.ValidationError("최대 수용 인원은 1명 이상 1000명 이하로 설정해주세요.")
+        
+        return value
+    
+    def create(self, validated_data):
+        """매장 생성"""
+        # 생성 시 기본값 설정
+        if 'status' not in validated_data:
+            validated_data['status'] = 'ACTIVE'
+        
+        return Store.objects.create(**validated_data)
 
 
 class StoreUpdateSerializer(serializers.ModelSerializer):
@@ -52,4 +99,52 @@ class StoreUpdateSerializer(serializers.ModelSerializer):
             'status', 'latitude', 'longitude', 'phone_number',
             'open_time', 'close_time', 'manager_name', 'manager_phone',
             'max_capacity'
-        ] 
+        ]
+        
+    def validate_name(self, value):
+        """매장명 유효성 검증"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("매장명은 필수 입력 사항입니다.")
+        
+        # 매장명 중복 검사 (현재 매장 제외)
+        if Store.objects.filter(name=value.strip()).exclude(pk=self.instance.pk).exists():
+            raise serializers.ValidationError("이미 존재하는 매장명입니다.")
+        
+        return value.strip()
+    
+    def validate_address(self, value):
+        """매장 주소 유효성 검증"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("매장 주소는 필수 입력 사항입니다.")
+        
+        return value.strip()
+    
+    def validate_phone_number(self, value):
+        """전화번호 유효성 검증"""
+        if value and not value.strip():
+            return None
+        
+        if value:
+            # 전화번호 형식 간단 검증
+            import re
+            phone_pattern = r'^(\d{2,3}-?\d{3,4}-?\d{4})$'
+            if not re.match(phone_pattern, value.strip()):
+                raise serializers.ValidationError("올바른 전화번호 형식을 입력해주세요.")
+        
+        return value.strip() if value else None
+    
+    def validate_max_capacity(self, value):
+        """최대 수용 인원 유효성 검증"""
+        if value and (value < 1 or value > 1000):
+            raise serializers.ValidationError("최대 수용 인원은 1명 이상 1000명 이하로 설정해주세요.")
+        
+        return value
+    
+    def update(self, instance, validated_data):
+        """매장 정보 수정"""
+        # 매장 정보 업데이트
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance 

@@ -187,7 +187,56 @@ export const storeAPI = {
   },
 
   // 매장별 토너먼트 SEAT권 정보 조회
-  getStoreTournamentTickets: (storeId) => API.get(`/stores/${storeId}/tournament_tickets/`)
+  getStoreTournamentTickets: (storeId) => API.get(`/stores/${storeId}/tournament_tickets/`),
+
+  // 매장 생성
+  createStore: (data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
+        formData.append(key, data[key]);
+      }
+    });
+    
+    // 디버깅을 위한 FormData 내용 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📤 매장 생성 - 전송할 FormData:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+    }
+    
+    return API.post('/stores/', formData);
+  },
+
+  // 매장 수정
+  updateStore: (id, data) => {
+    const formData = new FormData();
+    Object.keys(data).forEach((key) => {
+      if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
+        formData.append(key, data[key]);
+      }
+    });
+    
+    // 디버깅을 위한 FormData 내용 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📤 매장 수정 (ID: ${id}) - 전송할 FormData:`);
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+    }
+    
+    return API.put(`/stores/${id}/`, formData);
+  },
+
+  // 매장 삭제
+  deleteStore: (id) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📤 매장 삭제 (ID: ${id})`);
+    }
+    
+    return API.delete(`/stores/${id}/`);
+  }
 };
 
 // 등록 관련 API
