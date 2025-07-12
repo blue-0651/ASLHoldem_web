@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Row, Col, Card, Form, Button, Spinner, Alert, Table, Nav, Tab } from 'react-bootstrap';
+import { Row, Col, Card, Form, Button, Spinner, Alert, Table, Nav, Tab, Modal } from 'react-bootstrap';
 import { storeAPI, seatTicketAPI, userAPI, distributionAPI } from '../../utils/api';
 
 // third party
@@ -26,6 +26,53 @@ const StoreManagement = () => {
 
   // API 호출 중복 방지를 위한 ref
   const hasFetchedData = useRef(false);
+  
+  // CRUD 모달 상태 추가
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [currentStore, setCurrentStore] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [success, setSuccess] = useState(null);
+  
+  // 매장 폼 데이터 상태
+  const [formData, setFormData] = useState({
+    name: '',
+    address: '',
+    description: '',
+    phone_number: '',
+    manager_name: '',
+    manager_phone: '',
+    open_time: '',
+    close_time: '',
+    max_capacity: 50,
+    status: 'ACTIVE',
+    owner: '',
+    image: null
+  });
+  
+  // 매장 관리자 목록 상태
+  const [storeOwners, setStoreOwners] = useState([]);
+  const [loadingOwners, setLoadingOwners] = useState(false);
+
+  // 매장 관리자 목록 가져오기
+  const fetchStoreOwners = async () => {
+    try {
+      setLoadingOwners(true);
+      console.log('매장 관리자 목록 조회 시작...');
+      
+      // 매장 관리자 권한을 가진 사용자들 조회
+      const response = await userAPI.getAllUsers('STORE_OWNER');
+      console.log('매장 관리자 목록 응답:', response.data);
+      
+      setStoreOwners(response.data || []);
+      setLoadingOwners(false);
+    } catch (error) {
+      console.error('매장 관리자 목록 로드 오류:', error);
+      setStoreOwners([]);
+      setLoadingOwners(false);
+    }
+  };
 
   const fetchStores = async () => {
     try {
@@ -114,6 +161,221 @@ const StoreManagement = () => {
     hasFetchedData.current = false;
     fetchStores();
   };
+
+  // 매장 생성 함수
+  const handleCreateStore = async () => {
+    try {
+      setModalLoading(true);
+      setError(null);
+      
+      // 필수 필드 검증
+      if (!formData.name.trim()) {
+        setError('매장명을 입력해주세요.');
+        return;
+      }
+      
+      if (!formData.address.trim()) {
+        setError('매장 주소를 입력해주세요.');
+        return;
+      }
+      
+      if (!formData.owner) {
+        setError('매장 소유자를 선택해주세요.');
+        return;
+      }
+      
+      const response = await storeAPI.createStore(formData);
+      console.log('매장 생성 성공:', response.data);
+      
+      setSuccess('매장이 성공적으로 생성되었습니다.');
+      setShowCreateModal(false);
+      resetForm();
+      
+      // 매장 목록 새로고침
+      refreshStoreData();
+      
+    } catch (error) {
+      console.error('매장 생성 실패:', error);
+      
+      if (error.response?.data) {
+        // 서버 유효성 검사 오류 처리
+        if (error.response.data.name) {
+          setError(error.response.data.name[0]);
+        } else if (error.response.data.address) {
+          setError(error.response.data.address[0]);
+        } else if (error.response.data.phone_number) {
+          setError(error.response.data.phone_number[0]);
+        } else if (error.response.data.non_field_errors) {
+          setError(error.response.data.non_field_errors[0]);
+        } else {
+          setError('매장 생성 중 오류가 발생했습니다.');
+        }
+      } else {
+        setError('매장 생성 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // 매장 수정 함수
+  const handleUpdateStore = async () => {
+    try {
+      setModalLoading(true);
+      setError(null);
+      
+      // 필수 필드 검증
+      if (!formData.name.trim()) {
+        setError('매장명을 입력해주세요.');
+        return;
+      }
+      
+      if (!formData.address.trim()) {
+        setError('매장 주소를 입력해주세요.');
+        return;
+      }
+      
+      const response = await storeAPI.updateStore(currentStore.id, formData);
+      console.log('매장 수정 성공:', response.data);
+      
+      setSuccess('매장 정보가 성공적으로 수정되었습니다.');
+      setShowEditModal(false);
+      resetForm();
+      
+      // 매장 목록 새로고침
+      refreshStoreData();
+      
+    } catch (error) {
+      console.error('매장 수정 실패:', error);
+      
+      if (error.response?.data) {
+        // 서버 유효성 검사 오류 처리
+        if (error.response.data.name) {
+          setError(error.response.data.name[0]);
+        } else if (error.response.data.address) {
+          setError(error.response.data.address[0]);
+        } else if (error.response.data.phone_number) {
+          setError(error.response.data.phone_number[0]);
+        } else if (error.response.data.non_field_errors) {
+          setError(error.response.data.non_field_errors[0]);
+        } else {
+          setError('매장 수정 중 오류가 발생했습니다.');
+        }
+      } else {
+        setError('매장 수정 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // 매장 삭제 함수
+  const handleDeleteStore = async () => {
+    try {
+      setModalLoading(true);
+      setError(null);
+      
+      const response = await storeAPI.deleteStore(currentStore.id);
+      console.log('매장 삭제 성공:', response.data);
+      
+      setSuccess(`매장 '${currentStore.name}'이(가) 성공적으로 삭제되었습니다.`);
+      setShowDeleteModal(false);
+      setCurrentStore(null);
+      
+      // 매장 목록 새로고침
+      refreshStoreData();
+      
+    } catch (error) {
+      console.error('매장 삭제 실패:', error);
+      
+      if (error.response?.data?.error) {
+        setError(error.response.data.error);
+      } else {
+        setError('매장 삭제 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // 폼 초기화 함수
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      address: '',
+      description: '',
+      phone_number: '',
+      manager_name: '',
+      manager_phone: '',
+      open_time: '',
+      close_time: '',
+      max_capacity: 50,
+      status: 'ACTIVE',
+      owner: '',
+      image: null
+    });
+  };
+
+  // 폼 데이터 변경 핸들러
+  const handleFormChange = (e) => {
+    const { name, value, type, files } = e.target;
+    
+    if (type === 'file') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: files[0] || null
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  // 매장 생성 모달 열기
+  const openCreateModal = () => {
+    resetForm();
+    setShowCreateModal(true);
+    fetchStoreOwners(); // 매장 관리자 목록 가져오기
+  };
+
+  // 매장 수정 모달 열기
+  const openEditModal = (store) => {
+    setCurrentStore(store);
+    setFormData({
+      name: store.name || '',
+      address: store.address || '',
+      description: store.description || '',
+      phone_number: store.phone_number || '',
+      manager_name: store.manager_name || '',
+      manager_phone: store.manager_phone || '',
+      open_time: store.open_time || '',
+      close_time: store.close_time || '',
+      max_capacity: store.max_capacity || 50,
+      status: store.status || 'ACTIVE',
+      owner: store.owner || '',
+      image: null
+    });
+    setShowEditModal(true);
+    fetchStoreOwners(); // 매장 관리자 목록 가져오기
+  };
+
+  // 매장 삭제 모달 열기
+  const openDeleteModal = (store) => {
+    setCurrentStore(store);
+    setShowDeleteModal(true);
+  };
+
+  // 성공 메시지 자동 사라지기
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
   // 매장 선수 목록 조회 - 수정된 버전
   const fetchStoreUsers = async (storeId) => {
@@ -593,6 +855,35 @@ const StoreManagement = () => {
         fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
         transition: 'all 0.3s ease'
       })
+    },
+    {
+      name: <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#721c24' }}>작업</span>,
+      center: true,
+      cell: (row) => (
+        <div className="d-flex gap-2">
+          <Button
+            variant="outline-primary"
+            size="sm"
+            onClick={() => openEditModal(row)}
+            title="매장 수정"
+          >
+            <i className="fas fa-edit"></i>
+          </Button>
+          <Button
+            variant="outline-danger"
+            size="sm"
+            onClick={() => openDeleteModal(row)}
+            title="매장 삭제"
+          >
+            <i className="fas fa-trash"></i>
+          </Button>
+        </div>
+      ),
+      style: (row) => ({
+        fontSize: expandedRowId === row.id ? '18px' : '14px',
+        fontWeight: expandedRowId === row.id ? 'bold' : 'normal',
+        transition: 'all 0.3s ease'
+      })
     }
   ], [expandedRowId]);
 
@@ -623,6 +914,14 @@ const StoreManagement = () => {
           <p className="text-muted mb-0">등록된 매장 정보를 조회하고 관리할 수 있습니다.</p>
         </div>
         <div>
+          <Button 
+            variant="primary" 
+            onClick={openCreateModal}
+            className="me-2"
+          >
+            <i className="fas fa-plus me-2"></i>
+            새 매장 생성
+          </Button>
           <Button 
             variant="outline-primary" 
             onClick={refreshStoreData}
@@ -722,6 +1021,13 @@ const StoreManagement = () => {
         </Card.Body>
       </Card>
 
+      {/* 성공 메시지 */}
+      {success && (
+        <Alert variant="success" className="mb-4" onClose={() => setSuccess(null)} dismissible>
+          {success}
+        </Alert>
+      )}
+
       {/* 에러 메시지 */}
       {error && (
         <Alert variant="danger" className="mb-4" onClose={() => setError(null)} dismissible>
@@ -747,7 +1053,7 @@ const StoreManagement = () => {
               data={getFilteredStores()}
               customStyles={customStyles}
               pagination
-              paginationPerPage={10}
+              paginationPerPage={15}
               paginationRowsPerPageOptions={[5, 10, 15, 20]}
               expandableRows
               expandableRowsComponent={ExpandedStoreComponent}
@@ -787,6 +1093,388 @@ const StoreManagement = () => {
           )}
         </Card.Body>
       </Card>
+
+      {/* 매장 생성 모달 */}
+      <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>새 매장 생성</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>매장명 <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleFormChange}
+                    placeholder="매장명을 입력하세요"
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>매장 소유자 <span className="text-danger">*</span></Form.Label>
+                  {loadingOwners ? (
+                    <div className="d-flex align-items-center">
+                      <Spinner animation="border" size="sm" className="me-2" />
+                      <span>매장 관리자 목록 로딩 중...</span>
+                    </div>
+                  ) : (
+                    <Form.Select
+                      name="owner"
+                      value={formData.owner}
+                      onChange={handleFormChange}
+                      required
+                    >
+                      <option value="">매장 소유자를 선택하세요</option>
+                      {storeOwners.map(owner => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.nickname || owner.name} ({owner.phone || '전화번호 없음'})
+                        </option>
+                      ))}
+                    </Form.Select>
+                  )}
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>매장 주소 <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleFormChange}
+                placeholder="매장 주소를 입력하세요"
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>매장 설명</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                name="description"
+                value={formData.description}
+                onChange={handleFormChange}
+                placeholder="매장에 대한 설명을 입력하세요"
+              />
+            </Form.Group>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>매장 전화번호</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleFormChange}
+                    placeholder="02-123-4567"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>매장 상태</Form.Label>
+                  <Form.Select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleFormChange}
+                  >
+                    <option value="ACTIVE">운영중</option>
+                    <option value="INACTIVE">휴업중</option>
+                    <option value="CLOSED">폐업</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>관리자 이름</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="manager_name"
+                    value={formData.manager_name}
+                    onChange={handleFormChange}
+                    placeholder="관리자 이름을 입력하세요"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>관리자 연락처</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="manager_phone"
+                    value={formData.manager_phone}
+                    onChange={handleFormChange}
+                    placeholder="010-1234-5678"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>운영 시작 시간</Form.Label>
+                  <Form.Control
+                    type="time"
+                    name="open_time"
+                    value={formData.open_time}
+                    onChange={handleFormChange}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>운영 종료 시간</Form.Label>
+                  <Form.Control
+                    type="time"
+                    name="close_time"
+                    value={formData.close_time}
+                    onChange={handleFormChange}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCreateModal(false)} disabled={modalLoading}>
+            취소
+          </Button>
+          <Button variant="primary" onClick={handleCreateStore} disabled={modalLoading}>
+            {modalLoading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                생성 중...
+              </>
+            ) : (
+              '매장 생성'
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 매장 수정 모달 */}
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>매장 정보 수정</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>매장명 <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleFormChange}
+                    placeholder="매장명을 입력하세요"
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>매장 소유자 <span className="text-danger">*</span></Form.Label>
+                  {loadingOwners ? (
+                    <div className="d-flex align-items-center">
+                      <Spinner animation="border" size="sm" className="me-2" />
+                      <span>매장 관리자 목록 로딩 중...</span>
+                    </div>
+                  ) : (
+                    <Form.Select
+                      name="owner"
+                      value={formData.owner}
+                      onChange={handleFormChange}
+                      required
+                    >
+                      <option value="">매장 소유자를 선택하세요</option>
+                      {storeOwners.map(owner => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.nickname || owner.name} ({owner.phone || '전화번호 없음'})
+                        </option>
+                      ))}
+                    </Form.Select>
+                  )}
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>매장 주소 <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleFormChange}
+                placeholder="매장 주소를 입력하세요"
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>매장 설명</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                name="description"
+                value={formData.description}
+                onChange={handleFormChange}
+                placeholder="매장에 대한 설명을 입력하세요"
+              />
+            </Form.Group>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>매장 전화번호</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleFormChange}
+                    placeholder="02-123-4567"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>매장 상태</Form.Label>
+                  <Form.Select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleFormChange}
+                  >
+                    <option value="ACTIVE">운영중</option>
+                    <option value="INACTIVE">휴업중</option>
+                    <option value="CLOSED">폐업</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>관리자 이름</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="manager_name"
+                    value={formData.manager_name}
+                    onChange={handleFormChange}
+                    placeholder="관리자 이름을 입력하세요"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>관리자 연락처</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="manager_phone"
+                    value={formData.manager_phone}
+                    onChange={handleFormChange}
+                    placeholder="010-1234-5678"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>운영 시작 시간</Form.Label>
+                  <Form.Control
+                    type="time"
+                    name="open_time"
+                    value={formData.open_time}
+                    onChange={handleFormChange}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>운영 종료 시간</Form.Label>
+                  <Form.Control
+                    type="time"
+                    name="close_time"
+                    value={formData.close_time}
+                    onChange={handleFormChange}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowEditModal(false)} disabled={modalLoading}>
+            취소
+          </Button>
+          <Button variant="primary" onClick={handleUpdateStore} disabled={modalLoading}>
+            {modalLoading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                수정 중...
+              </>
+            ) : (
+              '매장 수정'
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 매장 삭제 모달 */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>매장 삭제</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="text-center">
+            <div className="mb-3">
+              <i className="fas fa-exclamation-triangle fa-3x text-warning"></i>
+            </div>
+            <h5>정말로 이 매장을 삭제하시겠습니까?</h5>
+            {currentStore && (
+              <p className="text-muted">
+                매장명: <strong>{currentStore.name}</strong><br />
+                주소: {currentStore.address}
+              </p>
+            )}
+            <div className="alert alert-warning">
+              <i className="fas fa-info-circle me-2"></i>
+              매장이 삭제되면 상태가 '폐업'으로 변경되며, 관련된 모든 데이터는 보존됩니다.
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={modalLoading}>
+            취소
+          </Button>
+          <Button variant="danger" onClick={handleDeleteStore} disabled={modalLoading}>
+            {modalLoading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                삭제 중...
+              </>
+            ) : (
+              '매장 삭제'
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };
