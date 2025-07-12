@@ -209,9 +209,28 @@ const MobileLogin = () => {
             </Form>
             
             <div className="text-center mt-4">
-              <Link to="/forgot-password" className="d-block mb-2">비밀번호를 잊으셨나요?</Link>
+              {/* 비밀번호를 잊으셨나요 문구 숨김 */}
+              {/* <Link to="/forgot-password" className="d-block mb-2">비밀번호를 잊으셨나요?</Link> */}
               <p className="mb-0">
-                계정이 없으신가요? <Link to="/mobile/signup">회원가입</Link>
+                계정이 없으신가요? <Link 
+                  to="/mobile/signup" 
+                  style={{
+                    color: '#b5002e',
+                    fontWeight: '600',
+                    textDecoration: 'none',
+                    fontSize: '16px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.color = '#8b0023';
+                    e.target.style.textDecoration = 'underline';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.color = '#b5002e';
+                    e.target.style.textDecoration = 'none';
+                  }}
+                >
+                  회원가입
+                </Link>
               </p>
             </div>
           </Card.Body>
