@@ -1882,7 +1882,7 @@
                 ""
               ]
             },
-            "description": "현재 로그인한 사용자의 QR 코드 정보를 조회합니다.\n\n인증 필요: Bearer Token\n\n응답 데이터:\n- success: 성공 여부 (boolean)\n- user_info: 사용자 정보 객체\n  - id: 사용자 ID\n  - phone: 전화번호\n  - nickname: 닉네임\n  - email: 이메일\n  - qr_code_uuid: QR 코드 고유 식별자\n  - qr_code_url: QR 코드 이미지 URL\n\n응답:\n- 200: 성공적으로 QR 코드 정보를 반환\n- 401: 인증되지 않은 요청\n- 500: 서버 내부 오류"
+            "description": "현재 로그인한 사용자의 QR 코드 정보를 조회합니다.\n\n인증 필요: Bearer Token\n\n기능:\n- QR 코드가 없는 경우 자동으로 생성\n- QR 코드 이미지 URL 반환\n- 상세한 오류 처리 및 로깅\n\n응답 데이터:\n- success: 성공 여부 (boolean)\n- user_info: 사용자 정보 객체\n  - id: 사용자 ID\n  - phone: 전화번호\n  - nickname: 닉네임\n  - email: 이메일\n  - qr_code_uuid: QR 코드 고유 식별자\n  - qr_code_url: QR 코드 이미지 URL (절대 URL)\n\n응답 코드:\n- 200: 성공적으로 QR 코드 정보를 반환\n- 401: 인증되지 않은 요청\n- 500: QR 코드 생성 실패 또는 서버 내부 오류\n\n수정사항:\n- BytesIO buffer 포인터 문제 해결\n- 무한 재귀 호출 방지\n- 상세한 오류 로깅 추가\n- QR 코드 URL 생성 실패 처리"
           },
           "response": [
             {
