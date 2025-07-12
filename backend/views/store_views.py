@@ -24,7 +24,7 @@ class StoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
         fields = [
-            'id', 'name', 'address', 'description', 'image', 'banner_image', 'status', 
+            'id', 'name', 'owner', 'address', 'description', 'image', 'banner_image', 'status', 
             'latitude', 'longitude',
             'phone_number', 'open_time', 'close_time', 
             'manager_name', 'manager_phone', 'max_capacity',
@@ -43,18 +43,14 @@ class StoreSerializer(serializers.ModelSerializer):
             return 0
     
     def get_banner_image(self, obj):
-        """
-        매장의 스토어 갤러리 배너 이미지를 반환합니다.
-        매장 이미지가 없을 때 배너 이미지를 대체 이미지로 사용합니다.
-        """
+        # 매장의 대표 배너 이미지 URL 반환
         try:
-            # is_store_gallery=True인 활성화된 배너 중 첫 번째 반환
-            banner = obj.banners.filter(is_store_gallery=True, is_active=True).first()
+            banner = obj.banners.filter(is_active=True).first()
             if banner and banner.image:
                 return banner.image.url
-            return None
         except:
-            return None
+            pass
+        return None
 
 class StoreUserSerializer(serializers.ModelSerializer):
     """

@@ -95,7 +95,7 @@ class StoreUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
         fields = [
-            'name', 'address', 'description', 'image',
+            'name', 'owner', 'address', 'description', 'image',
             'status', 'latitude', 'longitude', 'phone_number',
             'open_time', 'close_time', 'manager_name', 'manager_phone',
             'max_capacity'

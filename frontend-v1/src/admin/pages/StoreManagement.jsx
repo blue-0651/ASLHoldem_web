@@ -342,6 +342,9 @@ const StoreManagement = () => {
 
   // 매장 수정 모달 열기
   const openEditModal = (store) => {
+    console.log('매장 수정 모달 열기:', store);
+    console.log('매장 소유자 정보:', store.owner);
+    
     setCurrentStore(store);
     setFormData({
       name: store.name || '',
@@ -357,6 +360,9 @@ const StoreManagement = () => {
       owner: store.owner || '',
       image: null
     });
+    
+    console.log('설정된 formData owner:', store.owner || '');
+    
     setShowEditModal(true);
     fetchStoreOwners(); // 매장 관리자 목록 가져오기
   };

@@ -707,8 +707,9 @@ class UserViewSet(viewsets.ViewSet):
             from datetime import datetime, timedelta
             expires_at = datetime.now() + timedelta(days=int(expires_days))
             
-            # 게스트 사용자 생성
+            # 게스트 사용자 생성 (username 필드 설정으로 unique constraint 해결)
             guest_user = User.objects.create(
+                username=guest_phone,  # phone 번호를 username으로 사용하여 unique constraint 해결
                 phone=guest_phone,
                 nickname=nickname,
                 email=guest_email,
