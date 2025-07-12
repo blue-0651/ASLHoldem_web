@@ -10,6 +10,8 @@ const QRCode = () => {
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,6 +35,14 @@ const QRCode = () => {
       setError('');
       
       const token = getToken();
+      if (!token) {
+        setError('로그인 토큰이 없습니다. 다시 로그인해주세요.');
+        navigate('/mobile/login');
+        return;
+      }
+      
+      console.log('QR 코드 조회 시작...');
+      
       const response = await fetch('/api/v1/user/my-qr-code/', {
         method: 'GET',
         headers: {
@@ -41,16 +51,34 @@ const QRCode = () => {
         },
       });
 
-      const data = await response.json();
+      console.log('API 응답 상태:', response.status);
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('로그인이 만료되었습니다. 다시 로그인해주세요.');
+          navigate('/mobile/login');
+          return;
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-      if (response.ok && data.success) {
+      const data = await response.json();
+      console.log('QR 코드 데이터:', data);
+
+      if (data.success) {
         setQrData(data.user_info);
+        console.log('QR 코드 URL:', data.user_info.qr_code_url);
       } else {
         setError(data.error || 'QR 코드를 불러오는데 실패했습니다.');
       }
     } catch (err) {
       console.error('QR 코드 조회 오류:', err);
-      setError('네트워크 오류가 발생했습니다.');
+      
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('네트워크 연결을 확인해주세요.');
+      } else {
+        setError(err.message || '네트워크 오류가 발생했습니다.');
+      }
     } finally {
       setLoading(false);
     }
@@ -90,6 +118,21 @@ const QRCode = () => {
         alert('QR 코드 URL이 클립보드에 복사되었습니다.');
       }
     }
+  };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+  };
+
+  const handleImageStart = () => {
+    setImageLoading(true);
+    setImageError(false);
   };
 
   return (
@@ -156,24 +199,65 @@ const QRCode = () => {
                     
                     {qrData.qr_code_url ? (
                       <div className="qr-code-container mb-4">
-                        <img 
-                          src={qrData.qr_code_url} 
-                          alt="사용자 QR 코드"
-                          className="img-fluid"
-                          style={{ 
-                            maxWidth: '250px', 
-                            maxHeight: '250px',
-                            border: '2px solid #dee2e6',
-                            borderRadius: '8px',
-                            padding: '10px',
-                            backgroundColor: 'white'
-                          }}
-                        />
+                        {imageLoading && (
+                          <div className="text-center mb-3">
+                            <Spinner animation="border" size="sm" />
+                            <div className="mt-2">QR 코드 로딩 중...</div>
+                          </div>
+                        )}
+                        
+                        {imageError ? (
+                          <div className="mb-4">
+                            <Alert variant="warning">
+                              <div className="text-center">
+                                <i className="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                                <p>QR 코드 이미지를 불러올 수 없습니다.</p>
+                                <Button 
+                                  variant="outline-warning" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setImageError(false);
+                                    handleImageStart();
+                                  }}
+                                >
+                                  다시 시도
+                                </Button>
+                              </div>
+                            </Alert>
+                          </div>
+                        ) : (
+                          <img 
+                            src={qrData.qr_code_url} 
+                            alt="사용자 QR 코드"
+                            className="img-fluid"
+                            style={{ 
+                              maxWidth: '250px', 
+                              maxHeight: '250px',
+                              border: '2px solid #dee2e6',
+                              borderRadius: '8px',
+                              padding: '10px',
+                              backgroundColor: 'white',
+                              display: imageLoading ? 'none' : 'block'
+                            }}
+                            onLoad={handleImageLoad}
+                            onError={handleImageError}
+                            onLoadStart={handleImageStart}
+                          />
+                        )}
                       </div>
                     ) : (
                       <div className="mb-4">
                         <Alert variant="warning">
-                          QR 코드 이미지를 불러올 수 없습니다.
+                          <div className="text-center">
+                            <i className="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                            <p>QR 코드가 생성되지 않았습니다.</p>
+                            <Button 
+                              variant="outline-warning" 
+                              onClick={handleRefresh}
+                            >
+                              다시 생성
+                            </Button>
+                          </div>
                         </Alert>
                       </div>
                     )}

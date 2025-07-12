@@ -95,33 +95,42 @@ class User(AbstractUser):
         QR 코드에는 사용자 ID와 UUID 정보가 포함됩니다.
         """
         if not self.qr_code:
-            # QR 코드에 포함할 데이터 생성
-            qr_data = f"user_id:{self.id},uuid:{self.qr_code_uuid}"
-            
-            # QR 코드 생성
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
-            )
-            qr.add_data(qr_data)
-            qr.make(fit=True)
-            
-            # QR 코드 이미지 생성
-            img = qr.make_image(fill_color="black", back_color="white")
-            
-            # 이미지를 BytesIO로 변환
-            buffer = BytesIO()
-            img.save(buffer, format='PNG')
-            
-            # 파일 이름 생성
-            filename = f'qr_code_{self.qr_code_uuid}.png'
-            
-            # 이미지 파일 저장
-            self.qr_code.save(filename, File(buffer), save=False)
-            self.save()
-            
+            try:
+                # QR 코드에 포함할 데이터 생성
+                qr_data = f"user_id:{self.id},uuid:{self.qr_code_uuid}"
+                
+                # QR 코드 생성
+                qr = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                    box_size=10,
+                    border=4,
+                )
+                qr.add_data(qr_data)
+                qr.make(fit=True)
+                
+                # QR 코드 이미지 생성
+                img = qr.make_image(fill_color="black", back_color="white")
+                
+                # 이미지를 BytesIO로 변환
+                buffer = BytesIO()
+                img.save(buffer, format='PNG')
+                buffer.seek(0)  # 파일 포인터를 처음으로 되돌림
+                
+                # 파일 이름 생성
+                filename = f'qr_code_{self.qr_code_uuid}.png'
+                
+                # 이미지 파일 저장 (save=False로 무한 재귀 방지)
+                self.qr_code.save(filename, File(buffer), save=False)
+                
+                # 필드만 업데이트 (save 메서드 호출 방지)
+                User.objects.filter(id=self.id).update(qr_code=self.qr_code)
+                
+            except Exception as e:
+                print(f"QR 코드 생성 중 오류 발생: {str(e)}")
+                # 오류 발생 시 None 반환
+                return None
+                
         return self.qr_code
         
     def save(self, *args, **kwargs):
@@ -131,5 +140,11 @@ class User(AbstractUser):
         """
         is_new = self._state.adding  # 새로운 객체인지 확인
         super().save(*args, **kwargs)  # 기본 저장 동작 수행
-        if is_new:
-            self.generate_qr_code()  # 새 사용자인 경우 QR 코드 생성 
+        
+        # 새 사용자이고 QR 코드가 없는 경우에만 생성
+        if is_new and not self.qr_code:
+            try:
+                self.generate_qr_code()  # QR 코드 생성
+            except Exception as e:
+                print(f"새 사용자 QR 코드 생성 중 오류: {str(e)}")
+                # QR 코드 생성에 실패해도 사용자 생성은 계속 진행 

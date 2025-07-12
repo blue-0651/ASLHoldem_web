@@ -763,14 +763,31 @@ class UserViewSet(viewsets.ViewSet):
                     'error': '로그인이 필요합니다.'
                 }, status=status.HTTP_401_UNAUTHORIZED)
             
+            api_logger.info(f"QR 코드 조회 요청: 사용자 ID={user.id}, 전화번호={user.phone}")
+            
             # QR 코드가 없으면 생성
             if not user.qr_code:
-                user.generate_qr_code()
-            
+                api_logger.info(f"QR 코드가 없어 생성 중: 사용자 ID={user.id}")
+                qr_code = user.generate_qr_code()
+                if not qr_code:
+                    api_logger.error(f"QR 코드 생성 실패: 사용자 ID={user.id}")
+                    return Response({
+                        'error': 'QR 코드 생성에 실패했습니다.'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
             # QR 코드 URL 생성
-            qr_code_url = request.build_absolute_uri(user.qr_code.url) if user.qr_code else None
+            qr_code_url = None
+            if user.qr_code:
+                try:
+                    qr_code_url = request.build_absolute_uri(user.qr_code.url)
+                    api_logger.info(f"QR 코드 URL 생성 성공: {qr_code_url}")
+                except Exception as url_error:
+                    api_logger.error(f"QR 코드 URL 생성 실패: {str(url_error)}")
+                    return Response({
+                        'error': 'QR 코드 URL 생성에 실패했습니다.'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-            return Response({
+            response_data = {
                 'success': True,
                 'user_info': {
                     'id': user.id,
@@ -780,7 +797,10 @@ class UserViewSet(viewsets.ViewSet):
                     'qr_code_uuid': str(user.qr_code_uuid),
                     'qr_code_url': qr_code_url
                 }
-            })
+            }
+            
+            api_logger.info(f"QR 코드 조회 성공: 사용자 ID={user.id}")
+            return Response(response_data)
             
         except Exception as e:
             api_logger.error(f"QR 코드 조회 중 오류: {str(e)}")
