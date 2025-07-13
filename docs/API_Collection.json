@@ -3143,7 +3143,7 @@
                 ""
               ]
             },
-            "description": "새로운 배너를 생성합니다.\n\n🔧 2025.01 업데이트: is_main_selected 필드 추가\n- 메인 토너먼트 배너 중 실제로 메인에 표시되는 배너 구분\n- is_main_selected 필드로 메인 선택 여부 설정 가능\n\n🔐 권한 처리:\n- 매장 관리자: 자신의 매장으로 자동 설정\n- 시스템 관리자: 요청된 매장으로 설정\n\n📝 필수 필드:\n- title: 배너 제목\n- image: 배너 이미지 파일\n- start_date/end_date: 배너 표시 기간\n\n🎪 배너 종류:\n- is_main_tournament: 메인 토너먼트 배너 카테고리\n- is_main_selected: 메인 토너먼트 배너 중 실제로 메인에 표시되는 배너 (1개만 선택 가능)\n- is_store_gallery: 인기 스토어 갤러리 배너 (최대 8개)\n\n응답:\n- 201: 성공적으로 배너를 생성\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한 없음"
+            "description": "새로운 배너를 생성합니다.\n\n🔧 2025.01 업데이트: is_main_selected 필드 추가\n- 메인 토너먼트 배너 중 실제로 메인에 표시되는 배너 구분\n- is_main_selected 필드로 메인 선택 여부 설정 가능\n\n🔧 2025.01 이미지 업로드 개선:\n- 프론트엔드에서 FormData 객체 직접 생성하여 전송\n- 이미지 파일 업로드 안정성 향상\n- API에서 FormData 자동 감지 및 처리\n\n🔐 권한 처리:\n- 매장 관리자: 자신의 매장으로 자동 설정\n- 시스템 관리자: 요청된 매장으로 설정\n\n📝 필수 필드:\n- title: 배너 제목\n- image: 배너 이미지 파일 (FormData 파일 업로드)\n- start_date/end_date: 배너 표시 기간\n\n🎪 배너 종류:\n- is_main_tournament: 메인 토너먼트 배너 카테고리\n- is_main_selected: 메인 토너먼트 배너 중 실제로 메인에 표시되는 배너 (1개만 선택 가능)\n- is_store_gallery: 인기 스토어 갤러리 배너 (최대 8개)\n\n⚠️ 주의사항:\n- 이미지 파일은 반드시 FormData 형태로 전송\n- 최대 파일 크기: 10MB\n- 지원 형식: JPG, PNG, GIF\n- Content-Type: multipart/form-data 자동 설정\n\n응답:\n- 201: 성공적으로 배너를 생성\n- 400: 잘못된 요청 데이터\n- 401: 인증되지 않은 요청\n- 403: 권한 없음\n- 413: 파일 크기 초과"
           },
           "response": []
         },

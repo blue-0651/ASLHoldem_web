@@ -523,6 +523,28 @@ export const bannerAPI = {
 
   // 배너 생성
   createBanner: (data) => {
+    // data가 이미 FormData 객체인 경우 그대로 사용
+    if (data instanceof FormData) {
+      // 운영환경에서도 디버깅 로그 출력 (배너 업로드 문제 해결용)
+      console.log('📤 배너 생성 - 전송할 FormData:');
+      for (let [key, value] of data.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+      
+      // 이미지 파일 세부 정보 출력
+      const imageFile = data.get('image');
+      if (imageFile && imageFile instanceof File) {
+        console.log('📸 이미지 파일 정보:');
+        console.log(`  - 파일명: ${imageFile.name}`);
+        console.log(`  - 파일 크기: ${imageFile.size} bytes`);
+        console.log(`  - 파일 타입: ${imageFile.type}`);
+        console.log(`  - 최종 수정일: ${imageFile.lastModified}`);
+      }
+      
+      return API.post('/banners/', data);
+    }
+    
+    // data가 일반 객체인 경우 FormData로 변환 (하위 호환성 유지)
     const formData = new FormData();
     Object.keys(data).forEach((key) => {
       if (data[key] !== '' && data[key] !== null && data[key] !== undefined) {
@@ -530,12 +552,20 @@ export const bannerAPI = {
       }
     });
     
-    // 디버깅을 위한 FormData 내용 출력
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📤 배너 생성 - 전송할 FormData:');
-      for (let [key, value] of formData.entries()) {
-        console.log(`  ${key}:`, value);
-      }
+    // 운영환경에서도 디버깅 로그 출력 (배너 업로드 문제 해결용)
+    console.log('📤 배너 생성 - 전송할 FormData:');
+    for (let [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value);
+    }
+    
+    // 이미지 파일 세부 정보 출력
+    const imageFile = formData.get('image');
+    if (imageFile && imageFile instanceof File) {
+      console.log('📸 이미지 파일 정보:');
+      console.log(`  - 파일명: ${imageFile.name}`);
+      console.log(`  - 파일 크기: ${imageFile.size} bytes`);
+      console.log(`  - 파일 타입: ${imageFile.type}`);
+      console.log(`  - 최종 수정일: ${imageFile.lastModified}`);
     }
     
     return API.post('/banners/', formData);

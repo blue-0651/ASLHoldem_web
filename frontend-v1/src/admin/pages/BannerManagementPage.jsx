@@ -116,6 +116,19 @@ const BannerManagementPage = () => {
       errorMessage = '인증이 만료되었습니다. 다시 로그인해 주세요.';
       // 로그인 페이지로 리다이렉트할 수도 있음
       // navigate('/login');
+    } else if (error.response?.status === 500) {
+      // 서버 에러 처리 - 이미지 업로드 권한 문제 등
+      if (error.response?.data?.error_type === 'file_permission_error') {
+        errorMessage = '이미지 업로드 권한이 없습니다. 서버 관리자에게 문의하세요.\n\n해결 방법:\n1. 운영 서버에서 "sudo bash deploy/fix_image_upload.sh" 실행\n2. 문제 지속 시 시스템 관리자에게 문의';
+      } else if (error.response?.data?.error_type === 'file_system_error') {
+        errorMessage = '파일 시스템 오류가 발생했습니다. 서버 관리자에게 문의하세요.\n\n가능한 원인:\n• 디스크 공간 부족\n• 파일 권한 문제\n• 미디어 디렉토리 없음';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else {
+        errorMessage = '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      }
+    } else if (error.response?.status === 413) {
+      errorMessage = '업로드하려는 이미지 파일이 너무 큽니다. 10MB 이하의 이미지를 선택해주세요.';
     } else if (error.response?.data) {
       if (typeof error.response.data === 'string') {
         errorMessage = error.response.data;
@@ -137,6 +150,16 @@ const BannerManagementPage = () => {
           errorMessage = fieldErrors.join('; ');
         }
       }
+    }
+    
+    // 이미지 업로드 관련 에러인 경우 추가 정보 제공
+    if (errorMessage.includes('업로드') || errorMessage.includes('이미지') || errorMessage.includes('파일')) {
+      console.group('🔧 이미지 업로드 문제 해결 가이드');
+      console.log('1. 서버 권한 확인: sudo bash deploy/diagnose_image_upload.sh');
+      console.log('2. 자동 해결: sudo bash deploy/fix_image_upload.sh');
+      console.log('3. 이미지 크기 확인: 10MB 이하 권장');
+      console.log('4. 파일 형식 확인: JPG, PNG, GIF 지원');
+      console.groupEnd();
     }
     
     showAlert(errorMessage, 'danger');
@@ -221,25 +244,43 @@ const BannerManagementPage = () => {
     setLoading(true);
     
     try {
-      const dataToSend = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        store: parseInt(formData.store),
-        start_date: new Date(formData.start_date + 'T00:00:00').toISOString(),
-        end_date: new Date(formData.end_date + 'T23:59:59').toISOString(),
-        is_active: Boolean(formData.is_active),
-        is_main_tournament: Boolean(formData.is_main_tournament),
-        is_store_gallery: Boolean(formData.is_store_gallery)
-      };
+      // FormData 직접 생성 - 이미지 파일 업로드를 위해
+      const formDataToSend = new FormData();
       
+      // 필수 필드들을 FormData에 추가
+      formDataToSend.append('title', formData.title.trim());
+      formDataToSend.append('description', formData.description.trim() || '');
+      formDataToSend.append('store', parseInt(formData.store));
+      
+      // 날짜를 DateTime 형식으로 변환 (ISO 8601 형식)
+      const startDateTime = new Date(formData.start_date + 'T00:00:00').toISOString();
+      const endDateTime = new Date(formData.end_date + 'T23:59:59').toISOString();
+      formDataToSend.append('start_date', startDateTime);
+      formDataToSend.append('end_date', endDateTime);
+      
+      formDataToSend.append('is_active', Boolean(formData.is_active));
+      formDataToSend.append('is_main_tournament', Boolean(formData.is_main_tournament));
+      formDataToSend.append('is_store_gallery', Boolean(formData.is_store_gallery));
+      
+      // 이미지 파일 추가
       if (formData.image) {
-        dataToSend.image = formData.image;
+        formDataToSend.append('image', formData.image);
       }
 
-      console.log('📤 배너 추가 - 전송할 데이터:', dataToSend);
-      console.log('📤 이미지 파일:', formData.image ? formData.image.name : 'None');
+      console.log('📤 배너 추가 - 전송할 FormData:');
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+      
+      // 이미지 파일 세부 정보 출력
+      if (formData.image) {
+        console.log('📸 이미지 파일 정보:');
+        console.log(`  - 파일명: ${formData.image.name}`);
+        console.log(`  - 파일 크기: ${formData.image.size} bytes`);
+        console.log(`  - 파일 타입: ${formData.image.type}`);
+      }
 
-      await bannerAPI.createBanner(dataToSend);
+      await bannerAPI.createBanner(formDataToSend);
       showAlert('배너가 성공적으로 추가되었습니다.');
       fetchBanners();
       setShowAddModal(false);

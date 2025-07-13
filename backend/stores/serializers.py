@@ -19,7 +19,6 @@ class StoreSerializer(serializers.ModelSerializer):
 class BannerSerializer(serializers.ModelSerializer):
     """배너 정보 시리얼라이저"""
     store_name = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
     
     class Meta:
         model = Banner
@@ -35,17 +34,23 @@ class BannerSerializer(serializers.ModelSerializer):
             return obj.store.name
         return "전체"
     
-    def get_image(self, obj):
-        """이미지 URL을 완전한 URL로 변환하여 반환"""
-        if obj.image:
+    def to_representation(self, instance):
+        """시리얼라이저의 출력 표현을 커스터마이징"""
+        representation = super().to_representation(instance)
+        
+        # 이미지 URL을 완전한 URL로 변환
+        if instance.image:
             request = self.context.get('request')
             if request:
                 # request 객체가 있으면 build_absolute_uri 사용
-                return request.build_absolute_uri(obj.image.url)
+                representation['image'] = request.build_absolute_uri(instance.image.url)
             else:
                 # request 객체가 없으면 상대 경로 반환 (기본 동작)
-                return obj.image.url
-        return None
+                representation['image'] = instance.image.url
+        else:
+            representation['image'] = None
+            
+        return representation
 
 
 class StoreCreateSerializer(serializers.ModelSerializer):
