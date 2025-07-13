@@ -87,12 +87,28 @@ cd /var/www/asl_holdem
 bash deploy/check_media_permissions.sh
 ```
 
-#### 2. 권한 자동 수정
+#### 2. 일반적인 권한 수정
 ```bash
 sudo bash deploy/fix_media_permissions.sh
 ```
 
-#### 3. 수동 권한 설정 (필요한 경우)
+#### 3. ⚠️ Django 사용자 권한 문제 해결 (추가)
+만약 위의 방법으로도 해결되지 않고, Django 프로세스 사용자와 media 폴더 소유자가 다른 경우:
+
+```bash
+# Django 프로세스 사용자 확인
+ps aux | grep -E "(gunicorn|python.*manage.py)" | grep -v grep | head -1
+
+# Django 사용자 권한 동기화 스크립트 실행
+sudo bash deploy/fix_django_user_permissions.sh
+```
+
+**사용 시나리오:**
+- Django 프로세스가 `asl_holdem` 사용자로 실행되는 경우
+- Media 폴더가 `www-data` 소유자로 설정되어 있는 경우
+- 일반적인 권한 수정 후에도 여전히 배너 업로드가 실패하는 경우
+
+#### 4. 수동 권한 설정 (필요한 경우)
 ```bash
 # 미디어 디렉토리 생성
 sudo mkdir -p /var/www/asl_holdem/backend/media/{banner_images,store_images,qr_codes,user_images}
@@ -105,12 +121,45 @@ sudo chmod -R 755 /var/www/asl_holdem/backend/media/
 sudo find /var/www/asl_holdem/backend/media -type f -exec chmod 644 {} \;
 ```
 
-#### 4. 권한 테스트
+#### 5. 권한 테스트
 ```bash
 # 테스트 파일 생성 시도
 sudo -u www-data touch /var/www/asl_holdem/backend/media/banner_images/test.txt
 sudo -u www-data echo "test" > /var/www/asl_holdem/backend/media/banner_images/test.txt
 sudo -u www-data rm /var/www/asl_holdem/backend/media/banner_images/test.txt
+```
+
+### 🔍 권한 문제 진단 가이드
+
+#### 권한 문제 증상:
+1. **배너 추가 시 500 Internal Server Error**
+2. **로그에 "Permission denied" 메시지**
+3. **파일 업로드 실패**
+
+#### 권한 문제 원인별 해결책:
+
+**Case 1: 일반적인 권한 문제**
+```bash
+sudo bash deploy/fix_media_permissions.sh
+```
+
+**Case 2: Django 프로세스 사용자 불일치**
+```bash
+# 프로세스 사용자 확인
+ps aux | grep gunicorn | head -1
+
+# Django 사용자 권한 동기화
+sudo bash deploy/fix_django_user_permissions.sh
+```
+
+**Case 3: 웹 서버 접근 권한 문제**
+```bash
+# Nginx 설정 확인
+sudo nginx -t
+sudo systemctl restart nginx
+
+# Media 폴더 접근 권한 확인
+curl -I http://your-domain.com/media/banner_images/
 ```
 
 ## 서비스 설정
