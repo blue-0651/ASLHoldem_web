@@ -83,7 +83,7 @@ const BannerManagementPage = () => {
       const user = getCurrentUser();
       
       // 매장 관리자인 경우 내 매장만 조회
-      if (user && !user.is_staff && !user.is_superuser && user.is_store_owner) {
+      if (user.is_superuser ) {
         const response = await bannerAPI.getMyBanners();
         if (response.data.store_info) {
           setStores([response.data.store_info]);
