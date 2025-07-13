@@ -177,74 +177,27 @@ class BannerViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """
-        배너 생성 시 매장 관리자 권한 확인 및 파일 업로드 에러 처리
+        배너 생성 시 권한 확인 (단순화)
         """
+        user = self.request.user
+        
+        # 관리자 권한 확인
+        if not (user.is_staff or user.is_superuser):
+            logger.warning(f"배너 생성 권한 없음 - 사용자: {user.username}")
+            raise PermissionDenied("관리자 또는 매장 관리자만 배너를 생성할 수 있습니다.")
+        
         try:
-            user = self.request.user
+            # 배너 생성
+            serializer.save()
+            logger.info(f"배너 생성 성공 - 사용자: {user.username}, 제목: {serializer.validated_data.get('title', 'N/A')}")
             
-            # 관리자는 모든 매장에 배너 생성 가능 (매장 선택 여부 무관)
-            if user.is_staff or user.is_superuser:
-                try:
-                    # 매장이 선택되지 않았다면 전체용 배너로 생성
-                    store_data = serializer.validated_data.get('store')
-                    if store_data:
-                        serializer.save()
-                        logger.info(f"관리자 '{user.username}'이 매장 '{store_data.name}' 배너 생성: {serializer.validated_data.get('title', 'N/A')}")
-                    else:
-                        serializer.save()
-                        logger.info(f"관리자 '{user.username}'이 전체용 배너 생성: {serializer.validated_data.get('title', 'N/A')}")
-                    return
-                except OSError as e:
-                    if "Permission denied" in str(e):
-                        logger.error(f"파일 업로드 권한 에러: {str(e)}")
-                        raise PermissionDenied(
-                            "파일 업로드 권한이 없습니다. 서버 관리자에게 문의하세요. "
-                            "media/banner_images/ 폴더의 권한을 확인해주세요."
-                        )
-                    else:
-                        logger.error(f"파일 업로드 중 OS 에러: {str(e)}")
-                        raise Exception(f"파일 업로드 중 오류가 발생했습니다: {str(e)}")
-                except Exception as e:
-                    logger.error(f"관리자 배너 생성 중 예기치 않은 에러: {str(e)}")
-                    raise Exception(f"배너 생성 중 오류가 발생했습니다: {str(e)}")
+        except OSError as e:
+            logger.error(f"파일 업로드 에러 - 사용자: {user.username}, 에러: {str(e)}")
+            raise PermissionDenied(f"파일 업로드 중 오류가 발생했습니다: {str(e)}")
             
-            # 매장 관리자인 경우 자신의 매장으로 자동 설정
-            if hasattr(user, 'is_store_owner') and user.is_store_owner:
-                store = Store.objects.filter(owner=user).first()
-                if store:
-                    try:
-                        serializer.save(store=store)
-                        logger.info(f"매장 관리자 '{user.username}'이 매장 '{store.name}'에 배너 생성: {serializer.validated_data.get('title', 'N/A')}")
-                        return
-                    except OSError as e:
-                        if "Permission denied" in str(e):
-                            logger.error(f"매장 관리자 파일 업로드 권한 에러: {str(e)}")
-                            raise PermissionDenied(
-                                "파일 업로드 권한이 없습니다. 서버 관리자에게 문의하세요. "
-                                "media/banner_images/ 폴더의 권한을 확인해주세요."
-                            )
-                        else:
-                            logger.error(f"매장 관리자 파일 업로드 중 OS 에러: {str(e)}")
-                            raise Exception(f"파일 업로드 중 오류가 발생했습니다: {str(e)}")
-                    except Exception as e:
-                        logger.error(f"매장 관리자 배너 생성 중 예기치 않은 에러: {str(e)}")
-                        raise Exception(f"배너 생성 중 오류가 발생했습니다: {str(e)}")
-                else:
-                    logger.warning(f"매장 관리자 '{user.username}'에게 연결된 매장이 없음")
-                    raise PermissionDenied("연결된 매장 정보가 없습니다.")
-            else:
-                logger.warning(f"일반 사용자 '{user.username}'이 배너 생성 시도")
-                raise PermissionDenied("배너 생성 권한이 없습니다.")
-        except PermissionDenied:
-            # PermissionDenied는 그대로 re-raise
-            raise
         except Exception as e:
-            logger.error(f"배너 생성 실패 - 사용자: {user.username}, 에러: {str(e)}")
-            # 일반적인 에러 메시지로 변환하여 500 에러 방지
-            if "Permission denied" in str(e) or "권한" in str(e):
-                raise PermissionDenied(str(e))
-            else:
-                raise Exception(f"배너 생성 중 오류가 발생했습니다: {str(e)}")
+            logger.error(f"배너 생성 에러 - 사용자: {user.username}, 에러: {str(e)}")
+            raise Exception(f"배너 생성 중 오류가 발생했습니다: {str(e)}")
 
     def update(self, request, *args, **kwargs):
         """
