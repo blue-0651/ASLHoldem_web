@@ -124,19 +124,13 @@ const AslAd = () => {
         return;
       }
       
-      if (response.data.banners && response.data.banners.length > 0) {
+              if (response.data.banners && response.data.banners.length > 0) {
         // 배너 데이터를 매장 형태로 변환
         const transformedStores = response.data.banners.map(banner => {
-          // 이미지 URL 처리: 상대 경로를 완전한 URL로 변환
-          let imageUrl = banner.image;
-          if (imageUrl && !imageUrl.startsWith('http')) {
-            imageUrl = `http://localhost:8000${imageUrl}`;
-          }
-          
           return {
             id: banner.store_id || banner.id, // 매장 ID 우선, 없으면 배너 ID
             name: banner.title || banner.store_name || '매장명 없음',
-            image: imageUrl,
+            image: banner.image, // 백엔드에서 완전한 URL을 반환하므로 별도 처리 불필요
             description: banner.description || '매장 설명이 없습니다.',
             store_id: banner.store_id, // 매장 ID 별도 저장
             banner_id: banner.id // 배너 ID 별도 저장

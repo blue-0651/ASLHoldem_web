@@ -153,3 +153,11 @@ yarn-error.log*
 *.mdc
 android/.gradle/
 *.bak
+
+# 캐시 디렉토리들
+.cache/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+

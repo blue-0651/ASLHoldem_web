@@ -97,6 +97,28 @@ class BannerViewSet(viewsets.ModelViewSet):
                 queryset = queryset.none()
         
         return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """
+        배너 목록 조회 - 이미지 URL을 완전한 URL로 변환하여 반환
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """
+        배너 상세 조회 - 이미지 URL을 완전한 URL로 변환하여 반환
+        """
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, context={'request': request})
+        return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
         """
@@ -120,7 +142,9 @@ class BannerViewSet(viewsets.ModelViewSet):
                 self.perform_create(serializer)
                 headers = self.get_success_headers(serializer.data)
                 logger.info(f"배너 생성 성공: {serializer.data.get('title', 'N/A')}")
-                return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+                # 생성된 배너의 이미지 URL을 완전한 URL로 변환하여 반환
+                response_serializer = self.get_serializer(serializer.instance, context={'request': request})
+                return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
             
             except PermissionDenied as e:
                 logger.warning(f"배너 생성 권한 에러: {str(e)}")
@@ -221,7 +245,9 @@ class BannerViewSet(viewsets.ModelViewSet):
             if getattr(instance, '_prefetched_objects_cache', None):
                 instance._prefetched_objects_cache = {}
 
-            return Response(serializer.data)
+            # 수정된 배너의 이미지 URL을 완전한 URL로 변환하여 반환
+            response_serializer = self.get_serializer(instance, context={'request': request})
+            return Response(response_serializer.data)
         except Exception as e:
             logger.error(f"배너 수정 실패 (ID: {kwargs.get('pk', 'N/A')}): {str(e)}")
             return Response(
@@ -284,6 +310,7 @@ class BannerViewSet(viewsets.ModelViewSet):
     def active(self, request):
         """
         현재 활성화된 배너 목록 조회 (로그인 불필요)
+        이미지 URL을 완전한 URL로 변환하여 반환
         """
         try:
             now = timezone.now()
@@ -298,7 +325,7 @@ class BannerViewSet(viewsets.ModelViewSet):
             if store_id:
                 active_banners = active_banners.filter(store_id=store_id)
             
-            serializer = self.get_serializer(active_banners, many=True)
+            serializer = self.get_serializer(active_banners, many=True, context={'request': request})
             return Response(serializer.data)
         except Exception as e:
             logger.error(f"활성 배너 조회 실패: {str(e)}")
@@ -311,6 +338,7 @@ class BannerViewSet(viewsets.ModelViewSet):
     def by_store(self, request):
         """
         매장별 배너 조회
+        이미지 URL을 완전한 URL로 변환하여 반환
         """
         try:
             store_id = request.query_params.get('store_id')
@@ -339,7 +367,7 @@ class BannerViewSet(viewsets.ModelViewSet):
                     raise PermissionDenied("배너 조회 권한이 없습니다.")
             
             banners = Banner.objects.filter(store=store).order_by('-created_at')
-            serializer = self.get_serializer(banners, many=True)
+            serializer = self.get_serializer(banners, many=True, context={'request': request})
             
             return Response({
                 'store_info': {
@@ -363,6 +391,7 @@ class BannerViewSet(viewsets.ModelViewSet):
     def my_banners(self, request):
         """
         현재 로그인한 매장 관리자의 배너 목록 조회
+        이미지 URL을 완전한 URL로 변환하여 반환
         """
         try:
             user = request.user
@@ -370,7 +399,7 @@ class BannerViewSet(viewsets.ModelViewSet):
             # 관리자는 모든 배너 조회 가능
             if user.is_staff or user.is_superuser:
                 banners = Banner.objects.all().order_by('-created_at')
-                serializer = self.get_serializer(banners, many=True)
+                serializer = self.get_serializer(banners, many=True, context={'request': request})
                 
                 return Response({
                     'banners': serializer.data,
@@ -388,7 +417,7 @@ class BannerViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("연결된 매장 정보가 없습니다.")
             
             banners = Banner.objects.filter(store=store).order_by('-created_at')
-            serializer = self.get_serializer(banners, many=True)
+            serializer = self.get_serializer(banners, many=True, context={'request': request})
             
             return Response({
                 'store_info': {
@@ -413,6 +442,7 @@ class BannerViewSet(viewsets.ModelViewSet):
     def toggle_active(self, request, pk=None):
         """
         배너 활성화/비활성화 토글
+        이미지 URL을 완전한 URL로 변환하여 반환
         """
         try:
             banner = self.get_object()
@@ -432,7 +462,7 @@ class BannerViewSet(viewsets.ModelViewSet):
             banner.is_active = not banner.is_active
             banner.save()
             
-            serializer = self.get_serializer(banner)
+            serializer = self.get_serializer(banner, context={'request': request})
             return Response({
                 'message': f"배너가 {'활성화' if banner.is_active else '비활성화'}되었습니다.",
                 'banner': serializer.data
@@ -451,6 +481,7 @@ class BannerViewSet(viewsets.ModelViewSet):
         """
         특정 배너를 메인 토너먼트 배너로 설정 (메인에 표시되는 배너로 선택)
         관리자만 접근 가능
+        이미지 URL을 완전한 URL로 변환하여 반환
         """
         try:
             banner = self.get_object()
@@ -467,7 +498,7 @@ class BannerViewSet(viewsets.ModelViewSet):
             banner.is_main_selected = True
             banner.save()
             
-            serializer = self.get_serializer(banner)
+            serializer = self.get_serializer(banner, context={'request': request})
             return Response({
                 'message': f"'{banner.title}' 배너가 메인 토너먼트 배너로 설정되었습니다.",
                 'banner': serializer.data
@@ -484,6 +515,7 @@ class BannerViewSet(viewsets.ModelViewSet):
         """
         현재 메인으로 선택된 활성화된 배너 반환
         모든 사용자 접근 가능
+        이미지 URL을 완전한 URL로 변환하여 반환
         """
         try:
             now = timezone.now()
@@ -500,7 +532,7 @@ class BannerViewSet(viewsets.ModelViewSet):
                     'banner': None
                 })
             
-            serializer = self.get_serializer(main_tournament_banner)
+            serializer = self.get_serializer(main_tournament_banner, context={'request': request})
             return Response({
                 'message': '메인 토너먼트 배너를 성공적으로 조회했습니다.',
                 'banner': serializer.data
@@ -529,6 +561,7 @@ class BannerViewSet(viewsets.ModelViewSet):
         - 현재 활성화된 배너만 조회 (is_active=True, 기간 내)
         - 생성일 기준 내림차순 정렬
         - 최대 8개까지 표시 (슬라이딩 갤러리 UI)
+        - 이미지 URL을 완전한 URL로 변환하여 반환
         """
         try:
             # 현재 날짜 기준 활성화된 스토어 갤러리 배너 조회
@@ -540,37 +573,13 @@ class BannerViewSet(viewsets.ModelViewSet):
                 end_date__gte=today     # 종료일이 오늘 이후
             ).select_related('store').order_by('-created_at')[:8]  # 최대 8개
             
-            # 배너 데이터 직렬화 (상세 정보 포함)
-            banner_data = []
-            for banner in banners:
-                banner_info = {
-                    'id': banner.id,
-                    'title': banner.title,
-                    'description': banner.description,
-                    'image': banner.image.url if banner.image else None,
-                    'store_id': banner.store.id if banner.store else None,
-                    'store_name': banner.store.name if banner.store else None,
-                    'is_active': banner.is_active,
-                    'is_store_gallery': banner.is_store_gallery,
-                    'start_date': banner.start_date.isoformat() if banner.start_date else None,
-                    'end_date': banner.end_date.isoformat() if banner.end_date else None,
-                    'created_at': banner.created_at.isoformat() if banner.created_at else None,
-                }
-                
-                # 매장 정보 추가 (클릭 시 상세 페이지 이동용)
-                if banner.store:
-                    banner_info['store'] = {
-                        'id': banner.store.id,
-                        'name': banner.store.name,
-                        'address': banner.store.address if hasattr(banner.store, 'address') else None
-                    }
-                
-                banner_data.append(banner_info)
+            # 배너 데이터 직렬화 (Serializer 사용으로 변경)
+            serializer = self.get_serializer(banners, many=True, context={'request': request})
             
             return Response({
-                'banners': banner_data,
-                'count': len(banner_data),
-                'message': f'스토어 갤러리 배너 {len(banner_data)}개를 조회했습니다.' if banner_data else '설정된 스토어 갤러리 배너가 없습니다.'
+                'banners': serializer.data,
+                'count': len(serializer.data),
+                'message': f'스토어 갤러리 배너 {len(serializer.data)}개를 조회했습니다.' if serializer.data else '설정된 스토어 갤러리 배너가 없습니다.'
             })
             
         except Exception as e:
