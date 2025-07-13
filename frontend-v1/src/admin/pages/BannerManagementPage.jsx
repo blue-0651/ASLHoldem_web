@@ -55,9 +55,9 @@ const BannerManagementPage = () => {
       return;
     }
 
-    // 관리자 또는 매장 관리자 권한 확인
-    if ( !user.is_superuser ) {
-      showAlert('배너 관리 권한이 없습니다.', 'danger');
+    // 관리자 또는 매장 관리자 권한 확인 (백엔드 로직과 일치)
+    if (!user.is_staff && !user.is_superuser) {
+      showAlert('관리자 또는 매장 관리자로 로그인해 주세요.', 'danger');
       navigate('/');
       return;
     }
@@ -82,8 +82,8 @@ const BannerManagementPage = () => {
     try {
       const user = getCurrentUser();
       
-      // 매장 관리자인 경우
-      if ( !user.is_superuser ) {
+      // 매장 관리자인 경우 (스태프이지만 슈퍼유저가 아닌 경우)
+      if (user.is_staff && !user.is_superuser) {
         const response = await bannerAPI.getMyBanners();
         if (response.data.store_info) {
           setStores([response.data.store_info]);
@@ -94,7 +94,7 @@ const BannerManagementPage = () => {
           }));
         }
       } else {
-        // 관리자인 경우 모든 매장 조회
+        // 슈퍼유저인 경우 모든 매장 조회
         const response = await storeAPI.getAllStores();
         setStores(response.data.results || response.data || []);
       }
