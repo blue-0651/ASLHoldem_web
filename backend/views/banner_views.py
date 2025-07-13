@@ -2,9 +2,10 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotFound
 from django.db.models import Q
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 from datetime import datetime
 import logging
 
@@ -23,6 +24,25 @@ class BannerViewSet(viewsets.ModelViewSet):
     queryset = Banner.objects.all()
     serializer_class = BannerSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        """
+        배너 객체 조회 시 안전한 에러 처리
+        """
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+            lookup_value = self.kwargs[lookup_url_kwarg]
+            
+            # 먼저 배너가 존재하는지 확인
+            obj = get_object_or_404(queryset, **{self.lookup_field: lookup_value})
+            
+            # 권한 확인
+            self.check_object_permissions(self.request, obj)
+            return obj
+        except Exception as e:
+            logger.error(f"배너 조회 실패 (ID: {self.kwargs.get('pk', 'N/A')}): {str(e)}")
+            raise NotFound(f"배너를 찾을 수 없습니다 (ID: {self.kwargs.get('pk', 'N/A')})")
 
     def get_queryset(self):
         """
@@ -78,92 +98,228 @@ class BannerViewSet(viewsets.ModelViewSet):
         
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        """
+        배너 생성 - 파일 업로드 권한 에러 처리 개선
+        """
+        try:
+            # 기본 유효성 검사
+            serializer = self.get_serializer(data=request.data)
+            if not serializer.is_valid():
+                logger.warning(f"배너 생성 유효성 검사 실패: {serializer.errors}")
+                return Response(
+                    {
+                        "error": "입력 데이터가 유효하지 않습니다.",
+                        "details": serializer.errors
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 배너 생성 시도
+            try:
+                self.perform_create(serializer)
+                headers = self.get_success_headers(serializer.data)
+                logger.info(f"배너 생성 성공: {serializer.data.get('title', 'N/A')}")
+                return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            
+            except PermissionDenied as e:
+                logger.warning(f"배너 생성 권한 에러: {str(e)}")
+                return Response(
+                    {
+                        "error": str(e),
+                        "error_type": "permission_denied"
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            except OSError as e:
+                if "Permission denied" in str(e) or "권한" in str(e):
+                    logger.error(f"파일 시스템 권한 에러: {str(e)}")
+                    return Response(
+                        {
+                            "error": "파일 업로드 권한이 없습니다. 서버 관리자에게 문의하세요.",
+                            "error_type": "file_permission_error",
+                            "details": str(e)
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+                else:
+                    logger.error(f"파일 시스템 에러: {str(e)}")
+                    return Response(
+                        {
+                            "error": "파일 업로드 중 오류가 발생했습니다.",
+                            "error_type": "file_system_error",
+                            "details": str(e)
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+            
+            except Exception as e:
+                logger.error(f"배너 생성 중 예기치 않은 에러: {str(e)}")
+                return Response(
+                    {
+                        "error": "배너 생성 중 오류가 발생했습니다.",
+                        "error_type": "unexpected_error",
+                        "details": str(e)
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        except Exception as e:
+            logger.error(f"배너 생성 API 전체 에러: {str(e)}")
+            return Response(
+                {
+                    "error": "서버 오류가 발생했습니다.",
+                    "error_type": "server_error"
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     def perform_create(self, serializer):
         """
-        배너 생성 시 매장 관리자 권한 확인
+        배너 생성 시 매장 관리자 권한 확인 및 파일 업로드 에러 처리
         """
-        user = self.request.user
-        
-        # 관리자는 모든 매장에 배너 생성 가능
-        if user.is_staff or user.is_superuser:
-            serializer.save()
-            return
-        
-        # 매장 관리자인 경우 자신의 매장으로 자동 설정
-        if hasattr(user, 'is_store_owner') and user.is_store_owner:
-            store = Store.objects.filter(owner=user).first()
-            if store:
-                serializer.save(store=store)
+        try:
+            user = self.request.user
+            
+            # 관리자는 모든 매장에 배너 생성 가능
+            if user.is_staff or user.is_superuser:
+                try:
+                    serializer.save()
+                    logger.info(f"관리자 '{user.username}'이 배너 생성: {serializer.validated_data.get('title', 'N/A')}")
+                    return
+                except OSError as e:
+                    if "Permission denied" in str(e):
+                        logger.error(f"파일 업로드 권한 에러: {str(e)}")
+                        raise PermissionDenied(
+                            "파일 업로드 권한이 없습니다. 서버 관리자에게 문의하세요. "
+                            "media/banner_images/ 폴더의 권한을 확인해주세요."
+                        )
+                    else:
+                        logger.error(f"파일 업로드 중 OS 에러: {str(e)}")
+                        raise Exception(f"파일 업로드 중 오류가 발생했습니다: {str(e)}")
+                except Exception as e:
+                    logger.error(f"관리자 배너 생성 중 예기치 않은 에러: {str(e)}")
+                    raise Exception(f"배너 생성 중 오류가 발생했습니다: {str(e)}")
+            
+            # 매장 관리자인 경우 자신의 매장으로 자동 설정
+            if hasattr(user, 'is_store_owner') and user.is_store_owner:
+                store = Store.objects.filter(owner=user).first()
+                if store:
+                    try:
+                        serializer.save(store=store)
+                        logger.info(f"매장 관리자 '{user.username}'이 매장 '{store.name}'에 배너 생성: {serializer.validated_data.get('title', 'N/A')}")
+                        return
+                    except OSError as e:
+                        if "Permission denied" in str(e):
+                            logger.error(f"매장 관리자 파일 업로드 권한 에러: {str(e)}")
+                            raise PermissionDenied(
+                                "파일 업로드 권한이 없습니다. 서버 관리자에게 문의하세요. "
+                                "media/banner_images/ 폴더의 권한을 확인해주세요."
+                            )
+                        else:
+                            logger.error(f"매장 관리자 파일 업로드 중 OS 에러: {str(e)}")
+                            raise Exception(f"파일 업로드 중 오류가 발생했습니다: {str(e)}")
+                    except Exception as e:
+                        logger.error(f"매장 관리자 배너 생성 중 예기치 않은 에러: {str(e)}")
+                        raise Exception(f"배너 생성 중 오류가 발생했습니다: {str(e)}")
+                else:
+                    logger.warning(f"매장 관리자 '{user.username}'에게 연결된 매장이 없음")
+                    raise PermissionDenied("연결된 매장 정보가 없습니다.")
             else:
-                raise PermissionDenied("연결된 매장 정보가 없습니다.")
-        else:
-            raise PermissionDenied("배너 생성 권한이 없습니다.")
+                logger.warning(f"일반 사용자 '{user.username}'이 배너 생성 시도")
+                raise PermissionDenied("배너 생성 권한이 없습니다.")
+        except PermissionDenied:
+            # PermissionDenied는 그대로 re-raise
+            raise
+        except Exception as e:
+            logger.error(f"배너 생성 실패 - 사용자: {user.username}, 에러: {str(e)}")
+            # 일반적인 에러 메시지로 변환하여 500 에러 방지
+            if "Permission denied" in str(e) or "권한" in str(e):
+                raise PermissionDenied(str(e))
+            else:
+                raise Exception(f"배너 생성 중 오류가 발생했습니다: {str(e)}")
 
     def update(self, request, *args, **kwargs):
         """
         배너 수정 - 기존 이미지 유지 처리
         """
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        
-        # 이미지 처리: 새 이미지가 없고 existing_image_url이 있으면 기존 이미지 유지
-        if 'image' not in request.data and 'existing_image_url' in request.data:
-            # 기존 이미지를 request.data에 추가 (mutable하게 만들기)
-            request.data._mutable = True
-            request.data['image'] = instance.image
-            request.data._mutable = False
-        
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+            
+            # 이미지 처리: 새 이미지가 없고 existing_image_url이 있으면 기존 이미지 유지
+            if 'image' not in request.data and 'existing_image_url' in request.data:
+                # 기존 이미지를 request.data에 추가 (mutable하게 만들기)
+                request.data._mutable = True
+                request.data['image'] = instance.image
+                request.data._mutable = False
+            
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
 
-        if getattr(instance, '_prefetched_objects_cache', None):
-            instance._prefetched_objects_cache = {}
+            if getattr(instance, '_prefetched_objects_cache', None):
+                instance._prefetched_objects_cache = {}
 
-        return Response(serializer.data)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"배너 수정 실패 (ID: {kwargs.get('pk', 'N/A')}): {str(e)}")
+            return Response(
+                {"error": f"배너 수정 중 오류가 발생했습니다: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def perform_update(self, serializer):
         """
         배너 수정 시 권한 확인
         """
-        user = self.request.user
-        banner = self.get_object()
-        
-        # 관리자는 모든 배너 수정 가능
-        if user.is_staff or user.is_superuser:
+        try:
+            user = self.request.user
+            banner = self.get_object()
+            
+            # 관리자는 모든 배너 수정 가능
+            if user.is_staff or user.is_superuser:
+                serializer.save()
+                return
+            
+            # 매장 관리자인 경우 자신의 매장 배너만 수정 가능
+            if hasattr(user, 'is_store_owner') and user.is_store_owner:
+                store = Store.objects.filter(owner=user).first()
+                if store and banner.store != store:
+                    raise PermissionDenied("다른 매장의 배너는 수정할 수 없습니다.")
+            else:
+                raise PermissionDenied("배너 수정 권한이 없습니다.")
+            
             serializer.save()
-            return
-        
-        # 매장 관리자인 경우 자신의 매장 배너만 수정 가능
-        if hasattr(user, 'is_store_owner') and user.is_store_owner:
-            store = Store.objects.filter(owner=user).first()
-            if store and banner.store != store:
-                raise PermissionDenied("다른 매장의 배너는 수정할 수 없습니다.")
-        else:
-            raise PermissionDenied("배너 수정 권한이 없습니다.")
-        
-        serializer.save()
+        except Exception as e:
+            logger.error(f"배너 수정 권한 확인 실패: {str(e)}")
+            raise
 
     def perform_destroy(self, instance):
         """
         배너 삭제 시 권한 확인
         """
-        user = self.request.user
-        
-        # 관리자는 모든 배너 삭제 가능
-        if user.is_staff or user.is_superuser:
+        try:
+            user = self.request.user
+            
+            # 관리자는 모든 배너 삭제 가능
+            if user.is_staff or user.is_superuser:
+                instance.delete()
+                return
+            
+            # 매장 관리자인 경우 자신의 매장 배너만 삭제 가능
+            if hasattr(user, 'is_store_owner') and user.is_store_owner:
+                store = Store.objects.filter(owner=user).first()
+                if store and instance.store != store:
+                    raise PermissionDenied("다른 매장의 배너는 삭제할 수 없습니다.")
+            else:
+                raise PermissionDenied("배너 삭제 권한이 없습니다.")
+            
             instance.delete()
-            return
-        
-        # 매장 관리자인 경우 자신의 매장 배너만 삭제 가능
-        if hasattr(user, 'is_store_owner') and user.is_store_owner:
-            store = Store.objects.filter(owner=user).first()
-            if store and instance.store != store:
-                raise PermissionDenied("다른 매장의 배너는 삭제할 수 없습니다.")
-        else:
-            raise PermissionDenied("배너 삭제 권한이 없습니다.")
-        
-        instance.delete()
+        except Exception as e:
+            logger.error(f"배너 삭제 실패: {str(e)}")
+            raise
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def active(self, request):
@@ -186,6 +342,7 @@ class BannerViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(active_banners, many=True)
             return Response(serializer.data)
         except Exception as e:
+            logger.error(f"활성 배너 조회 실패: {str(e)}")
             return Response(
                 {"error": f"활성 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -237,6 +394,7 @@ class BannerViewSet(viewsets.ModelViewSet):
         except PermissionDenied:
             raise
         except Exception as e:
+            logger.error(f"매장별 배너 조회 실패: {str(e)}")
             return Response(
                 {"error": f"매장별 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -286,6 +444,7 @@ class BannerViewSet(viewsets.ModelViewSet):
         except PermissionDenied:
             raise
         except Exception as e:
+            logger.error(f"내 배너 조회 실패: {str(e)}")
             return Response(
                 {"error": f"내 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -322,6 +481,7 @@ class BannerViewSet(viewsets.ModelViewSet):
         except PermissionDenied:
             raise
         except Exception as e:
+            logger.error(f"배너 상태 토글 실패 (ID: {pk}): {str(e)}")
             return Response(
                 {"error": f"배너 상태 변경 중 오류가 발생했습니다: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -354,6 +514,7 @@ class BannerViewSet(viewsets.ModelViewSet):
                 'banner': serializer.data
             })
         except Exception as e:
+            logger.error(f"메인 토너먼트 배너 설정 실패 (ID: {pk}): {str(e)}")
             return Response(
                 {"error": f"메인 토너먼트 배너 설정 중 오류가 발생했습니다: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -386,6 +547,7 @@ class BannerViewSet(viewsets.ModelViewSet):
                 'banner': serializer.data
             })
         except Exception as e:
+            logger.error(f"메인 토너먼트 배너 조회 실패: {str(e)}")
             return Response(
                 {"error": f"메인 토너먼트 배너 조회 중 오류가 발생했습니다: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

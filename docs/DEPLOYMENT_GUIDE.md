@@ -1,262 +1,313 @@
-# ASL Holdem 배포 서버 Git 업데이트 가이드
+# ASL Holdem 배포 가이드
 
-## 개요
+## 목차
+- [배포 환경 설정](#배포-환경-설정)
+- [데이터베이스 설정](#데이터베이스-설정)
+- [정적 파일 설정](#정적-파일-설정)
+- [미디어 파일 권한 설정](#미디어-파일-권한-설정)
+- [서비스 설정](#서비스-설정)
+- [문제 해결](#문제-해결)
 
-이 문서는 로컬 개발 환경에서 배포 서버(141.164.36.65)로 Git을 통해 모든 수정사항을 안전하게 반영하는 방법을 설명합니다.
+## 배포 환경 설정
 
-## 배포 방법
-
-### 방법 1: 자동 배포 스크립트 (권장)
-
-가장 간단하고 안전한 방법입니다.
-
+### 1. 프로젝트 디렉토리 설정
 ```bash
-# 프로젝트 루트 디렉토리에서 실행
-./deploy_to_server.sh
+sudo mkdir -p /var/www/ASLHoldem_web
+sudo chown -R $USER:$USER /var/www/ASLHoldem_web
+cd /var/www/ASLHoldem_web
+git clone [repository_url] .
 ```
 
-이 스크립트는 다음을 자동으로 수행합니다:
-1. 로컬 Git 상태 확인
-2. 원격 저장소 동기화 확인  
-3. 배포 서버 연결 테스트
-4. 배포 스크립트 전송
-5. 배포 서버에서 자동 업데이트 실행
-
-### 방법 2: 수동 배포
-
-직접 제어하고 싶은 경우 사용합니다.
-
-#### 2-1. 로컬에서 원격 저장소에 푸시
-
+### 2. 가상환경 설정
 ```bash
-git add .
-git commit -m "배포할 변경사항 설명"
-git push origin master
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-#### 2-2. 배포 서버에 접속
-
+### 3. 환경 변수 설정
 ```bash
-ssh root@141.164.36.65
+# .env 파일 생성
+cp .env.example .env
+# 환경 변수 수정
+nano .env
 ```
 
-#### 2-3. 배포 서버에서 업데이트 실행
+## 데이터베이스 설정
 
+### 1. PostgreSQL 설정
 ```bash
-cd /var/www/asl_holdem
-git pull origin master
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+# 데이터베이스 생성
+sudo -u postgres psql
+CREATE DATABASE asl_db;
+CREATE USER asl_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE asl_db TO asl_user;
+\q
 ```
 
-#### 2-4. 웹 서비스 재시작
-
+### 2. Django 마이그레이션
 ```bash
-# 기존 프로세스 종료
-pkill -f "python.*manage.py"
-pkill -f "gunicorn"
-
-# 가상환경 활성화 (백엔드 디렉토리에서)
 cd backend
 source .venv/bin/activate
-
-# Django 설정 확인
-python manage.py check
-
-# 마이그레이션 적용 (필요시)
+python manage.py makemigrations
 python manage.py migrate
-
-# 웹 서비스 재시작
-systemctl restart nginx
-systemctl restart gunicorn  # 또는 해당 웹 서비스명
+python manage.py collectstatic
 ```
 
-## 배포 스크립트 상세 기능
+## 정적 파일 설정
 
-### deploy_to_server.sh (로컬 실행)
-
-- **사전 검사**: 로컬 Git 상태, 원격 저장소 동기화 확인
-- **연결 테스트**: 배포 서버 접근 가능성 확인
-- **스크립트 전송**: 배포 스크립트를 서버에 전송
-- **자동 실행**: 사용자 확인 후 원격에서 배포 스크립트 실행
-
-### deploy_git_updates.sh (서버에서 실행)
-
-1. **사전 검사**
-   - 배포 디렉토리 존재 확인
-   - Git 저장소 확인
-   - 인터넷 연결 확인
-
-2. **백업 생성**
-   - 현재 backend, frontend-v1 디렉토리 백업
-   - 타임스탬프로 백업 파일명 생성
-   - 백업 위치: `/var/backups/asl_holdem/`
-
-3. **Git 상태 확인**
-   - 현재 브랜치 및 커밋 정보 표시
-   - 로컬 변경사항 있을 경우 stash 저장
-
-4. **Git 업데이트**
-   - 원격 저장소에서 최신 변경사항 가져오기
-   - 업데이트 내역 표시
-   - git pull 실행
-
-5. **파일 권한 설정**
-   - 새로 추가된 스크립트 파일들 실행 권한 부여
-
-6. **Django 설정 확인**
-   - 가상환경 활성화
-   - `.env` 파일 자동 생성 (없는 경우)
-   - Django 설정 검증
-
-7. **데이터베이스 마이그레이션**
-   - 새로운 마이그레이션 파일 확인
-   - 필요시 자동 적용
-
-8. **새로운 관리 명령어 테스트**
-   - 추가된 Django 관리 명령어들 확인
-   - DB 연결 테스트
-
-9. **웹 서비스 재시작**
-   - 기존 프로세스 종료
-   - 가능한 서비스들 자동 감지하여 재시작
-   - Nginx 재시작
-
-10. **배포 완료 확인**
-    - 웹 서비스 상태 확인
-    - 포트 사용 확인
-    - 최종 Git 상태 표시
-
-## 환경 설정
-
-### 배포 서버 정보
-
-- **서버 IP**: 141.164.36.65
-- **사용자**: root
-- **배포 경로**: /var/www/asl_holdem
-- **백업 경로**: /var/backups/asl_holdem
-
-### 데이터베이스 설정
-
-배포 서버의 `.env` 파일이 자동으로 생성됩니다:
-
-```env
-DB_NAME=asl_db
-DB_USER=asl_user
-DB_PASSWORD=pppsss
-DB_HOST=localhost
-DB_PORT=5432
-DEBUG=False
+### 1. Nginx 설정
+```nginx
+server {
+    listen 80;
+    server_name your_domain.com;
+    
+    location /static/ {
+        alias /var/www/ASLHoldem_web/backend/static/;
+    }
+    
+    location /media/ {
+        alias /var/www/ASLHoldem_web/backend/media/;
+    }
+    
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```
 
-## 새로 추가된 기능들
+## 미디어 파일 권한 설정
 
-배포 후 다음 기능들이 사용 가능합니다:
+### ⚠️ 배너 이미지 업로드 권한 문제 해결
 
-### Django 관리 명령어
+배포서버에서 배너 추가 시 500 에러가 발생하는 경우, 미디어 파일 업로드 권한 문제일 가능성이 높습니다.
 
+#### 1. 권한 상태 확인
 ```bash
-# 사용자 로그인 상태 진단
-python manage.py check_user_login <사용자명>
-
-# 사용자 로그인 문제 해결
-python manage.py fix_user_login <사용자명>
-
-# 모든 사용자 비밀번호 1234로 통일
-python manage.py reset_all_passwords
-
-# 비밀번호 확인
-python manage.py check_passwords
-
-# 역할별 권한 동기화
-python manage.py sync_user_permissions
+# 프로젝트 루트에서 실행
+bash deploy/check_media_permissions.sh
 ```
 
-### 사용자 관리 시스템
+#### 2. 권한 자동 수정
+```bash
+# 프로젝트 루트에서 실행
+sudo bash deploy/fix_media_permissions.sh
+```
 
-- Django admin에서 사용자 관리 가능
-- 역할 변경 시 자동 권한 동기화
-- 사용자 생성 시 기본 권한 자동 설정
+#### 3. 수동 권한 설정
+```bash
+# 프로젝트 루트에서 실행
+cd /var/www/ASLHoldem_web
+
+# 미디어 폴더 생성 (없는 경우)
+sudo mkdir -p backend/media/banner_images
+sudo mkdir -p backend/media/store_images
+sudo mkdir -p backend/media/qr_codes
+
+# 웹서버 사용자 확인 (www-data, apache, nginx 등)
+WEB_USER="www-data"  # 시스템에 따라 변경
+
+# 폴더 소유자 변경
+sudo chown -R $WEB_USER:$WEB_USER backend/media/
+
+# 폴더 권한 설정
+sudo chmod -R 755 backend/media/
+sudo find backend/media/ -type f -exec chmod 644 {} \;
+
+# 특별히 banner_images 폴더 권한 확인
+sudo chmod 755 backend/media/banner_images/
+sudo chown $WEB_USER:$WEB_USER backend/media/banner_images/
+```
+
+#### 4. 서비스 재시작
+```bash
+sudo systemctl restart nginx
+sudo systemctl restart gunicorn  # 또는 uwsgi
+```
+
+#### 5. SELinux 설정 (CentOS/RHEL)
+```bash
+# SELinux가 활성화된 경우
+sudo setsebool -P httpd_can_network_connect 1
+sudo semanage fcontext -a -t httpd_exec_t '/var/www/ASLHoldem_web/backend/media(/.*)?'
+sudo restorecon -Rv /var/www/ASLHoldem_web/backend/media/
+```
+
+### 권한 문제 증상
+- 배너 추가 시 500 Internal Server Error
+- 로그에 "Permission denied" 메시지
+- 파일 업로드 실패
+
+### 권한 문제 해결 확인
+1. 배너 관리 페이지에서 새 배너 추가 시도
+2. 이미지 업로드가 정상적으로 완료되는지 확인
+3. 업로드된 이미지가 웹에서 정상적으로 표시되는지 확인
+
+## 서비스 설정
+
+### 1. Gunicorn 설정
+```bash
+# gunicorn.service 파일 생성
+sudo nano /etc/systemd/system/gunicorn.service
+```
+
+```ini
+[Unit]
+Description=gunicorn daemon
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/ASLHoldem_web/backend
+ExecStart=/var/www/ASLHoldem_web/backend/.venv/bin/gunicorn --access-logfile - --workers 3 --bind 127.0.0.1:8000 asl_holdem.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 2. 서비스 시작
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start gunicorn
+sudo systemctl enable gunicorn
+sudo systemctl start nginx
+sudo systemctl enable nginx
+```
 
 ## 문제 해결
 
-### 배포 실패 시
-
-1. **백업 복원**
-   ```bash
-   cd /var/backups/asl_holdem
-   ls -la  # 백업 파일 확인
-   cd /var/www/asl_holdem
-   tar -xzf /var/backups/asl_holdem/backend_backup_YYYYMMDD_HHMMSS.tar.gz
-   ```
-
-2. **수동 서비스 재시작**
-   ```bash
-   systemctl restart nginx
-   systemctl restart gunicorn
-   # 또는
-   pkill -f python
-   cd /var/www/asl_holdem/backend
-   source .venv/bin/activate
-   python manage.py runserver 0.0.0.0:8000 &
-   ```
-
-### 일반적인 문제들
-
-1. **SSH 연결 실패**
-   - 서버 IP 확인: `ping 141.164.36.65`
-   - SSH 키 설정 확인
-
-2. **Git pull 실패**
-   - 인터넷 연결 확인
-   - GitHub 접근 권한 확인
-   - 로컬 변경사항으로 인한 충돌 시 stash 사용
-
-3. **Django 설정 오류**
-   - `.env` 파일 확인
-   - PostgreSQL 서비스 상태 확인: `systemctl status postgresql`
-
-4. **권한 문제**
-   - 파일 소유권 확인: `chown -R www-data:www-data /var/www/asl_holdem`
-   - 실행 권한 확인: `chmod +x deploy/*.sh`
-
-## 로그 확인
-
-- **배포 로그**: 콘솔 출력으로 실시간 확인
-- **Django 로그**: `tail -f /var/log/django/error.log`
-- **Nginx 로그**: `tail -f /var/log/nginx/error.log`
-- **시스템 로그**: `journalctl -f -u your-service-name`
-
-## 보안 고려사항
-
-1. **백업 파일 정리**
-   - 정기적으로 오래된 백업 파일 삭제
-   - 백업 파일 접근 권한 제한
-
-2. **환경 변수 보안**
-   - `.env` 파일 권한 확인: `chmod 600 .env`
-   - 민감한 정보는 환경 변수로 관리
-
-3. **Git 보안**
-   - SSH 키 기반 인증 사용
-   - HTTPS보다 SSH 프로토콜 권장
-
-## 자주 사용하는 명령어
-
+### 1. 배너 업로드 500 에러
 ```bash
-# 빠른 배포 (권장)
-./deploy_to_server.sh
-
-# 배포 서버 상태 확인
-ssh root@141.164.36.65 "cd /var/www/asl_holdem && git status && systemctl status nginx"
-
-# 백업 목록 확인  
-ssh root@141.164.36.65 "ls -la /var/backups/asl_holdem/"
-
-# 새로운 관리 명령어 실행
-ssh root@141.164.36.65 "cd /var/www/asl_holdem/backend && source .venv/bin/activate && python manage.py help"
+# 권한 확인 및 수정
+bash deploy/check_media_permissions.sh
+sudo bash deploy/fix_media_permissions.sh
+sudo systemctl restart nginx gunicorn
 ```
 
----
+### 2. 정적 파일 404 에러
+```bash
+cd backend
+python manage.py collectstatic --noinput
+sudo systemctl restart nginx
+```
 
-**화이팅!** 🚀
+### 3. 데이터베이스 연결 오류
+```bash
+# 데이터베이스 상태 확인
+sudo systemctl status postgresql
+# 연결 테스트
+python manage.py dbshell
+```
 
-이 가이드를 통해 안전하고 효율적인 배포를 진행하세요! 
+### 4. 로그 확인
+```bash
+# Nginx 로그
+sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/nginx/access.log
+
+# Gunicorn 로그
+sudo journalctl -u gunicorn -f
+
+# Django 로그
+tail -f backend/logs/django.log
+```
+
+### 5. 프로세스 상태 확인
+```bash
+# 서비스 상태 확인
+sudo systemctl status nginx
+sudo systemctl status gunicorn
+
+# 프로세스 확인
+ps aux | grep gunicorn
+ps aux | grep nginx
+```
+
+## 보안 설정
+
+### 1. 방화벽 설정
+```bash
+sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw allow 22
+sudo ufw enable
+```
+
+### 2. SSL 인증서 설정
+```bash
+# Certbot 설치
+sudo apt install certbot python3-certbot-nginx
+
+# SSL 인증서 발급
+sudo certbot --nginx -d your_domain.com
+```
+
+### 3. 자동 갱신 설정
+```bash
+# 자동 갱신 테스트
+sudo certbot renew --dry-run
+
+# 크론탭 설정
+sudo crontab -e
+# 다음 라인 추가
+0 12 * * * /usr/bin/certbot renew --quiet
+```
+
+## 성능 최적화
+
+### 1. Gunicorn 워커 수 설정
+```bash
+# CPU 코어 수 * 2 + 1
+workers = (2 * cpu_cores) + 1
+```
+
+### 2. Nginx 캐시 설정
+```nginx
+location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+}
+```
+
+### 3. PostgreSQL 최적화
+```sql
+-- shared_buffers 설정
+shared_buffers = 256MB
+
+-- effective_cache_size 설정  
+effective_cache_size = 1GB
+```
+
+## 모니터링
+
+### 1. 시스템 모니터링
+```bash
+# 시스템 리소스 확인
+htop
+df -h
+free -h
+```
+
+### 2. 애플리케이션 모니터링
+```bash
+# Django 로그 모니터링
+tail -f backend/logs/django.log
+
+# 응답 시간 확인
+curl -w "@curl-format.txt" -o /dev/null -s "http://your_domain.com"
+```
+
+화이팅! 
