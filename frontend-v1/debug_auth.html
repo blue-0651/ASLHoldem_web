@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인증 상태 확인</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status-box {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .success { border-left-color: #28a745; background-color: #d4edda; }
+        .error { border-left-color: #dc3545; background-color: #f8d7da; }
+        .warning { border-left-color: #ffc107; background-color: #fff3cd; }
+        .info { border-left-color: #17a2b8; background-color: #d1ecf1; }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .token-display {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 인증 상태 확인</h1>
+        
+        <div id="status-container">
+            <div class="status-box info">
+                <strong>로딩 중...</strong>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button onclick="checkAuth()">인증 상태 확인</button>
+            <button onclick="testBannerAPI()">배너 API 테스트</button>
+            <button onclick="refreshToken()">토큰 갱신</button>
+            <button onclick="clearAuth()">인증 정보 초기화</button>
+        </div>
+        
+        <div id="token-info" style="margin-top: 20px;"></div>
+        
+        <div style="margin-top: 30px;">
+            <h3>📝 로그인 테스트</h3>
+            <input type="tel" id="phone-input" placeholder="전화번호 (010-0000-0000)" style="padding: 10px; margin: 5px; width: 200px;">
+            <input type="password" id="password-input" placeholder="비밀번호" style="padding: 10px; margin: 5px; width: 200px;">
+            <select id="user-type" style="padding: 10px; margin: 5px;">
+                <option value="admin">관리자</option>
+                <option value="store">매장 관리자</option>
+                <option value="user">일반 사용자</option>
+            </select>
+            <button onclick="testLogin()">로그인 테스트</button>
+        </div>
+        
+        <div id="api-test-result" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        // 토큰 키 정의
+        const TOKEN_KEY = 'asl_holdem_access_token';
+        const REFRESH_TOKEN_KEY = 'asl_holdem_refresh_token';
+        const USER_INFO_KEY = 'asl_holdem_user_info';
+        const USER_TYPE_KEY = 'user_type';
+
+        // 페이지 로드 시 자동으로 인증 상태 확인
+        window.onload = function() {
+            checkAuth();
+        };
+
+        function checkAuth() {
+            const statusContainer = document.getElementById('status-container');
+            const tokenInfo = document.getElementById('token-info');
+            
+            // 토큰 정보 가져오기
+            const accessToken = localStorage.getItem(TOKEN_KEY);
+            const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+            const userInfo = localStorage.getItem(USER_INFO_KEY);
+            const userType = localStorage.getItem(USER_TYPE_KEY);
+            
+            let statusHTML = '';
+            let tokenHTML = '';
+            
+            if (accessToken) {
+                statusHTML += '<div class="status-box success"><strong>✅ 액세스 토큰:</strong> 존재함</div>';
+                
+                // JWT 토큰 디코딩
+                try {
+                    const tokenParts = accessToken.split('.');
+                    const payload = JSON.parse(atob(tokenParts[1]));
+                    const exp = new Date(payload.exp * 1000);
+                    const now = new Date();
+                    
+                    if (exp > now) {
+                        statusHTML += '<div class="status-box success"><strong>✅ 토큰 유효성:</strong> 유효함 (만료: ' + exp.toLocaleString() + ')</div>';
+                    } else {
+                        statusHTML += '<div class="status-box error"><strong>❌ 토큰 유효성:</strong> 만료됨 (만료: ' + exp.toLocaleString() + ')</div>';
+                    }
+                    
+                    tokenHTML += '<h4>🔑 토큰 정보</h4>';
+                    tokenHTML += '<div class="token-display">';
+                    tokenHTML += '<strong>사용자 ID:</strong> ' + payload.user_id + '<br>';
+                    tokenHTML += '<strong>전화번호:</strong> ' + payload.phone + '<br>';
+                    tokenHTML += '<strong>닉네임:</strong> ' + (payload.nickname || '없음') + '<br>';
+                    tokenHTML += '<strong>역할:</strong> ' + (payload.role || '없음') + '<br>';
+                    tokenHTML += '<strong>스태프:</strong> ' + (payload.is_staff || false) + '<br>';
+                    tokenHTML += '<strong>슈퍼유저:</strong> ' + (payload.is_superuser || false) + '<br>';
+                    tokenHTML += '<strong>매장 관리자:</strong> ' + (payload.is_store_owner || false) + '<br>';
+                    tokenHTML += '<strong>발행 시간:</strong> ' + new Date(payload.iat * 1000).toLocaleString() + '<br>';
+                    tokenHTML += '<strong>만료 시간:</strong> ' + exp.toLocaleString() + '<br>';
+                    tokenHTML += '</div>';
+                    
+                } catch (e) {
+                    statusHTML += '<div class="status-box error"><strong>❌ 토큰 파싱:</strong> 실패 - ' + e.message + '</div>';
+                }
+            } else {
+                statusHTML += '<div class="status-box error"><strong>❌ 액세스 토큰:</strong> 없음</div>';
+            }
+            
+            if (refreshToken) {
+                statusHTML += '<div class="status-box success"><strong>✅ 리프레시 토큰:</strong> 존재함</div>';
+            } else {
+                statusHTML += '<div class="status-box error"><strong>❌ 리프레시 토큰:</strong> 없음</div>';
+            }
+            
+            if (userInfo) {
+                statusHTML += '<div class="status-box success"><strong>✅ 사용자 정보:</strong> 존재함</div>';
+                const user = JSON.parse(userInfo);
+                tokenHTML += '<h4>👤 저장된 사용자 정보</h4>';
+                tokenHTML += '<div class="token-display">' + JSON.stringify(user, null, 2) + '</div>';
+            } else {
+                statusHTML += '<div class="status-box error"><strong>❌ 사용자 정보:</strong> 없음</div>';
+            }
+            
+            if (userType) {
+                statusHTML += '<div class="status-box info"><strong>ℹ️ 사용자 타입:</strong> ' + userType + '</div>';
+            }
+            
+            statusContainer.innerHTML = statusHTML;
+            tokenInfo.innerHTML = tokenHTML;
+        }
+
+        async function testBannerAPI() {
+            const resultDiv = document.getElementById('api-test-result');
+            resultDiv.innerHTML = '<div class="status-box info"><strong>📡 배너 API 테스트 중...</strong></div>';
+            
+            try {
+                const token = localStorage.getItem(TOKEN_KEY);
+                const response = await fetch('/api/v1/banners/', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = '<div class="status-box success"><strong>✅ 배너 API 성공!</strong><br>배너 수: ' + (data.results ? data.results.length : data.length) + '개</div>';
+                } else {
+                    const errorData = await response.text();
+                    resultDiv.innerHTML = '<div class="status-box error"><strong>❌ 배너 API 실패!</strong><br>상태: ' + response.status + ' ' + response.statusText + '<br>응답: ' + errorData + '</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="status-box error"><strong>❌ 배너 API 에러!</strong><br>' + error.message + '</div>';
+            }
+        }
+
+        async function refreshToken() {
+            const resultDiv = document.getElementById('api-test-result');
+            resultDiv.innerHTML = '<div class="status-box info"><strong>🔄 토큰 갱신 중...</strong></div>';
+            
+            try {
+                const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+                if (!refreshToken) {
+                    resultDiv.innerHTML = '<div class="status-box error"><strong>❌ 리프레시 토큰이 없습니다!</strong></div>';
+                    return;
+                }
+                
+                const response = await fetch('/api/v1/accounts/token/refresh/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        refresh: refreshToken
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem(TOKEN_KEY, data.access);
+                    resultDiv.innerHTML = '<div class="status-box success"><strong>✅ 토큰 갱신 성공!</strong></div>';
+                    setTimeout(() => checkAuth(), 500);
+                } else {
+                    const errorData = await response.text();
+                    resultDiv.innerHTML = '<div class="status-box error"><strong>❌ 토큰 갱신 실패!</strong><br>상태: ' + response.status + '<br>응답: ' + errorData + '</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="status-box error"><strong>❌ 토큰 갱신 에러!</strong><br>' + error.message + '</div>';
+            }
+        }
+
+        async function testLogin() {
+            const phone = document.getElementById('phone-input').value;
+            const password = document.getElementById('password-input').value;
+            const userType = document.getElementById('user-type').value;
+            const resultDiv = document.getElementById('api-test-result');
+            
+            if (!phone || !password) {
+                resultDiv.innerHTML = '<div class="status-box error"><strong>❌ 전화번호와 비밀번호를 입력해주세요!</strong></div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="status-box info"><strong>🔐 로그인 테스트 중...</strong></div>';
+            
+            try {
+                const cleanPhone = phone.replace(/-/g, '');
+                const endpoint = userType === 'admin' ? '/api/v1/accounts/token/admin/' : 
+                               userType === 'store' ? '/api/v1/accounts/token/store/' : 
+                               '/api/v1/accounts/token/user/';
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: cleanPhone,
+                        password: password
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem(TOKEN_KEY, data.access);
+                    localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh);
+                    localStorage.setItem(USER_TYPE_KEY, userType);
+                    
+                    // JWT 토큰에서 사용자 정보 추출
+                    const tokenParts = data.access.split('.');
+                    const payload = JSON.parse(atob(tokenParts[1]));
+                    const userInfo = {
+                        id: payload.user_id,
+                        user_id: payload.user_id,
+                        phone: payload.phone,
+                        nickname: payload.nickname || '',
+                        email: payload.email || '',
+                        is_store_owner: payload.is_store_owner || false,
+                        is_staff: payload.is_staff || false,
+                        is_superuser: payload.is_superuser || false,
+                        role: payload.role || userType
+                    };
+                    localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+                    
+                    resultDiv.innerHTML = '<div class="status-box success"><strong>✅ 로그인 성공!</strong><br>사용자: ' + userInfo.phone + ' (' + userInfo.role + ')</div>';
+                    setTimeout(() => checkAuth(), 500);
+                } else {
+                    const errorData = await response.text();
+                    resultDiv.innerHTML = '<div class="status-box error"><strong>❌ 로그인 실패!</strong><br>상태: ' + response.status + '<br>응답: ' + errorData + '</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<div class="status-box error"><strong>❌ 로그인 에러!</strong><br>' + error.message + '</div>';
+            }
+        }
+
+        function clearAuth() {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            localStorage.removeItem(USER_INFO_KEY);
+            localStorage.removeItem(USER_TYPE_KEY);
+            
+            document.getElementById('api-test-result').innerHTML = '<div class="status-box warning"><strong>⚠️ 인증 정보가 초기화되었습니다.</strong></div>';
+            setTimeout(() => checkAuth(), 500);
+        }
+    </script>
+</body>
+</html> 
