@@ -102,6 +102,8 @@ export const login = async (phone, password, userType = 'store') => {
       };
       
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+      // 사용자 정보 업데이트 이벤트 발생
+      window.dispatchEvent(new CustomEvent('userInfoUpdated', { detail: userInfo }));
     } catch (error) {
       console.error('JWT 토큰 파싱 오류:', error);
       return {
@@ -232,6 +234,8 @@ export const reqLoginWithPhone = async (phone, password, userType = 'user') => {
       };
       
       localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+      // 사용자 정보 업데이트 이벤트 발생
+      window.dispatchEvent(new CustomEvent('userInfoUpdated', { detail: userInfo }));
       console.log('사용자 정보 저장 완료:', userInfo);
     } catch (tokenError) {
       console.error('JWT 토큰 파싱 오류:', tokenError);
@@ -269,6 +273,8 @@ export const logout = () => {
   localStorage.removeItem(USER_TYPE_KEY);
   localStorage.removeItem(IS_STORE_OWNER_KEY);
   localStorage.removeItem('userPhone');
+  // 사용자 정보 제거 이벤트 발생
+  window.dispatchEvent(new CustomEvent('userInfoUpdated', { detail: null }));
 };
 
 // authService.jsx 호환성을 위한 별칭
