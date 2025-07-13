@@ -77,8 +77,8 @@ class Banner(models.Model):
     매장 홍보, 이벤트 안내 등을 위한 배너 이미지와 정보를 관리합니다.
     """
     
-    # 연결된 매장
-    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='banners')
+    # 연결된 매장 (선택사항 - 본사 관리자는 전체용 배너 생성 가능)
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='banners', null=True, blank=True)
     
     # 배너 이미지
     image = models.ImageField(upload_to='banner_images/', verbose_name='배너 이미지')
@@ -117,4 +117,7 @@ class Banner(models.Model):
         
     def __str__(self):
         """배너 객체를 문자열로 표현할 때 매장명과 배너 제목 반환"""
-        return f"{self.store.name} - {self.title}" 
+        if self.store:
+            return f"{self.store.name} - {self.title}"
+        else:
+            return f"전체 - {self.title}" 

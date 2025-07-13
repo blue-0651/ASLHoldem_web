@@ -182,11 +182,17 @@ class BannerViewSet(viewsets.ModelViewSet):
         try:
             user = self.request.user
             
-            # 관리자는 모든 매장에 배너 생성 가능
+            # 관리자는 모든 매장에 배너 생성 가능 (매장 선택 여부 무관)
             if user.is_staff or user.is_superuser:
                 try:
-                    serializer.save()
-                    logger.info(f"관리자 '{user.username}'이 배너 생성: {serializer.validated_data.get('title', 'N/A')}")
+                    # 매장이 선택되지 않았다면 전체용 배너로 생성
+                    store_data = serializer.validated_data.get('store')
+                    if store_data:
+                        serializer.save()
+                        logger.info(f"관리자 '{user.username}'이 매장 '{store_data.name}' 배너 생성: {serializer.validated_data.get('title', 'N/A')}")
+                    else:
+                        serializer.save()
+                        logger.info(f"관리자 '{user.username}'이 전체용 배너 생성: {serializer.validated_data.get('title', 'N/A')}")
                     return
                 except OSError as e:
                     if "Permission denied" in str(e):

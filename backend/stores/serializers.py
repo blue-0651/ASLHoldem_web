@@ -18,7 +18,7 @@ class StoreSerializer(serializers.ModelSerializer):
 
 class BannerSerializer(serializers.ModelSerializer):
     """배너 정보 시리얼라이저"""
-    store_name = serializers.CharField(source='store.name', read_only=True)
+    store_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Banner
@@ -27,6 +27,12 @@ class BannerSerializer(serializers.ModelSerializer):
             'start_date', 'end_date', 'is_active', 'is_main_tournament', 'is_store_gallery', 'is_main_selected', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+    
+    def get_store_name(self, obj):
+        """매장명 반환 - 매장이 없으면 '전체'로 표시"""
+        if obj.store:
+            return obj.store.name
+        return "전체"
 
 
 class StoreCreateSerializer(serializers.ModelSerializer):

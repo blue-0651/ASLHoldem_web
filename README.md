@@ -42,6 +42,7 @@ sudo bash deploy/fix_django_user_permissions.sh
 - **`deploy/fix_django_user_permissions.sh`** - Django 프로세스 사용자와 미디어 폴더 권한 동기화
 - **`deploy/check_user_permissions.sh`** - 사용자 계정 권한 상태 확인
 - **`deploy/fix_admin_permissions.sh`** - 관리자 계정 권한 설정
+- **`deploy/fix_banner_store_optional.sh`** - 배너 매장 필드를 선택사항으로 설정 (본사 관리자용)
 
 ### 배포 스크립트 
 - **`deploy/deploy_backend.sh`** - 백엔드 배포 자동화
@@ -111,6 +112,14 @@ sudo bash deploy/fix_admin_permissions.sh
 
 # 3. 브라우저에서 로그아웃 후 다시 로그인
 # 4. 브라우저 캐시 및 쿠키 삭제
+```
+
+### 배너 생성 시 "매장관리자로 해야된다" 에러
+```bash
+# 본사 관리자가 전체용 배너를 생성할 수 있도록 설정
+sudo bash deploy/fix_banner_store_optional.sh
+
+# Django 프로세스 재시작 후 배너 생성 테스트
 ```
 
 ### 로그 확인

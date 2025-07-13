@@ -198,7 +198,13 @@ const QRCode = () => {
                     </Card.Title>
                     
                     {qrData.qr_code_url ? (
-                      <div className="qr-code-container mb-4">
+                      <div className="qr-code-container mb-4" style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        flexDirection: 'column',
+                        minHeight: '300px'
+                      }}>
                         {imageLoading && (
                           <div className="text-center mb-3">
                             <Spinner animation="border" size="sm" />
@@ -233,11 +239,16 @@ const QRCode = () => {
                             style={{ 
                               maxWidth: '250px', 
                               maxHeight: '250px',
+                              width: '250px',
+                              height: '250px',
+                              objectFit: 'contain',
                               border: '2px solid #dee2e6',
                               borderRadius: '8px',
                               padding: '10px',
                               backgroundColor: 'white',
-                              display: imageLoading ? 'none' : 'block'
+                              display: imageLoading ? 'none' : 'block',
+                              margin: '0 auto',
+                              boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
                             }}
                             onLoad={handleImageLoad}
                             onError={handleImageError}
@@ -246,7 +257,12 @@ const QRCode = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="mb-4">
+                      <div className="mb-4" style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        minHeight: '300px'
+                      }}>
                         <Alert variant="warning">
                           <div className="text-center">
                             <i className="fas fa-exclamation-triangle fa-3x mb-3"></i>
