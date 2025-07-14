@@ -42,7 +42,7 @@ $asl-mobile-card-bg: #fff; // change for better readability
 
 .asl-mobile-text {
   color: $asl-mobile-text-color;
-  fontSize: 18px;
+  font-size: 18px;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6); /* 검은색 그림자, 약한 흐림 효과 */
 }
 
@@ -113,11 +113,12 @@ $asl-mobile-card-bg: #fff; // change for better readability
   }
   
   a {
-    color: $asl-mobile-body-bg;
+    color: $asl-mobile-link-color; // 브라운 계열 링크 색상으로 변경
     font-weight: 500;
     text-decoration: none;
     
     &:hover {
+      color: darken($asl-mobile-link-color, 10%);
       text-decoration: underline;
     }
   }
@@ -460,7 +461,7 @@ $asl-mobile-card-bg: #fff; // change for better readability
 
 .asl-mobile-drawer-header {
   padding: 20px 15px;
-  background-color: radial-gradient(circle at center, $asl-mobile-body-bg-start, $asl-mobile-body-bg-end);
+  background-color: #2c3e50;
   color: white;
   display: flex;
   align-items: center;
@@ -1260,5 +1261,32 @@ body {
   .asl-mobile-form-control {
     font-size: 14px;
     padding: 10px 12px;
+  }
+}
+
+/* 회원가입/로그인 페이지의 링크 스타일 개선 */
+.asl-mobile-login-card .text-center {
+  p {
+    color: $asl-mobile-text-color;
+    
+    a {
+      color: $asl-mobile-link-color !important;
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        color: darken($asl-mobile-link-color, 15%) !important;
+        border-bottom-color: $asl-mobile-link-color;
+        text-decoration: none;
+      }
+      
+      &:focus {
+        color: darken($asl-mobile-link-color, 20%) !important;
+        outline: 2px solid rgba(139, 69, 19, 0.3);
+        outline-offset: 2px;
+      }
+    }
   }
 }
